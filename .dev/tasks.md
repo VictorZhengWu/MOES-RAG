@@ -7,7 +7,7 @@
 
 ## Phase 1: 前端骨架 + Mock Server
 
-### 🔲 00010 — contracts/ 接口契约包
+### ✅ 00010 — contracts/ 接口契约包
 
 **功能描述：**
 - 定义全部模块间通信的 Protocol 接口
@@ -24,7 +24,7 @@
 
 ---
 
-### 🔲 00020 — Mock Server
+### ✅ 00020 — Mock Server
 
 **功能描述：**
 - 基于 contracts/ 中的 API Schema 生成 Mock HTTP 服务

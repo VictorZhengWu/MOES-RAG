@@ -18,7 +18,8 @@
 | M6 | User Web Portal | 🔲 Not Started | 0 | — | — |
 | M7 | Admin Web Portal | 🔲 Not Started | 0 | — | — |
 | M8 | API Gateway | 🔲 Not Started | 0 | — | — |
-| — | contracts/ | ✅ Stubs Created | 1 | 2026-05-12 | 00010 |
+| — | contracts/ | ✅ Complete | 1 | 2026-05-12 | 00010 |
+| — | Mock Server | ✅ Complete | 1 | 2026-05-12 | 00020 |
 
 ## Status Legend
 
