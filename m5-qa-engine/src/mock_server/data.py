@@ -101,13 +101,15 @@ def mock_chat_response(query: str) -> dict:
 
 def mock_stream_chunks(query: str) -> list[str]:
     """
-    Generate simulated SSE streaming chunks.
+    Generate simulated SSE streaming chunks as raw JSON strings.
 
     WHY: M6's streaming UI needs realistic token-by-token output
     to verify real-time rendering. Returning pre-split tokens
-    simulates what a real LLM stream would produce. Each chunk is
-    a JSON line prefixed with "data: " and separated by blank lines,
-    matching the SSE protocol exactly.
+    simulates what a real LLM stream would produce. Chunks are
+    raw JSON strings — the SSE framing (data: prefix, \\n\\n suffix)
+    is added by EventSourceResponse in routes_chat.py.
+
+    The last element is the string "[DONE]" to signal stream end.
     """
     text = mock_chat_response(query)["choices"][0]["message"]["content"]
     words = text.split()
@@ -124,8 +126,8 @@ def mock_stream_chunks(query: str) -> list[str]:
                 "finish_reason": None if i < len(words) - 1 else "stop",
             }],
         }
-        chunks.append(f"data: {json.dumps(chunk)}\n\n")
-    chunks.append("data: [DONE]\n\n")
+        chunks.append(json.dumps(chunk))
+    chunks.append("[DONE]")
     return chunks
 
 
