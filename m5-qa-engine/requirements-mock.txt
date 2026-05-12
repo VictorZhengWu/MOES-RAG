@@ -1,0 +1,13 @@
+# Mock Server dependencies for Phase 1 development
+# These are ONLY needed during Phase 1. M5 real implementation
+# will have its own (likely overlapping) dependency set.
+
+fastapi>=0.115
+uvicorn[standard]>=0.34
+pydantic>=2.10
+sse-starlette>=2.0
+httpx>=0.28
+
+# Testing
+pytest>=8.0
+pytest-asyncio>=0.24
