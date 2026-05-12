@@ -121,3 +121,116 @@ class PaginatedResponse(BaseModel):
     limit: int
     offset: int
     items: list[Any]
+
+
+# ── Chat & Conversations ────────────────────────────────────────────
+
+class ConversationRenameRequest(BaseModel):
+    """
+    Request to rename a conversation.
+
+    WHY: M6 provides an inline-edit feature on the conversation list.
+    The API needs a dedicated lightweight endpoint (PATCH) rather than
+    a full PUT because only the title field is mutable by users.
+    """
+    title: str
+
+
+# ── User Settings ───────────────────────────────────────────────────
+
+class UserSettings(BaseModel):
+    """
+    User preferences persisted server-side.
+
+    WHY: Language preference and notification settings must survive
+    across browser sessions and devices. Storing server-side (with
+    localStorage as a fast cache) enables cross-device sync.
+    """
+    language: str = "en"
+    theme: str = "light"
+
+
+class UserSettingsUpdateRequest(BaseModel):
+    """Partial update for user settings."""
+    language: str | None = None
+    theme: str | None = None
+
+
+# ── Admin: Knowledge Graph Browser ──────────────────────────────────
+
+class KGEntityResponse(BaseModel):
+    """A knowledge graph entity returned to the admin UI."""
+    entity_id: str
+    name: str
+    entity_type: str
+    properties: dict[str, object] = Field(default_factory=dict)
+    source_doc_id: str | None = None
+
+
+class KGRelationResponse(BaseModel):
+    """A knowledge graph relation returned to the admin UI."""
+    relation_id: str
+    source_entity_id: str
+    target_entity_id: str
+    relation_type: str
+    source_entity_name: str = ""
+    target_entity_name: str = ""
+    confidence: float = 1.0
+
+
+# ── Admin: System Stats ─────────────────────────────────────────────
+
+class SystemStats(BaseModel):
+    """
+    Dashboard statistics for the admin monitoring page.
+
+    WHY: M7's monitoring dashboard needs aggregated numbers.
+    These come from a /stats endpoint rather than querying each
+    subsystem separately, avoiding N+1 calls on dashboard load.
+    """
+    total_documents: int = 0
+    total_chunks: int = 0
+    total_entities: int = 0
+    total_relations: int = 0
+    total_conversations: int = 0
+    total_users: int = 0
+    storage_size_bytes: int = 0
+    avg_retrieval_latency_ms: float = 0.0
+
+
+# ── Admin: User Management ──────────────────────────────────────────
+
+class AdminUserInfo(BaseModel):
+    """User record visible to admins."""
+    user_id: str
+    username: str
+    email: str
+    role: str  # "admin" | "editor" | "viewer"
+    is_active: bool = True
+    api_key_count: int = 0
+    total_queries: int = 0
+    created_at: str = ""
+
+
+class AdminUserCreateRequest(BaseModel):
+    """Request to create a new user via admin panel."""
+    username: str
+    email: str
+    password: str
+    role: str = "viewer"
+
+
+# ── Health ──────────────────────────────────────────────────────────
+
+class HealthResponse(BaseModel):
+    """
+    System health check response.
+
+    WHY: Docker health checks, load balancer probes, and the admin
+    dashboard all need a standardized health endpoint. Each module
+    can report its own status independently.
+    """
+    status: str  # "ok" | "degraded" | "down"
+    version: str
+    modules: dict[str, str] = Field(default_factory=dict)
+    uptime_seconds: float = 0.0
