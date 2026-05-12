@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"C:\\\\Users\\\\Victor\\\\.claude\\\\plugins\\\\cache\\\\superpowers-marketplace\\\\superpowers\\\\5.0.7\\\\skills\\\\brainstorming\\\\scripts\\\\start-server.sh\" --project-dir \"E:\\\\myCode\\\\RAG\")",
+      "Bash(python -c \"from contracts.api_schemas import DocumentUploadRequest; req = DocumentUploadRequest\\(file_name='test.pdf', language='zh'\\); print\\(f'language={req.language}, OK'\\)\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git init *)"
+    ]
+  }
+}

@@ -1,0 +1,41 @@
+# Module Memory Index — Marine & Offshore Expert System
+
+> **Purpose**: Fast-lookup index for all module memory files. Read this first when starting a new session to understand the overall project state, then dive into the specific module file you need.
+
+> **Last Updated**: 2026-05-12
+
+---
+
+## Module Status Overview
+
+| Module | Name | Status | Sessions | Last Session | Active Task |
+|--------|------|--------|----------|-------------|-------------|
+| M1 | Document Parsing Engine | 🔲 Not Started | 0 | — | — |
+| M2 | Storage Abstraction Layer | 🔲 Not Started | 0 | — | — |
+| M3 | Retrieval Engine | 🔲 Not Started | 0 | — | — |
+| M4 | Knowledge Graph Engine | 🔲 Not Started | 0 | — | — |
+| M5 | RAG QA Engine | 🔲 Not Started | 0 | — | — |
+| M6 | User Web Portal | 🔲 Not Started | 0 | — | — |
+| M7 | Admin Web Portal | 🔲 Not Started | 0 | — | — |
+| M8 | API Gateway | 🔲 Not Started | 0 | — | — |
+| — | contracts/ | ✅ Stubs Created | 1 | 2026-05-12 | 00010 |
+
+## Status Legend
+
+- 🔲 Not Started
+- 🔄 In Development
+- ✅ Complete
+- ❌ Blocked / Broken
+- ⏸️ Paused
+
+---
+
+## Quick Reference: Which File To Read
+
+| If you need to... | Read |
+|-------------------|------|
+| Understand the overall architecture | `docs/superpowers/specs/rag-system-design-2026-05-12.md` |
+| Know cross-module decisions | `.dev/decisions.md` |
+| Work on a specific module | `.dev/module-memory/m<X>-<name>.md` |
+| See what tasks remain | `.dev/tasks.md` |
+| Understand a task's test history | `.dev/test_records/<NNNNN>.md` |
