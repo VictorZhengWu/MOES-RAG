@@ -3,16 +3,19 @@
  *
  * WHY: Route groups ((main)) allow different layouts for different
  * sections without affecting the URL. All main app pages (chat,
- * knowledge, settings) share this layout which will wrap them
- * with the AppLayout (sidebar + header) in Task B8.
+ * knowledge, settings) share this layout which wraps them with
+ * the AppLayout (sidebar + header + jump nav).
  *
- * Currently a pass-through — AppLayout will be added in Task B8.
+ * The auth pages (login, register) under (auth) use a different
+ * layout without the sidebar.
  */
+
+import { AppLayoutWrapper } from '@/components/layout/app-layout-wrapper';
 
 export default function MainLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return <AppLayoutWrapper>{children}</AppLayoutWrapper>;
 }
