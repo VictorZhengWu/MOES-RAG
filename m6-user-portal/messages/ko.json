@@ -1,0 +1,170 @@
+{
+  "app": {
+    "name": "Marine & Offshore Expert System",
+    "shortName": "MO Expert",
+    "tagline": "Professional RAG Q&A for ship and offshore engineering"
+  },
+  "sidebar": {
+    "newChat": "New Chat",
+    "searchChats": "Search chats",
+    "deepResearch": "Deep Research",
+    "settings": "Settings",
+    "help": "Help",
+    "logIn": "Log in",
+    "logOut": "Log out",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "guestWarning": "Sign in to save conversations"
+  },
+  "chat": {
+    "input": {
+      "placeholder": "Ask anything about ship & offshore engineering...",
+      "send": "Send",
+      "stopGeneration": "Stop generating",
+      "attachFile": "Attach file",
+      "webSearch": "Web search",
+      "webSearchOn": "Web search enabled",
+      "webSearchOff": "Web search disabled"
+    },
+    "empty": {
+      "title": "Marine & Offshore Expert System",
+      "subtitle": "Ask questions about classification society rules, engineering standards, equipment specifications, and more.",
+      "suggestions": {
+        "title": "Try asking:",
+        "items": [
+          "What are DNV requirements for LNG cargo tank structures?",
+          "Compare ABS and DNV rules for bulk carrier hatch covers",
+          "What does IMO require for ballast water treatment?",
+          "What is the minimum plate thickness for a container ship's main deck according to CCS?",
+          "Explain the fatigue assessment procedure for offshore crane pedestals"
+        ]
+      }
+    },
+    "citation": {
+      "title": "References",
+      "source": "Source",
+      "section": "Section",
+      "clause": "Clause",
+      "excerpt": "Excerpt",
+      "viewSource": "View source",
+      "noReferences": "No references for this answer"
+    },
+    "jumpNav": {
+      "title": "Questions in this chat",
+      "empty": "No questions yet"
+    },
+    "streaming": "Generating...",
+    "error": {
+      "send": "Failed to send message. Please try again.",
+      "stream": "Stream interrupted. Please try again.",
+      "network": "Network error. Check your connection."
+    }
+  },
+  "conversation": {
+    "title": "Chat History",
+    "search": "Search chats...",
+    "new": "New conversation",
+    "delete": {
+      "label": "Delete conversation",
+      "confirm": "Are you sure you want to delete this conversation?",
+      "cancel": "Cancel",
+      "confirmButton": "Delete"
+    },
+    "rename": {
+      "label": "Rename",
+      "placeholder": "Conversation title"
+    },
+    "empty": "No conversations yet. Start a new chat.",
+    "guestEmpty": "Sign in to view your conversation history."
+  },
+  "knowledge": {
+    "title": "Knowledge Base",
+    "subtitle": "Documents and regulations available in the system",
+    "search": "Search documents...",
+    "filter": {
+      "society": "Classification Society",
+      "domain": "Domain",
+      "year": "Version Year",
+      "all": "All"
+    },
+    "table": {
+      "name": "Document Name",
+      "society": "Society",
+      "domain": "Domain",
+      "year": "Year",
+      "chunks": "Sections",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "deprecated": "Superseded",
+      "error": "Error"
+    },
+    "empty": "No documents found."
+  },
+  "settings": {
+    "title": "Settings",
+    "language": {
+      "label": "Interface Language",
+      "description": "Change the language of the user interface.",
+      "en": "English",
+      "zh": "中文",
+      "ko": "한국어",
+      "ja": "日本語",
+      "no": "Norsk"
+    },
+    "theme": {
+      "label": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "apiKeys": {
+      "title": "API Keys",
+      "create": "Create API Key",
+      "empty": "No API keys yet."
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Sign In",
+      "subtitle": "Welcome back",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign In",
+      "noAccount": "Don't have an account?",
+      "register": "Create one"
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "Get started",
+      "username": "Username",
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "submit": "Create Account",
+      "hasAccount": "Already have an account?",
+      "login": "Sign In"
+    },
+    "errors": {
+      "invalidEmail": "Please enter a valid email address.",
+      "passwordLength": "Password must be at least 8 characters.",
+      "passwordsMatch": "Passwords do not match.",
+      "loginFailed": "Invalid email or password.",
+      "registerFailed": "Registration failed. Please try again."
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "search": "Search",
+    "noResults": "No results found",
+    "close": "Close",
+    "back": "Back",
+    "more": "More"
+  }
+}
