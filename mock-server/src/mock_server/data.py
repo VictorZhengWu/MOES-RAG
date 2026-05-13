@@ -127,6 +127,18 @@ def mock_stream_chunks(query: str) -> list[str]:
             }],
         }
         chunks.append(json.dumps(chunk))
+    # Append citations as a metadata chunk before [DONE]
+    citations = mock_chat_response(query).get("citations", [])
+    if citations:
+        citation_chunk = {
+            "id": f"chatcmpl-citations-{generate_id()}",
+            "object": "chat.completion.chunk",
+            "created": int(time.time()),
+            "model": "marine-rag-mock",
+            "choices": [],
+            "citations": citations,
+        }
+        chunks.append(json.dumps(citation_chunk))
     chunks.append("[DONE]")
     return chunks
 

@@ -26,8 +26,9 @@ export function LanguageSwitcher() {
   const locale = useLocale();
 
   const switchTo = (newLocale: string) => {
-    const newPath = pathname.replace(`/${locale}`, `/${newLocale}`);
-    router.push(newPath);
+    // next-intl's usePathname() returns the path WITHOUT the locale prefix.
+    // So we reconstruct: /{newLocale}{pathname} → e.g. /zh/chat
+    router.push(`/${newLocale}${pathname}`);
   };
 
   const current = SUPPORTED_LANGUAGES.find((l) => l.code === locale);
