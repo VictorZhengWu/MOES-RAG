@@ -5,7 +5,32 @@
       "Bash(python -c \"from contracts.api_schemas import DocumentUploadRequest; req = DocumentUploadRequest\\(file_name='test.pdf', language='zh'\\); print\\(f'language={req.language}, OK'\\)\")",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git init *)"
+      "Bash(git init *)",
+      "Bash(pip install *)",
+      "Bash(python -c \"import contracts; print\\(contracts.__version__\\); from contracts import ChatRequest, DocumentUploadRequest, HealthResponse; print\\('All imports OK'\\)\")",
+      "Bash(python -c \"import contracts; print\\(contracts.__version__\\); print\\(len\\(contracts.__all__\\), 'symbols exported'\\)\")",
+      "Bash(python -m pytest tests/ -v)",
+      "Bash(python -c \"from mock_server.config import MockServerConfig; c = MockServerConfig\\(\\); print\\(f'Port: {c.port}, CORS origins: {len\\(c.cors_origins\\)}'\\)\")",
+      "Bash(python -c \"from mock_server.data import mock_chat_response, mock_documents; r = mock_chat_response\\('test'\\); print\\(r['choices'][0]['message']['content'][:80]\\); print\\(len\\(mock_documents\\(\\)\\), 'docs'\\); print\\('OK'\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python -m pytest m5-qa-engine/tests/test_mock_server.py -v)",
+      "Bash(python -c \"from mock_server.app import app; import uvicorn; uvicorn.run\\(app, host='127.0.0.1', port=8000\\)\")",
+      "Bash(python -m json.tool)",
+      "Bash(python -c \"from mock_server.app import app; import uvicorn; uvicorn.run\\(app, host='127.0.0.1', port=8008\\)\")",
+      "Bash(taskkill /F /IM python.exe)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill /F /PID 16120)",
+      "Bash(python -c \"from mock_server.app import app; import uvicorn; uvicorn.run\\(app, host='127.0.0.1', port=8009\\)\")",
+      "Bash(python -m uvicorn mock_server.app:app --host 127.0.0.1 --port 8010)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('status: ok, citations:', len\\(d['citations']\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('conversations:', d['total']\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('health:', d['status']\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('stats docs:', d['total_documents']\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('models:', len\\(d['data']\\)\\)\")",
+      "Bash(taskkill /F /PID 11060)",
+      "Bash(python -m uvicorn mock_server.app:app --host 127.0.0.1 --port 8020)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(python -m pytest mock-server/tests/test_mock_server.py -v)"
     ]
   }
 }

@@ -3,9 +3,9 @@ requires = ["setuptools>=75.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "m5-qa-engine-mock"
+name = "marine-rag-mock-server"
 version = "0.1.0"
-description = "Mock Server for Marine & Offshore Expert System Phase 1"
+description = "Standalone mock API server for Marine & Offshore Expert System development and debugging"
 requires-python = ">=3.12"
 
 [tool.setuptools.packages.find]

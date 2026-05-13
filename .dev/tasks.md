@@ -37,7 +37,7 @@
 **通过条件：** 全部 passed，0 failed
 **Task 类型：** 模块/服务类
 **依赖：** 00010
-**关联文件：** `m5-qa-engine/src/mock_server.py`（暂放 M5 目录，后续迁出）
+**关联文件：** `mock-server/src/mock_server/`（独立模块，不归属 M5，调试复用）
 
 ---
 

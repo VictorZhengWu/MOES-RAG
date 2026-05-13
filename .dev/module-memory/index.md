@@ -19,7 +19,7 @@
 | M7 | Admin Web Portal | 🔲 Not Started | 0 | — | — |
 | M8 | API Gateway | 🔲 Not Started | 0 | — | — |
 | — | contracts/ | ✅ Complete | 1 | 2026-05-12 | 00010 |
-| — | Mock Server | ✅ Complete | 1 | 2026-05-12 | 00020 |
+| — | Mock Server (独立) | ✅ Complete | 1 | 2026-05-13 | 00020 |
 
 ## Status Legend
 
