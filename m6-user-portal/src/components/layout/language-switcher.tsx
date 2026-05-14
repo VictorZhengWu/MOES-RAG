@@ -12,7 +12,6 @@
 import { useRouter, usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { SUPPORTED_LANGUAGES } from '@/types';
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,10 +40,10 @@ export function LanguageSwitcher() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
-        <Button variant="ghost" size="sm" className="text-xs">
-          {current?.label ?? 'English'}
-        </Button>
+      <DropdownMenuTrigger
+        className="inline-flex items-center justify-center rounded-lg px-2.5 h-7 text-xs font-medium hover:bg-muted transition-colors"
+      >
+        {current?.label ?? 'English'}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {SUPPORTED_LANGUAGES.map((lang) => (
