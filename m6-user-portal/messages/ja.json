@@ -2,169 +2,89 @@
   "app": {
     "name": "Marine & Offshore Expert System",
     "shortName": "MO Expert",
-    "tagline": "Professional RAG Q&A for ship and offshore engineering"
+    "tagline": "船舶・海洋工学のための専門RAG Q&Aシステム"
   },
   "sidebar": {
-    "newChat": "New Chat",
-    "searchChats": "Search chats",
-    "deepResearch": "Deep Research",
-    "settings": "Settings",
-    "help": "Help",
-    "logIn": "Log in",
-    "logOut": "Log out",
-    "collapse": "Collapse sidebar",
-    "expand": "Expand sidebar",
-    "guestWarning": "Sign in to save conversations"
+    "newChat": "新しい会話",
+    "searchChats": "会話を検索",
+    "deepResearch": "詳細調査",
+    "settings": "設定",
+    "help": "ヘルプ",
+    "logIn": "ログイン",
+    "logOut": "ログアウト",
+    "collapse": "サイドバーを閉じる",
+    "expand": "サイドバーを開く",
+    "guestWarning": "ログインして会話を保存"
   },
   "chat": {
     "input": {
-      "placeholder": "Ask anything about ship & offshore engineering...",
-      "send": "Send",
-      "stopGeneration": "Stop generating",
-      "attachFile": "Attach file",
-      "webSearch": "Web search",
-      "webSearchOn": "Web search enabled",
-      "webSearchOff": "Web search disabled"
+      "placeholder": "船舶・海洋工学について質問...",
+      "send": "送信",
+      "stopGeneration": "生成停止",
+      "attachFile": "ファイル添付",
+      "webSearch": "ウェブ検索",
+      "webSearchOn": "ウェブ検索オン",
+      "webSearchOff": "ウェブ検索オフ"
     },
     "empty": {
       "title": "Marine & Offshore Expert System",
-      "subtitle": "Ask questions about classification society rules, engineering standards, equipment specifications, and more.",
+      "subtitle": "船級規則、工学基準、機器仕様などについて質問できます。",
       "suggestions": {
-        "title": "Try asking:",
+        "title": "次の質問を試してください：",
         "items": [
-          "What are DNV requirements for LNG cargo tank structures?",
-          "Compare ABS and DNV rules for bulk carrier hatch covers",
-          "What does IMO require for ballast water treatment?",
-          "What is the minimum plate thickness for a container ship's main deck according to CCS?",
-          "Explain the fatigue assessment procedure for offshore crane pedestals"
+          "DNVのLNG貨物タンク構造要件は？",
+          "バルクキャリアのハッチカバーに関するABSとDNVの規則比較",
+          "IMOのバラスト水処理要件は？",
+          "CCSによるコンテナ船主甲板の最小板厚は？",
+          "オフショアクレーンペデスタルの疲労評価手順の説明"
         ]
       }
     },
     "citation": {
-      "title": "References",
-      "source": "Source",
-      "section": "Section",
-      "clause": "Clause",
-      "excerpt": "Excerpt",
-      "viewSource": "View source",
-      "noReferences": "No references for this answer"
+      "title": "参考文献",
+      "source": "出典",
+      "section": "セクション",
+      "clause": "条項",
+      "excerpt": "抜粋",
+      "viewSource": "原文を見る",
+      "noReferences": "この回答には参照がありません"
     },
-    "jumpNav": {
-      "title": "Questions in this chat",
-      "empty": "No questions yet"
-    },
-    "streaming": "Generating...",
+    "jumpNav": { "title": "この会話の質問", "empty": "まだ質問はありません" },
+    "streaming": "生成中...",
     "error": {
-      "send": "Failed to send message. Please try again.",
-      "stream": "Stream interrupted. Please try again.",
-      "network": "Network error. Check your connection."
+      "send": "メッセージの送信に失敗しました。再試行してください。",
+      "stream": "ストリームが中断されました。再試行してください。",
+      "network": "ネットワークエラー。接続を確認してください。"
     }
   },
   "conversation": {
-    "title": "Chat History",
-    "search": "Search chats...",
-    "new": "New conversation",
-    "delete": {
-      "label": "Delete conversation",
-      "confirm": "Are you sure you want to delete this conversation?",
-      "cancel": "Cancel",
-      "confirmButton": "Delete"
-    },
-    "rename": {
-      "label": "Rename",
-      "placeholder": "Conversation title"
-    },
-    "empty": "No conversations yet. Start a new chat.",
-    "guestEmpty": "Sign in to view your conversation history."
+    "title": "会話履歴",
+    "search": "会話を検索...",
+    "new": "新しい会話",
+    "delete": { "label": "会話を削除", "confirm": "この会話を削除しますか？", "cancel": "キャンセル", "confirmButton": "削除" },
+    "rename": { "label": "名前変更", "placeholder": "会話タイトル" },
+    "empty": "まだ会話がありません。新しい会話を始めましょう。",
+    "guestEmpty": "会話履歴を表示するにはログインしてください。"
   },
   "knowledge": {
-    "title": "Knowledge Base",
-    "subtitle": "Documents and regulations available in the system",
-    "search": "Search documents...",
-    "filter": {
-      "society": "Classification Society",
-      "domain": "Domain",
-      "year": "Version Year",
-      "all": "All"
-    },
-    "table": {
-      "name": "Document Name",
-      "society": "Society",
-      "domain": "Domain",
-      "year": "Year",
-      "chunks": "Sections",
-      "status": "Status"
-    },
-    "status": {
-      "active": "Active",
-      "deprecated": "Superseded",
-      "error": "Error"
-    },
-    "empty": "No documents found."
+    "title": "ナレッジベース",
+    "subtitle": "システムに登録された文書と規則",
+    "search": "文書を検索...",
+    "filter": { "society": "船級協会", "domain": "分野", "year": "バージョン年", "all": "すべて" },
+    "table": { "name": "文書名", "society": "船級", "domain": "分野", "year": "年", "chunks": "セクション", "status": "状態" },
+    "status": { "active": "有効", "deprecated": "置換済", "error": "エラー" },
+    "empty": "一致する文書がありません。"
   },
   "settings": {
-    "title": "Settings",
-    "language": {
-      "label": "Interface Language",
-      "description": "Change the language of the user interface.",
-      "en": "English",
-      "zh": "中文",
-      "ko": "한국어",
-      "ja": "日本語",
-      "no": "Norsk"
-    },
-    "theme": {
-      "label": "Theme",
-      "light": "Light",
-      "dark": "Dark",
-      "system": "System"
-    },
-    "apiKeys": {
-      "title": "API Keys",
-      "create": "Create API Key",
-      "empty": "No API keys yet."
-    }
+    "title": "設定",
+    "language": { "label": "インターフェース言語", "description": "UIの表示言語を変更します。", "en": "English", "zh": "中文", "ko": "한국어", "ja": "日本語", "no": "Norsk" },
+    "theme": { "label": "テーマ", "light": "ライト", "dark": "ダーク", "system": "システム" },
+    "apiKeys": { "title": "APIキー", "create": "APIキーを作成", "empty": "APIキーはまだありません。" }
   },
   "auth": {
-    "login": {
-      "title": "Sign In",
-      "subtitle": "Welcome back",
-      "email": "Email",
-      "password": "Password",
-      "submit": "Sign In",
-      "noAccount": "Don't have an account?",
-      "register": "Create one"
-    },
-    "register": {
-      "title": "Create Account",
-      "subtitle": "Get started",
-      "username": "Username",
-      "email": "Email",
-      "password": "Password",
-      "confirmPassword": "Confirm Password",
-      "submit": "Create Account",
-      "hasAccount": "Already have an account?",
-      "login": "Sign In"
-    },
-    "errors": {
-      "invalidEmail": "Please enter a valid email address.",
-      "passwordLength": "Password must be at least 8 characters.",
-      "passwordsMatch": "Passwords do not match.",
-      "loginFailed": "Invalid email or password.",
-      "registerFailed": "Registration failed. Please try again."
-    }
+    "login": { "title": "ログイン", "subtitle": "おかえりなさい", "email": "メールアドレス", "password": "パスワード", "submit": "ログイン", "noAccount": "アカウント未登録ですか？", "register": "作成する" },
+    "register": { "title": "アカウント作成", "subtitle": "はじめましょう", "username": "ユーザー名", "email": "メールアドレス", "password": "パスワード", "confirmPassword": "パスワード確認", "submit": "作成", "hasAccount": "アカウントをお持ちですか？", "login": "ログイン" },
+    "errors": { "invalidEmail": "有効なメールアドレスを入力してください。", "passwordLength": "パスワードは8文字以上必要です。", "passwordsMatch": "パスワードが一致しません。", "loginFailed": "メールアドレスまたはパスワードが無効です。", "registerFailed": "登録に失敗しました。" }
   },
-  "common": {
-    "loading": "Loading...",
-    "error": "Something went wrong",
-    "retry": "Retry",
-    "cancel": "Cancel",
-    "save": "Save",
-    "delete": "Delete",
-    "search": "Search",
-    "noResults": "No results found",
-    "close": "Close",
-    "back": "Back",
-    "more": "More"
-  }
+  "common": { "loading": "読み込み中...", "error": "エラー発生", "retry": "再試行", "cancel": "キャンセル", "save": "保存", "delete": "削除", "search": "検索", "noResults": "結果なし", "close": "閉じる", "back": "戻る", "more": "もっと見る" }
 }

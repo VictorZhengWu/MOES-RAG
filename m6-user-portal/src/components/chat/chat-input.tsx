@@ -1,25 +1,32 @@
 /**
  * Chat input bar: textarea + file attachment + web search toggle + send/stop.
  *
+ * Supports both click-to-upload and drag-and-drop file attachment.
+ * Selected files appear as removable chips above the input area.
+ *
  * Layout:
  * ┌─────────────────────────────────────────────────────────┐
+ * │ [chip: file.pdf ×]                                     │
  * │ [📎] [_____________________________] [🌐] [Send/■]    │
  * └─────────────────────────────────────────────────────────┘
- *
- * WHY: File attachment and web search toggle are optional augmentations
- * that follow the DeepSeek/ChatGPT UX pattern. All buttons have clear
- * visual states (active/inactive) for accessibility.
  */
 
 'use client';
 
-import { useRef, KeyboardEvent, useCallback } from 'react';
+import { useState, useRef, useCallback, DragEvent } from 'react';
+import type { KeyboardEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Paperclip, Globe } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Paperclip, Globe, X } from 'lucide-react';
 import { useChatStore } from '@/lib/stores/chat-store';
 import { useChatStream } from '@/lib/hooks/use-chat-stream';
+
+interface AttachedFile {
+  name: string;
+  size: number;
+}
 
 export function ChatInput() {
   const t = useTranslations();
@@ -35,11 +42,28 @@ export function ChatInput() {
   const { startStream, stopStream } = useChatStream();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const addFiles = useCallback((files: FileList | null) => {
+    if (!files) return;
+    const newFiles: AttachedFile[] = [];
+    for (let i = 0; i < files.length; i++) {
+      newFiles.push({ name: files[i].name, size: files[i].size });
+    }
+    setAttachedFiles((prev) => [...prev, ...newFiles]);
+    // Phase 2: actual file upload to server
+  }, []);
+
+  const removeFile = useCallback((index: number) => {
+    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
 
   const handleSend = async () => {
     const content = inputValue.trim();
     if (!content || isLoading) return;
     setInputValue('');
+    setAttachedFiles([]);
 
     await startStream({
       model: 'marine-rag-mock',
@@ -57,15 +81,64 @@ export function ChatInput() {
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      // Phase 2: upload file and attach to request. Phase 1: placeholder.
-      const name = e.target.files?.[0]?.name;
-      if (name) console.log('File selected:', name);
+      addFiles(e.target.files);
+      // Reset so the same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = '';
     },
-    [],
+    [addFiles],
   );
 
+  // Drag-and-drop handlers
+  const handleDragOver = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    addFiles(e.dataTransfer.files);
+  };
+
   return (
-    <div className="border-t bg-background p-3">
+    <div
+      className={`border-t bg-background p-3 transition-colors ${
+        isDragOver ? 'bg-primary/5 ring-2 ring-primary/20 rounded-lg' : ''
+      }`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Attached file chips */}
+      {attachedFiles.length > 0 && (
+        <div className="mx-auto mb-2 flex max-w-3xl flex-wrap gap-1.5">
+          {attachedFiles.map((file, i) => (
+            <Badge
+              key={i}
+              variant="secondary"
+              className="gap-1 pr-1 text-xs cursor-default"
+            >
+              {file.name}
+              <button
+                onClick={() => removeFile(i)}
+                className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                aria-label={`Remove ${file.name}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+
       <div className="mx-auto flex max-w-3xl items-end gap-2">
         {/* File attachment button */}
         <Button
@@ -81,18 +154,19 @@ export function ChatInput() {
           ref={fileInputRef}
           type="file"
           className="hidden"
+          multiple
           onChange={handleFileSelect}
         />
 
-        {/* Text input */}
+        {/* Text input — 3 rows for comfortable multi-line editing */}
         <Textarea
           ref={textareaRef}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t('chat.input.placeholder')}
-          rows={1}
-          className="min-h-[40px] resize-none"
+          rows={3}
+          className="min-h-[60px] resize-none"
           disabled={isLoading}
         />
 

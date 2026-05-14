@@ -45,7 +45,7 @@ export function useChatStream() {
       abortRef.current = controller;
 
       try {
-        const body = await streamChat(request);
+        const body = await streamChat(request, controller.signal);
         const reader = body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';

@@ -2,169 +2,89 @@
   "app": {
     "name": "Marine & Offshore Expert System",
     "shortName": "MO Expert",
-    "tagline": "Professional RAG Q&A for ship and offshore engineering"
+    "tagline": "Profesjonelt RAG Q&A for skips- og offshoreteknikk"
   },
   "sidebar": {
-    "newChat": "New Chat",
-    "searchChats": "Search chats",
-    "deepResearch": "Deep Research",
-    "settings": "Settings",
-    "help": "Help",
-    "logIn": "Log in",
-    "logOut": "Log out",
-    "collapse": "Collapse sidebar",
-    "expand": "Expand sidebar",
-    "guestWarning": "Sign in to save conversations"
+    "newChat": "Ny samtale",
+    "searchChats": "Søk i samtaler",
+    "deepResearch": "Dybdestudie",
+    "settings": "Innstillinger",
+    "help": "Hjelp",
+    "logIn": "Logg inn",
+    "logOut": "Logg ut",
+    "collapse": "Skjul sidepanel",
+    "expand": "Vis sidepanel",
+    "guestWarning": "Logg inn for å lagre samtaler"
   },
   "chat": {
     "input": {
-      "placeholder": "Ask anything about ship & offshore engineering...",
+      "placeholder": "Spør om skips- og offshoreteknikk...",
       "send": "Send",
-      "stopGeneration": "Stop generating",
-      "attachFile": "Attach file",
-      "webSearch": "Web search",
-      "webSearchOn": "Web search enabled",
-      "webSearchOff": "Web search disabled"
+      "stopGeneration": "Stopp",
+      "attachFile": "Legg ved fil",
+      "webSearch": "Nettsøk",
+      "webSearchOn": "Nettsøk på",
+      "webSearchOff": "Nettsøk av"
     },
     "empty": {
       "title": "Marine & Offshore Expert System",
-      "subtitle": "Ask questions about classification society rules, engineering standards, equipment specifications, and more.",
+      "subtitle": "Spør om klasseregelverk, tekniske standarder, utstyrsspesifikasjoner og mer.",
       "suggestions": {
-        "title": "Try asking:",
+        "title": "Prøv å spørre:",
         "items": [
-          "What are DNV requirements for LNG cargo tank structures?",
-          "Compare ABS and DNV rules for bulk carrier hatch covers",
-          "What does IMO require for ballast water treatment?",
-          "What is the minimum plate thickness for a container ship's main deck according to CCS?",
-          "Explain the fatigue assessment procedure for offshore crane pedestals"
+          "Hva er DNVs krav til LNG-lastetankstrukturer?",
+          "Sammenlign ABS og DNV-regler for bulkskip lukedeksler",
+          "Hva krever IMO for ballastvannbehandling?",
+          "Minimum platetykkelse for containerskip hoveddekk ifølge CCS?",
+          "Forklar utmattingsvurdering for offshore kranpidestaller"
         ]
       }
     },
     "citation": {
-      "title": "References",
-      "source": "Source",
-      "section": "Section",
-      "clause": "Clause",
-      "excerpt": "Excerpt",
-      "viewSource": "View source",
-      "noReferences": "No references for this answer"
+      "title": "Referanser",
+      "source": "Kilde",
+      "section": "Seksjon",
+      "clause": "Klausul",
+      "excerpt": "Utdrag",
+      "viewSource": "Vis kilde",
+      "noReferences": "Ingen referanser for dette svaret"
     },
-    "jumpNav": {
-      "title": "Questions in this chat",
-      "empty": "No questions yet"
-    },
-    "streaming": "Generating...",
+    "jumpNav": { "title": "Spørsmål i samtalen", "empty": "Ingen spørsmål ennå" },
+    "streaming": "Genererer...",
     "error": {
-      "send": "Failed to send message. Please try again.",
-      "stream": "Stream interrupted. Please try again.",
-      "network": "Network error. Check your connection."
+      "send": "Kunne ikke sende. Prøv igjen.",
+      "stream": "Strømmen ble avbrutt.",
+      "network": "Nettverksfeil. Sjekk tilkoblingen."
     }
   },
   "conversation": {
-    "title": "Chat History",
-    "search": "Search chats...",
-    "new": "New conversation",
-    "delete": {
-      "label": "Delete conversation",
-      "confirm": "Are you sure you want to delete this conversation?",
-      "cancel": "Cancel",
-      "confirmButton": "Delete"
-    },
-    "rename": {
-      "label": "Rename",
-      "placeholder": "Conversation title"
-    },
-    "empty": "No conversations yet. Start a new chat.",
-    "guestEmpty": "Sign in to view your conversation history."
+    "title": "Samtalehistorikk",
+    "search": "Søk i samtaler...",
+    "new": "Ny samtale",
+    "delete": { "label": "Slett samtale", "confirm": "Sikker på at du vil slette?", "cancel": "Avbryt", "confirmButton": "Slett" },
+    "rename": { "label": "Gi nytt navn", "placeholder": "Samtaletittel" },
+    "empty": "Ingen samtaler ennå.",
+    "guestEmpty": "Logg inn for å se samtalehistorikk."
   },
   "knowledge": {
-    "title": "Knowledge Base",
-    "subtitle": "Documents and regulations available in the system",
-    "search": "Search documents...",
-    "filter": {
-      "society": "Classification Society",
-      "domain": "Domain",
-      "year": "Version Year",
-      "all": "All"
-    },
-    "table": {
-      "name": "Document Name",
-      "society": "Society",
-      "domain": "Domain",
-      "year": "Year",
-      "chunks": "Sections",
-      "status": "Status"
-    },
-    "status": {
-      "active": "Active",
-      "deprecated": "Superseded",
-      "error": "Error"
-    },
-    "empty": "No documents found."
+    "title": "Kunnskapsbase",
+    "subtitle": "Dokumenter og regelverk i systemet",
+    "search": "Søk i dokumenter...",
+    "filter": { "society": "Klasseselskap", "domain": "Fagområde", "year": "Versjonsår", "all": "Alle" },
+    "table": { "name": "Dokumentnavn", "society": "Selskap", "domain": "Område", "year": "År", "chunks": "Seksjoner", "status": "Status" },
+    "status": { "active": "Aktiv", "deprecated": "Erstattet", "error": "Feil" },
+    "empty": "Ingen dokumenter funnet."
   },
   "settings": {
-    "title": "Settings",
-    "language": {
-      "label": "Interface Language",
-      "description": "Change the language of the user interface.",
-      "en": "English",
-      "zh": "中文",
-      "ko": "한국어",
-      "ja": "日本語",
-      "no": "Norsk"
-    },
-    "theme": {
-      "label": "Theme",
-      "light": "Light",
-      "dark": "Dark",
-      "system": "System"
-    },
-    "apiKeys": {
-      "title": "API Keys",
-      "create": "Create API Key",
-      "empty": "No API keys yet."
-    }
+    "title": "Innstillinger",
+    "language": { "label": "Grensesnittspråk", "description": "Endre språk for brukergrensesnittet.", "en": "English", "zh": "中文", "ko": "한국어", "ja": "日本語", "no": "Norsk" },
+    "theme": { "label": "Tema", "light": "Lyst", "dark": "Mørkt", "system": "System" },
+    "apiKeys": { "title": "API-nøkler", "create": "Opprett API-nøkkel", "empty": "Ingen API-nøkler ennå." }
   },
   "auth": {
-    "login": {
-      "title": "Sign In",
-      "subtitle": "Welcome back",
-      "email": "Email",
-      "password": "Password",
-      "submit": "Sign In",
-      "noAccount": "Don't have an account?",
-      "register": "Create one"
-    },
-    "register": {
-      "title": "Create Account",
-      "subtitle": "Get started",
-      "username": "Username",
-      "email": "Email",
-      "password": "Password",
-      "confirmPassword": "Confirm Password",
-      "submit": "Create Account",
-      "hasAccount": "Already have an account?",
-      "login": "Sign In"
-    },
-    "errors": {
-      "invalidEmail": "Please enter a valid email address.",
-      "passwordLength": "Password must be at least 8 characters.",
-      "passwordsMatch": "Passwords do not match.",
-      "loginFailed": "Invalid email or password.",
-      "registerFailed": "Registration failed. Please try again."
-    }
+    "login": { "title": "Logg inn", "subtitle": "Velkommen tilbake", "email": "E-post", "password": "Passord", "submit": "Logg inn", "noAccount": "Ingen konto?", "register": "Opprett en" },
+    "register": { "title": "Opprett konto", "subtitle": "Kom i gang", "username": "Brukernavn", "email": "E-post", "password": "Passord", "confirmPassword": "Bekreft passord", "submit": "Opprett", "hasAccount": "Har du konto?", "login": "Logg inn" },
+    "errors": { "invalidEmail": "Ugyldig e-post.", "passwordLength": "Passord må være minst 8 tegn.", "passwordsMatch": "Passordene stemmer ikke.", "loginFailed": "Ugyldig e-post eller passord.", "registerFailed": "Registrering mislyktes." }
   },
-  "common": {
-    "loading": "Loading...",
-    "error": "Something went wrong",
-    "retry": "Retry",
-    "cancel": "Cancel",
-    "save": "Save",
-    "delete": "Delete",
-    "search": "Search",
-    "noResults": "No results found",
-    "close": "Close",
-    "back": "Back",
-    "more": "More"
-  }
+  "common": { "loading": "Laster...", "error": "Noe gikk galt", "retry": "Prøv igjen", "cancel": "Avbryt", "save": "Lagre", "delete": "Slett", "search": "Søk", "noResults": "Ingen resultater", "close": "Lukk", "back": "Tilbake", "more": "Mer" }
 }

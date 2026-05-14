@@ -75,6 +75,14 @@ test.describe('B-III Verification', () => {
 
     // UI should now show Chinese text (language switcher shows "中文")
     await expect(page.locator('[data-slot="dropdown-menu-trigger"]')).toContainText('中文');
+    // Sidebar buttons must show translated text, NOT English
+    await expect(page.getByText('新对话')).toBeVisible();
+    await expect(page.getByText('设置')).toBeVisible();
+    // "登录" button (bottom of sidebar) — use exact match to avoid matching
+    // the guest message "登录后查看对话历史" which also contains "登录"
+    await expect(page.getByRole('button', { name: '登录' })).toBeVisible();
+    // "New Chat" should NOT be visible anymore on Chinese page
+    await expect(page.getByText('New Chat')).not.toBeVisible();
 
     // Switch to Korean
     await page.locator('[data-slot="dropdown-menu-trigger"]').click();

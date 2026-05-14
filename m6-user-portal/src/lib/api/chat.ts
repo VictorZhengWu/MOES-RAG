@@ -22,6 +22,7 @@ export async function sendMessage(request: ChatRequest): Promise<ChatResponse> {
 
 export async function streamChat(
   request: ChatRequest,
+  signal?: AbortSignal,
 ): Promise<ReadableStream<Uint8Array>> {
   const baseUrl =
     process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
@@ -30,6 +31,7 @@ export async function streamChat(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...request, stream: true }),
+    signal,
   });
 
   if (!res.ok) {
