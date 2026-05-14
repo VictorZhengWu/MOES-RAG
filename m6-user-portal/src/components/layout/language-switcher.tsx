@@ -26,9 +26,15 @@ export function LanguageSwitcher() {
   const locale = useLocale();
 
   const switchTo = (newLocale: string) => {
-    // next-intl's usePathname() returns the path WITHOUT the locale prefix.
-    // So we reconstruct: /{newLocale}{pathname} → e.g. /zh/chat
-    router.push(`/${newLocale}${pathname}`);
+    // usePathname() from next/navigation returns the FULL path including
+    // locale prefix (e.g., /en/chat). We replace the first segment.
+    const segments = pathname.split('/').filter(Boolean);     // ['en', 'chat']
+    if (['en', 'zh', 'ko', 'ja', 'no'].includes(segments[0])) {
+      segments[0] = newLocale;                                 // ['zh', 'chat']
+    } else {
+      segments.unshift(newLocale);                             // fallback
+    }
+    router.push('/' + segments.join('/'));                     // /zh/chat
   };
 
   const current = SUPPORTED_LANGUAGES.find((l) => l.code === locale);
