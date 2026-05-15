@@ -1,30 +1,34 @@
 /**
- * Scrollable message list with embedded jump navigation.
- *
- * The jump nav is absolutely positioned along the right edge INSIDE
- * the scroll container, so it scrolls with the content naturally.
+ * Scrollable message list.
  */
 
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useChatStore } from '@/lib/stores/chat-store';
 import { MessageBubble } from './message-bubble';
-import { JumpNavigation } from '@/components/navigation/jump-navigation';
 
-export function MessageList() {
+export interface MessageListHandle {
+  scrollContainer: HTMLDivElement | null;
+}
+
+export const MessageList = forwardRef<MessageListHandle>(function MessageList(_props, ref) {
   const messages = useChatStore((s) => s.messages);
   const citations = useChatStore((s) => s.citations);
   const isStreaming = useChatStore((s) => s.isStreaming);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  useImperativeHandle(ref, () => ({
+    scrollContainer: scrollRef.current,
+  }));
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   return (
-    <div ref={scrollRef} className="flex-1 overflow-y-auto relative">
+    <div id="chat-scroll-container" ref={scrollRef} className="flex-1 overflow-y-auto">
       <div className="px-4">
         {messages.map((msg, i) => (
           <MessageBubble
@@ -41,9 +45,6 @@ export function MessageList() {
         ))}
         <div ref={bottomRef} />
       </div>
-
-      {/* Jump nav — inside the scroll container, positioned on the right edge */}
-      <JumpNavigation scrollContainerRef={scrollRef} />
     </div>
   );
-}
+});

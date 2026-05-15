@@ -231,9 +231,8 @@ test.describe('B-III Verification', () => {
     await input.press('Enter');
     await expect(page.locator('.prose').first()).toBeVisible({ timeout: 15000 });
 
-    // Jump nav lines should appear inside the scroll area (>= 2 user questions)
-    // The jump nav is absolutely positioned on the right edge
-    const jumpLines = page.locator('.absolute.right-1 button');
+    // Jump nav lines — fixed positioned on right edge
+    const jumpLines = page.locator('.fixed button.rounded-full');
     await expect(jumpLines.first()).toBeVisible({ timeout: 3000 });
     await expect(jumpLines).toHaveCount(2);
   });

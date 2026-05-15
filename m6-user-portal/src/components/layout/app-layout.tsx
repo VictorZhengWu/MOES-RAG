@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { ConversationSidebar } from '@/components/conversation/conversation-sidebar';
 import { CollapsedSidebar } from '@/components/conversation/collapsed-sidebar';
 import { CitationPanel } from '@/components/chat/citation-panel';
+import { JumpNavigation } from '@/components/navigation/jump-navigation';
 import { useChatStore } from '@/lib/stores/chat-store';
 import { useTranslations } from 'next-intl';
 import { PanelLeftClose, PanelLeft } from 'lucide-react';
@@ -70,6 +71,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex-1 overflow-hidden">
           {children}
         </div>
+
+        {/* Jump nav — fixed on right edge, always centered in viewport */}
+        <JumpNavigation />
       </div>
 
       {/* ── Right: Citation Panel ── */}

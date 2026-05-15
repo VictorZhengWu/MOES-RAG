@@ -23,16 +23,15 @@ const LINE_WIDTH = 22;        // px
 const LINE_HEIGHT = 3;        // px
 const MAX_LISTBOX_ITEMS = 10; // max rows in popup listbox
 
-interface Props {
-  scrollContainerRef: React.RefObject<HTMLDivElement | null>;
-}
+// Fixed offset from right edge of viewport
+const FIXED_RIGHT = 8;        // px
 
 function shortPreview(text: string, maxLen = 10): string {
   const cleaned = text.replace(/\s+/g, ' ').trim();
   return cleaned.length > maxLen ? cleaned.slice(0, maxLen) + '...' : cleaned;
 }
 
-export function JumpNavigation({ scrollContainerRef }: Props) {
+export function JumpNavigation() {
   const messages = useChatStore((s) => s.messages);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [showListbox, setShowListbox] = useState(false);
@@ -44,10 +43,15 @@ export function JumpNavigation({ scrollContainerRef }: Props) {
     .map((msg, i) => ({ index: i, content: msg.content }))
     .filter((m) => messages[m.index]?.role === 'user');
 
+  // Find the scroll container by DOM id
+  const getScrollContainer = useCallback(() => {
+    return document.getElementById('chat-scroll-container') as HTMLDivElement | null;
+  }, []);
+
   // Track which question is currently visible
   const updateActive = useCallback(() => {
     if (userQs.length === 0) return;
-    const container = scrollContainerRef.current;
+    const container = getScrollContainer();
     if (!container) return;
     const rect = container.getBoundingClientRect();
     const viewCenter = rect.top + rect.height / 2;
@@ -63,15 +67,15 @@ export function JumpNavigation({ scrollContainerRef }: Props) {
       if (dist < minDist) { minDist = dist; closest = q.index; }
     }
     setActiveIndex(closest);
-  }, [userQs, scrollContainerRef]);
+  }, [userQs, getScrollContainer]);
 
   useEffect(() => {
-    const container = scrollContainerRef.current;
+    const container = getScrollContainer();
     if (!container) return;
     container.addEventListener('scroll', updateActive, { passive: true });
     updateActive();
     return () => container.removeEventListener('scroll', updateActive);
-  }, [updateActive, scrollContainerRef]);
+  }, [updateActive, getScrollContainer]);
 
   if (userQs.length < 2) return null;
 
@@ -96,7 +100,8 @@ export function JumpNavigation({ scrollContainerRef }: Props) {
   return (
     <div
       ref={containerRef}
-      className="absolute right-1 top-0 bottom-0 w-6 flex flex-col items-center justify-center pointer-events-none z-10"
+      className="fixed top-0 bottom-0 w-6 flex flex-col items-center justify-center pointer-events-none z-10"
+      style={{ right: `${FIXED_RIGHT}px` }}
       onMouseEnter={handleMouseEnterStrip}
       onMouseLeave={handleMouseLeaveStrip}
     >
