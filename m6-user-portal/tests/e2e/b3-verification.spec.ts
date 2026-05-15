@@ -176,4 +176,31 @@ test.describe('B-III Verification', () => {
     await expect(page.getByText('MO Expert')).toBeVisible();
     await expect(page.getByPlaceholder(/Ask anything/)).toBeVisible();
   });
+
+  test('login updates sidebar from guest to authenticated', async ({ page }) => {
+    await page.goto('/en/login');
+    await expect(page).toHaveURL(/\/en\/login/);
+
+    // Login form should be visible
+    await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible();
+
+    // Fill and submit
+    await page.getByPlaceholder('Email').fill('engineer@shipyard.no');
+    await page.getByPlaceholder('Password').fill('password123');
+    await page.getByRole('button', { name: 'Sign In' }).click();
+
+    // Should redirect to /chat
+    await expect(page).toHaveURL(/\/en\/chat/, { timeout: 5000 });
+
+    // Sidebar should now show logged-in state: avatar with username
+    // Use exact match to avoid matching "engineering" in subtitle text
+    await expect(page.getByText('engineer', { exact: true })).toBeVisible();
+    // "Log in" button should be gone
+    await expect(page.getByRole('button', { name: 'Log in' })).not.toBeVisible();
+
+    // Logout via sidebar logout button
+    const logoutBtn = page.getByTitle('Log out');
+    await logoutBtn.click();
+    await expect(page.getByRole('button', { name: 'Log in' })).toBeVisible({ timeout: 3000 });
+  });
 });
