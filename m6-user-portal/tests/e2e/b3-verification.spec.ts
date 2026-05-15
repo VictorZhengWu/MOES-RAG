@@ -148,7 +148,10 @@ test.describe('B-III Verification', () => {
     // Verify panel shows DNV citation details
     await expect(panel.getByText('DNV Rules for Classification of Ships')).toBeVisible();
 
-    // Main content area should NOT be blurred — no overlay element present
+    // Chat content must STILL be visible (not obscured by overlay)
+    await expect(page.getByText(/According to DNV/)).toBeVisible();
+
+    // No overlay element — panel is a column, not a modal
     const overlay = page.locator('[data-slot="sheet-overlay"]');
     await expect(overlay).toHaveCount(0);
 
@@ -164,5 +167,19 @@ test.describe('B-III Verification', () => {
     // Close the panel by clicking the X button
     await panel.locator('button').first().click();
     await expect(panel).not.toBeVisible({ timeout: 2000 });
+  });
+
+  test('narrow viewport hides sidebar but keeps content', async ({ page }) => {
+    // Simulate a tablet-width viewport (800px — below 1024px threshold)
+    await page.setViewportSize({ width: 800, height: 700 });
+    await page.goto('/en/chat');
+
+    // Sidebar should be hidden (auto-collapsed below 1024px)
+    const sidebarText = page.getByText('New Chat');
+    await expect(sidebarText).not.toBeVisible({ timeout: 3000 });
+
+    // Main content should still be visible
+    await expect(page.getByText('MO Expert')).toBeVisible();
+    await expect(page.getByPlaceholder(/Ask anything/)).toBeVisible();
   });
 });
