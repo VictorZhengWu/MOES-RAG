@@ -36,11 +36,29 @@ export function ProfileTab() {
 
   return (
     <div className="space-y-6">
-      {/* Avatar + name header */}
+      {/* Avatar + name header — click avatar to change */}
       <div className="flex items-center gap-3">
-        <Avatar className="h-12 w-12">
-          <AvatarFallback>{initials}</AvatarFallback>
-        </Avatar>
+        <label className="relative cursor-pointer group">
+          <Avatar className="h-16 w-16">
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt={user.username} className="h-full w-full object-cover" />
+            ) : (
+              <AvatarFallback className="text-lg">{initials}</AvatarFallback>
+            )}
+          </Avatar>
+          <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="text-white text-[10px] font-medium">Edit</span>
+          </div>
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              // Phase 2: upload to server. Phase 1: placeholder
+              console.log('Avatar file selected:', e.target.files?.[0]?.name);
+            }}
+          />
+        </label>
         <div>
           <p className="font-medium">{user?.username}</p>
           <p className="text-xs text-muted-foreground">{user?.email}</p>
