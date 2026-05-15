@@ -203,4 +203,34 @@ test.describe('B-III Verification', () => {
     await logoutBtn.click();
     await expect(page.getByRole('button', { name: 'Log in' })).toBeVisible({ timeout: 3000 });
   });
+
+  test('knowledge base page shows documents from API', async ({ page }) => {
+    await page.goto('/en/knowledge');
+    await expect(page.getByText('Knowledge Base')).toBeVisible({ timeout: 5000 });
+
+    // Should show mock documents (DNV, ABS, IMO)
+    await expect(page.getByText('DNV-RU-SHIP-Pt4Ch3-2024.pdf')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('ABS-Rules-Pt5B-2024.pdf')).toBeVisible();
+    await expect(page.getByText('IMO-BWMS-Code-2023.pdf')).toBeVisible();
+  });
+
+  test('jump navigation appears after multiple questions', async ({ page }) => {
+    await page.goto('/en/chat');
+
+    // Send first question
+    const input = page.getByPlaceholder(/Ask anything/);
+    await input.fill('First question about DNV');
+    await input.press('Enter');
+    await expect(page.locator('.prose').first()).toBeVisible({ timeout: 15000 });
+
+    // Send second question
+    await input.fill('Second question about ABS');
+    await input.press('Enter');
+    await expect(page.locator('.prose').first()).toBeVisible({ timeout: 15000 });
+
+    // Jump navigation strip should now be visible (2+ user messages)
+    // It's a narrow strip on the right with MessageSquare icons
+    const jumpStrip = page.locator('.w-12.shrink-0.border-l');
+    await expect(jumpStrip).toBeVisible({ timeout: 3000 });
+  });
 });
