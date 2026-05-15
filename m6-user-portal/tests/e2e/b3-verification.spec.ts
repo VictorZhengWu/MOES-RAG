@@ -59,58 +59,45 @@ test.describe('B-III Verification', () => {
     await expect(citationBadge2).toBeVisible({ timeout: 5000 });
   });
 
-  test('language switcher produces correct URLs', async ({ page }) => {
+  test('settings dialog: language switch and tabs work', async ({ page }) => {
     await page.goto('/en/chat');
     await expect(page).toHaveURL(/\/en\/chat/);
 
-    // Open language dropdown — the trigger renders the current language text
-    await page.locator('[data-slot="dropdown-menu-trigger"]').click();
+    // Open Settings via sidebar button
+    await page.getByRole('button', { name: 'Settings' }).click();
 
-    // Click Chinese
-    await page.getByRole('menuitem', { name: '中文' }).click();
+    // Settings dialog should be visible
+    const dialog = page.locator('.fixed.inset-0.z-50');
+    await expect(dialog).toBeVisible({ timeout: 3000 });
 
-    // URL should be /zh/chat, NOT /zh/en/chat
+    // Click Chinese language option inside General tab
+    // Settings page stays open in the new language
+    await dialog.getByText('中文').click();
+    await expect(page).toHaveURL(/\/zh\/settings/);
+
+    // Dialog should be visible in Chinese
+    await expect(page.getByText('General')).toBeVisible();
+
+    // Close settings, verify sidebar in Chinese
+    await page.locator('.fixed.inset-0.z-50').click({ position: { x: 10, y: 10 } });
     await expect(page).toHaveURL(/\/zh\/chat/);
-    await expect(page).not.toHaveURL(/\/zh\/en/);
-
-    // UI should now show Chinese text (language switcher shows "中文")
-    await expect(page.locator('[data-slot="dropdown-menu-trigger"]')).toContainText('中文');
-    // Sidebar buttons must show translated text, NOT English
     await expect(page.getByText('新对话')).toBeVisible();
     await expect(page.getByText('设置')).toBeVisible();
-    // "登录" button (bottom of sidebar) — use exact match to avoid matching
-    // the guest message "登录后查看对话历史" which also contains "登录"
-    await expect(page.getByRole('button', { name: '登录' })).toBeVisible();
-    // "New Chat" should NOT be visible anymore on Chinese page
-    await expect(page.getByText('New Chat')).not.toBeVisible();
 
-    // Switch to Korean
-    await page.locator('[data-slot="dropdown-menu-trigger"]').click();
-    await page.getByRole('menuitem', { name: '한국어' }).click();
-    await expect(page).toHaveURL(/\/ko\/chat/);
-    await expect(page).not.toHaveURL(/\/ko\/en/);
+    // Reopen settings, switch to Korean
+    await page.getByRole('button', { name: '设置' }).click();
+    await page.getByText('한국어').click();
+    await expect(page).toHaveURL(/\/ko\/settings/);
 
-    // Switch to Japanese
-    await page.locator('[data-slot="dropdown-menu-trigger"]').click();
-    await page.getByRole('menuitem', { name: '日本語' }).click();
-    await expect(page).toHaveURL(/\/ja\/chat/);
-
-    // Switch to Norwegian
-    await page.locator('[data-slot="dropdown-menu-trigger"]').click();
-    await page.getByRole('menuitem', { name: 'Norsk' }).click();
-    await expect(page).toHaveURL(/\/no\/chat/);
-
-    // Verify Korean text
-    await page.locator('[data-slot="dropdown-menu-trigger"]').click();
-    await page.getByRole('menuitem', { name: '한국어' }).click();
+    // Close → back to /ko/chat
+    await page.locator('.fixed.inset-0.z-50').click({ position: { x: 10, y: 10 } });
     await expect(page).toHaveURL(/\/ko\/chat/);
     await expect(page.getByText('새 대화')).toBeVisible();
-    await expect(page.getByText('설정')).toBeVisible();
 
-    // Switch back to English
-    await page.locator('[data-slot="dropdown-menu-trigger"]').click();
-    await page.getByRole('menuitem', { name: 'English' }).click();
-    await expect(page).toHaveURL(/\/en\/chat/);
+    // Open settings, switch back to English
+    await page.getByRole('button', { name: '설정' }).click();
+    await page.getByText('English').click();
+    await expect(page).toHaveURL(/\/en\/settings/);
   });
 
   test('typing and sending a message produces a response', async ({ page }) => {

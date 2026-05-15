@@ -21,7 +21,6 @@ import { useEffect, useState } from 'react';
 import { ConversationSidebar } from '@/components/conversation/conversation-sidebar';
 import { JumpNavigation } from '@/components/navigation/jump-navigation';
 import { CitationPanel } from '@/components/chat/citation-panel';
-import { LanguageSwitcher } from './language-switcher';
 import { useChatStore } from '@/lib/stores/chat-store';
 import { useTranslations } from 'next-intl';
 import { PanelLeftClose, PanelLeft } from 'lucide-react';
@@ -79,7 +78,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </Button>
             <span className="text-sm font-semibold">{t('app.shortName')}</span>
           </div>
-          <LanguageSwitcher />
         </header>
 
         {/* Chat + jump nav */}
