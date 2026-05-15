@@ -140,10 +140,10 @@ export function JumpNavigation() {
           className="relative flex rounded-xl border bg-popover shadow-2xl pointer-events-auto"
           style={{ height: boxHeight, width: totalWidth }}
         >
-          {/* Text column */}
+          {/* Text column — native scrollbar hidden, uses custom thin one on right */}
           <div
             ref={listRef}
-            className="overflow-y-auto flex-1"
+            className="overflow-y-auto flex-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             style={{ width: BOX_WIDTH, maxHeight: boxHeight }}
             onWheel={handleWheel}
           >
@@ -158,11 +158,13 @@ export function JumpNavigation() {
                     onClick={() => scrollToMessage(q.index)}
                     onMouseEnter={() => setHoveredIndex(q.index)}
                     onMouseLeave={() => setHoveredIndex(null)}
-                    className="w-full text-left px-2 text-xs transition-colors hover:bg-muted/50 flex items-center"
+                    className="w-full text-left px-2 text-xs transition-colors hover:bg-muted/50 flex items-center outline-none"
                     style={{
                       height: ROW_HEIGHT,
-                      color: isHovered || isActive ? 'var(--color-primary, #818cf8)' : undefined,
-                      fontWeight: isHovered || isActive ? 500 : undefined,
+                      color: isHovered || isActive
+                        ? 'rgba(129,140,248,0.95)'
+                        : 'rgba(129,140,248,0.55)',
+                      fontWeight: isHovered || isActive ? 500 : 400,
                     }}
                   >
                     {shortPreview(q.content)}
