@@ -2,169 +2,89 @@
   "app": {
     "name": "Marine & Offshore Expert System",
     "shortName": "MO Expert",
-    "tagline": "Professional RAG Q&A for ship and offshore engineering"
+    "tagline": "선박 및 해양 엔지니어링을 위한 전문 RAG Q&A 시스템"
   },
   "sidebar": {
-    "newChat": "New Chat",
-    "searchChats": "Search chats",
-    "deepResearch": "Deep Research",
-    "settings": "Settings",
-    "help": "Help",
-    "logIn": "Log in",
-    "logOut": "Log out",
-    "collapse": "Collapse sidebar",
-    "expand": "Expand sidebar",
-    "guestWarning": "Sign in to save conversations"
+    "newChat": "새 대화",
+    "searchChats": "대화 검색",
+    "deepResearch": "심층 연구",
+    "settings": "설정",
+    "help": "도움말",
+    "logIn": "로그인",
+    "logOut": "로그아웃",
+    "collapse": "사이드바 접기",
+    "expand": "사이드바 펼치기",
+    "guestWarning": "로그인하여 대화를 저장하세요"
   },
   "chat": {
     "input": {
-      "placeholder": "Ask anything about ship & offshore engineering...",
-      "send": "Send",
-      "stopGeneration": "Stop generating",
-      "attachFile": "Attach file",
-      "webSearch": "Web search",
-      "webSearchOn": "Web search enabled",
-      "webSearchOff": "Web search disabled"
+      "placeholder": "선박 및 해양 엔지니어링에 대해 질문하세요...",
+      "send": "보내기",
+      "stopGeneration": "생성 중지",
+      "attachFile": "파일 첨부",
+      "webSearch": "웹 검색",
+      "webSearchOn": "웹 검색 켜짐",
+      "webSearchOff": "웹 검색 꺼짐"
     },
     "empty": {
       "title": "Marine & Offshore Expert System",
-      "subtitle": "Ask questions about classification society rules, engineering standards, equipment specifications, and more.",
+      "subtitle": "선급 규칙, 엔지니어링 표준, 장비 사양 등에 대해 질문하세요.",
       "suggestions": {
-        "title": "Try asking:",
+        "title": "다음 질문을 시도해 보세요:",
         "items": [
-          "What are DNV requirements for LNG cargo tank structures?",
-          "Compare ABS and DNV rules for bulk carrier hatch covers",
-          "What does IMO require for ballast water treatment?",
-          "What is the minimum plate thickness for a container ship's main deck according to CCS?",
-          "Explain the fatigue assessment procedure for offshore crane pedestals"
+          "DNV의 LNG 화물창 구조 요구사항은 무엇인가요?",
+          "산적화물선 해치 커버에 대한 ABS와 DNV 규칙 비교",
+          "IMO 평형수 처리에 대한 요구사항은 무엇인가요?",
+          "CCS에 따른 컨테이너선 주갑판 최소 판 두께는?",
+          "해양 크레인 페데스탈의 피로 평가 절차 설명"
         ]
       }
     },
     "citation": {
-      "title": "References",
-      "source": "Source",
-      "section": "Section",
-      "clause": "Clause",
-      "excerpt": "Excerpt",
-      "viewSource": "View source",
-      "noReferences": "No references for this answer"
+      "title": "참고문헌",
+      "source": "출처",
+      "section": "섹션",
+      "clause": "조항",
+      "excerpt": "발췌",
+      "viewSource": "원문 보기",
+      "noReferences": "이 답변에 대한 참조가 없습니다"
     },
-    "jumpNav": {
-      "title": "Questions in this chat",
-      "empty": "No questions yet"
-    },
-    "streaming": "Generating...",
+    "jumpNav": { "title": "이 대화의 질문", "empty": "아직 질문이 없습니다" },
+    "streaming": "생성 중...",
     "error": {
-      "send": "Failed to send message. Please try again.",
-      "stream": "Stream interrupted. Please try again.",
-      "network": "Network error. Check your connection."
+      "send": "메시지 전송 실패. 다시 시도하세요.",
+      "stream": "스트림이 중단되었습니다. 다시 시도하세요.",
+      "network": "네트워크 오류. 연결을 확인하세요."
     }
   },
   "conversation": {
-    "title": "Chat History",
-    "search": "Search chats...",
-    "new": "New conversation",
-    "delete": {
-      "label": "Delete conversation",
-      "confirm": "Are you sure you want to delete this conversation?",
-      "cancel": "Cancel",
-      "confirmButton": "Delete"
-    },
-    "rename": {
-      "label": "Rename",
-      "placeholder": "Conversation title"
-    },
-    "empty": "No conversations yet. Start a new chat.",
-    "guestEmpty": "Sign in to view your conversation history."
+    "title": "대화 기록",
+    "search": "대화 검색...",
+    "new": "새 대화",
+    "delete": { "label": "대화 삭제", "confirm": "이 대화를 삭제하시겠습니까?", "cancel": "취소", "confirmButton": "삭제" },
+    "rename": { "label": "이름 변경", "placeholder": "대화 제목" },
+    "empty": "아직 대화가 없습니다. 새 대화를 시작하세요.",
+    "guestEmpty": "대화 기록을 보려면 로그인하세요."
   },
   "knowledge": {
-    "title": "Knowledge Base",
-    "subtitle": "Documents and regulations available in the system",
-    "search": "Search documents...",
-    "filter": {
-      "society": "Classification Society",
-      "domain": "Domain",
-      "year": "Version Year",
-      "all": "All"
-    },
-    "table": {
-      "name": "Document Name",
-      "society": "Society",
-      "domain": "Domain",
-      "year": "Year",
-      "chunks": "Sections",
-      "status": "Status"
-    },
-    "status": {
-      "active": "Active",
-      "deprecated": "Superseded",
-      "error": "Error"
-    },
-    "empty": "No documents found."
+    "title": "지식 베이스",
+    "subtitle": "시스템에 등록된 문서 및 규정",
+    "search": "문서 검색...",
+    "filter": { "society": "선급", "domain": "분야", "year": "버전 연도", "all": "전체" },
+    "table": { "name": "문서명", "society": "선급", "domain": "분야", "year": "연도", "chunks": "섹션", "status": "상태" },
+    "status": { "active": "현행", "deprecated": "대체됨", "error": "오류" },
+    "empty": "일치하는 문서가 없습니다."
   },
   "settings": {
-    "title": "Settings",
-    "language": {
-      "label": "Interface Language",
-      "description": "Change the language of the user interface.",
-      "en": "English",
-      "zh": "中文",
-      "ko": "한국어",
-      "ja": "日本語",
-      "no": "Norsk"
-    },
-    "theme": {
-      "label": "Theme",
-      "light": "Light",
-      "dark": "Dark",
-      "system": "System"
-    },
-    "apiKeys": {
-      "title": "API Keys",
-      "create": "Create API Key",
-      "empty": "No API keys yet."
-    }
+    "title": "설정",
+    "language": { "label": "인터페이스 언어", "description": "사용자 인터페이스 언어를 변경합니다.", "en": "English", "zh": "中文", "ko": "한국어", "ja": "日本語", "no": "Norsk" },
+    "theme": { "label": "테마", "light": "라이트", "dark": "다크", "system": "시스템" },
+    "apiKeys": { "title": "API 키", "create": "API 키 생성", "empty": "API 키가 없습니다." }
   },
   "auth": {
-    "login": {
-      "title": "Sign In",
-      "subtitle": "Welcome back",
-      "email": "Email",
-      "password": "Password",
-      "submit": "Sign In",
-      "noAccount": "Don't have an account?",
-      "register": "Create one"
-    },
-    "register": {
-      "title": "Create Account",
-      "subtitle": "Get started",
-      "username": "Username",
-      "email": "Email",
-      "password": "Password",
-      "confirmPassword": "Confirm Password",
-      "submit": "Create Account",
-      "hasAccount": "Already have an account?",
-      "login": "Sign In"
-    },
-    "errors": {
-      "invalidEmail": "Please enter a valid email address.",
-      "passwordLength": "Password must be at least 8 characters.",
-      "passwordsMatch": "Passwords do not match.",
-      "loginFailed": "Invalid email or password.",
-      "registerFailed": "Registration failed. Please try again."
-    }
+    "login": { "title": "로그인", "subtitle": "돌아오신 것을 환영합니다", "email": "이메일", "password": "비밀번호", "submit": "로그인", "noAccount": "계정이 없으신가요?", "register": "계정 만들기" },
+    "register": { "title": "계정 만들기", "subtitle": "시작하기", "username": "사용자 이름", "email": "이메일", "password": "비밀번호", "confirmPassword": "비밀번호 확인", "submit": "계정 만들기", "hasAccount": "이미 계정이 있으신가요?", "login": "로그인" },
+    "errors": { "invalidEmail": "유효한 이메일 주소를 입력하세요.", "passwordLength": "비밀번호는 8자 이상이어야 합니다.", "passwordsMatch": "비밀번호가 일치하지 않습니다.", "loginFailed": "이메일 또는 비밀번호가 올바르지 않습니다.", "registerFailed": "등록에 실패했습니다. 다시 시도하세요." }
   },
-  "common": {
-    "loading": "Loading...",
-    "error": "Something went wrong",
-    "retry": "Retry",
-    "cancel": "Cancel",
-    "save": "Save",
-    "delete": "Delete",
-    "search": "Search",
-    "noResults": "No results found",
-    "close": "Close",
-    "back": "Back",
-    "more": "More"
-  }
+  "common": { "loading": "로딩 중...", "error": "오류 발생", "retry": "재시도", "cancel": "취소", "save": "저장", "delete": "삭제", "search": "검색", "noResults": "결과 없음", "close": "닫기", "back": "뒤로", "more": "더 보기" }
 }

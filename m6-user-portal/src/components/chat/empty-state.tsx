@@ -32,13 +32,13 @@ export function EmptyState() {
     <div className="flex flex-1 flex-col items-center justify-center px-4">
       <h1 className="text-2xl font-bold">{t('chat.empty.title')}</h1>
       <p className="mt-2 text-muted-foreground">{t('chat.empty.subtitle')}</p>
-      <div className="mt-8 grid gap-3 sm:grid-cols-2">
+      <div className="mt-8 mx-auto grid w-full max-w-2xl gap-3 sm:grid-cols-2">
         {Array.isArray(suggestions) &&
           suggestions.map((text: string, i: number) => (
             <Button
               key={i}
               variant="outline"
-              className="h-auto justify-start px-4 py-3 text-left text-sm"
+              className="h-auto justify-start px-4 py-3 text-left text-sm whitespace-normal break-words min-w-0"
               onClick={() => handleSuggestion(text)}
             >
               {text}

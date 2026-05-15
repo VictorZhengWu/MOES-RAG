@@ -100,6 +100,13 @@ test.describe('B-III Verification', () => {
     await page.getByRole('menuitem', { name: 'Norsk' }).click();
     await expect(page).toHaveURL(/\/no\/chat/);
 
+    // Verify Korean text
+    await page.locator('[data-slot="dropdown-menu-trigger"]').click();
+    await page.getByRole('menuitem', { name: '한국어' }).click();
+    await expect(page).toHaveURL(/\/ko\/chat/);
+    await expect(page.getByText('새 대화')).toBeVisible();
+    await expect(page.getByText('설정')).toBeVisible();
+
     // Switch back to English
     await page.locator('[data-slot="dropdown-menu-trigger"]').click();
     await page.getByRole('menuitem', { name: 'English' }).click();
