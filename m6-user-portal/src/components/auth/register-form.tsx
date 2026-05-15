@@ -60,22 +60,11 @@ export function RegisterForm() {
           <p className="mt-1 text-sm text-muted-foreground">{t('auth.register.subtitle')}</p>
         </div>
 
-        {/* Social sign-up */}
-        <SocialButtons />
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <Separator />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">or</span>
-          </div>
-        </div>
-
         {error && (
           <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
         )}
 
+        {/* Email/password registration — primary method on top */}
         <form onSubmit={handleSubmit} className="space-y-3">
           <Input placeholder={t('auth.register.username')} value={username}
             onChange={(e) => setUsername(e.target.value)} required autoFocus />
@@ -87,6 +76,18 @@ export function RegisterForm() {
             onChange={(e) => setConfirmPassword(e.target.value)} required />
           <Button type="submit" className="w-full">{t('auth.register.submit')}</Button>
         </form>
+
+        {/* Social sign-up — secondary, below the main form */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <Separator />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">or continue with</span>
+          </div>
+        </div>
+
+        <SocialButtons />
 
         <p className="text-center text-sm text-muted-foreground">
           {t('auth.register.hasAccount')}{' '}

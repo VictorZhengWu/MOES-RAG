@@ -163,14 +163,17 @@ test.describe('B-III Verification', () => {
     await expect(panel).not.toBeVisible({ timeout: 2000 });
   });
 
-  test('narrow viewport hides sidebar but keeps content', async ({ page }) => {
+  test('narrow viewport collapses sidebar to icon strip', async ({ page }) => {
     // Simulate a tablet-width viewport (800px — below 1024px threshold)
     await page.setViewportSize({ width: 800, height: 700 });
     await page.goto('/en/chat');
 
-    // Sidebar should be hidden (auto-collapsed below 1024px)
-    const sidebarText = page.getByText('New Chat');
-    await expect(sidebarText).not.toBeVisible({ timeout: 3000 });
+    // Sidebar text should NOT be visible (collapsed to icon strip)
+    await expect(page.getByText('New Chat')).not.toBeVisible({ timeout: 3000 });
+
+    // Icon strip should show a Plus icon (for new chat)
+    const plusIcon = page.locator('svg.lucide-plus');
+    await expect(plusIcon).toBeVisible({ timeout: 3000 });
 
     // Main content should still be visible
     await expect(page.getByText('MO Expert')).toBeVisible();
@@ -228,9 +231,10 @@ test.describe('B-III Verification', () => {
     await input.press('Enter');
     await expect(page.locator('.prose').first()).toBeVisible({ timeout: 15000 });
 
-    // Jump navigation strip should now be visible (2+ user messages)
-    // It's a narrow strip on the right with MessageSquare icons
-    const jumpStrip = page.locator('.w-12.shrink-0.border-l');
-    await expect(jumpStrip).toBeVisible({ timeout: 3000 });
+    // Jump nav lines should appear inside the scroll area (>= 2 user questions)
+    // The jump nav is absolutely positioned on the right edge
+    const jumpLines = page.locator('.absolute.right-1 button');
+    await expect(jumpLines.first()).toBeVisible({ timeout: 3000 });
+    await expect(jumpLines).toHaveCount(2);
   });
 });

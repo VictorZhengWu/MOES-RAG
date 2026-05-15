@@ -1,6 +1,6 @@
 /**
- * Chat panel: combines message list + input bar.
- * Shows EmptyState when no messages, MessageList + ChatInput otherwise.
+ * Chat panel: message list + input bar + jump navigation.
+ * Jump nav lives inside the scroll container so it scrolls with content.
  */
 
 'use client';

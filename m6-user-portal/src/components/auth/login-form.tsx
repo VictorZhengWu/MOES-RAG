@@ -62,22 +62,11 @@ export function LoginForm() {
           <p className="mt-1 text-sm text-muted-foreground">{t('auth.login.subtitle')}</p>
         </div>
 
-        {/* Social login */}
-        <SocialButtons />
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <Separator />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">or</span>
-          </div>
-        </div>
-
         {error && (
           <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
         )}
 
+        {/* Email/password form — primary login method on top */}
         <form onSubmit={handleSubmit} className="space-y-3">
           <Input type="email" placeholder={t('auth.login.email')} value={email}
             onChange={(e) => setEmail(e.target.value)} required autoFocus />
@@ -85,6 +74,18 @@ export function LoginForm() {
             onChange={(e) => setPassword(e.target.value)} required />
           <Button type="submit" className="w-full">{t('auth.login.submit')}</Button>
         </form>
+
+        {/* Social login — secondary, below the main form */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <Separator />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">or continue with</span>
+          </div>
+        </div>
+
+        <SocialButtons />
 
         <p className="text-center text-sm text-muted-foreground">
           {t('auth.login.noAccount')}{' '}
