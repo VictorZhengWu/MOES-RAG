@@ -162,8 +162,8 @@ export function JumpNavigation() {
                     style={{
                       height: ROW_HEIGHT,
                       color: isHovered || isActive
-                        ? 'rgba(129,140,248,0.95)'
-                        : 'rgba(129,140,248,0.55)',
+                        ? 'rgba(79,70,229,0.95)'
+                        : 'rgba(107,114,128,0.7)',
                       fontWeight: isHovered || isActive ? 500 : 400,
                     }}
                   >
