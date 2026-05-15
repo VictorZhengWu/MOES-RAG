@@ -37,8 +37,8 @@ export function MessageBubble({
       className="flex w-full py-3"
       style={{
         justifyContent: isUser ? 'flex-end' : 'flex-start',
-        paddingLeft: isUser ? undefined : '15%',
-        paddingRight: isUser ? '15%' : undefined,
+        paddingLeft: isUser ? undefined : '10%',
+        paddingRight: isUser ? '10%' : undefined,
       }}
     >
       <div
