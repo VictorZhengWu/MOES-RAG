@@ -77,6 +77,11 @@
   },
   "settings": {
     "title": "설정",
+    "tabs": {
+      "general": "일반",
+      "profile": "프로필",
+      "about": "정보"
+    },
     "language": { "label": "인터페이스 언어", "description": "사용자 인터페이스 언어를 변경합니다.", "en": "English", "zh": "中文", "ko": "한국어", "ja": "日本語", "no": "Norsk" },
     "theme": { "label": "테마", "light": "라이트", "dark": "다크", "system": "시스템" },
     "apiKeys": { "title": "API 키", "create": "API 키 생성", "empty": "API 키가 없습니다." }

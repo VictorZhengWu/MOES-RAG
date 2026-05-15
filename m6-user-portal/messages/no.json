@@ -77,6 +77,11 @@
   },
   "settings": {
     "title": "Innstillinger",
+    "tabs": {
+      "general": "Generelt",
+      "profile": "Profil",
+      "about": "Om"
+    },
     "language": { "label": "Grensesnittspråk", "description": "Endre språk for brukergrensesnittet.", "en": "English", "zh": "中文", "ko": "한국어", "ja": "日本語", "no": "Norsk" },
     "theme": { "label": "Tema", "light": "Lyst", "dark": "Mørkt", "system": "System" },
     "apiKeys": { "title": "API-nøkler", "create": "Opprett API-nøkkel", "empty": "Ingen API-nøkler ennå." }

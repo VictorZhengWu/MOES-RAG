@@ -70,15 +70,11 @@ test.describe('B-III Verification', () => {
     const dialog = page.locator('.fixed.inset-0.z-50');
     await expect(dialog).toBeVisible({ timeout: 3000 });
 
-    // Click Chinese language option inside General tab
-    // Settings page stays open in the new language
-    await dialog.getByText('中文').click();
+    // Select Chinese from the language dropdown
+    await dialog.locator('select').selectOption('zh');
     await expect(page).toHaveURL(/\/zh\/settings/);
 
-    // Dialog should be visible in Chinese
-    await expect(page.getByText('General')).toBeVisible();
-
-    // Close settings, verify sidebar in Chinese
+    // Close settings (click backdrop), verify sidebar in Chinese
     await page.locator('.fixed.inset-0.z-50').click({ position: { x: 10, y: 10 } });
     await expect(page).toHaveURL(/\/zh\/chat/);
     await expect(page.getByText('新对话')).toBeVisible();
@@ -86,7 +82,7 @@ test.describe('B-III Verification', () => {
 
     // Reopen settings, switch to Korean
     await page.getByRole('button', { name: '设置' }).click();
-    await page.getByText('한국어').click();
+    await page.locator('select').selectOption('ko');
     await expect(page).toHaveURL(/\/ko\/settings/);
 
     // Close → back to /ko/chat
@@ -94,10 +90,21 @@ test.describe('B-III Verification', () => {
     await expect(page).toHaveURL(/\/ko\/chat/);
     await expect(page.getByText('새 대화')).toBeVisible();
 
-    // Open settings, switch back to English
+    // Open settings, verify tabs are translated in Korean
     await page.getByRole('button', { name: '설정' }).click();
-    await page.getByText('English').click();
+    // Tab buttons use translated labels (not hardcoded English)
+    await expect(page.getByRole('button', { name: '일반' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '프로필' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '정보' })).toBeVisible();
+    // Dialog title also shows active tab name (should NOT be "Settings")
+    await expect(page.getByRole('heading', { name: '일반' })).toBeVisible();
+
+    // Switch back to English
+    await page.locator('select').selectOption('en');
     await expect(page).toHaveURL(/\/en\/settings/);
+    await expect(page.getByRole('button', { name: 'General' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Profile' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'About' })).toBeVisible();
   });
 
   test('typing and sending a message produces a response', async ({ page }) => {

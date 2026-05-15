@@ -104,6 +104,11 @@
   },
   "settings": {
     "title": "Settings",
+    "tabs": {
+      "general": "General",
+      "profile": "Profile",
+      "about": "About"
+    },
     "language": {
       "label": "Interface Language",
       "description": "Change the language of the user interface.",

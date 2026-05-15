@@ -104,6 +104,11 @@
   },
   "settings": {
     "title": "设置",
+    "tabs": {
+      "general": "通用",
+      "profile": "个人资料",
+      "about": "关于"
+    },
     "language": {
       "label": "界面语言",
       "description": "更改用户界面的显示语言。",

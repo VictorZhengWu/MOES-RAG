@@ -77,6 +77,11 @@
   },
   "settings": {
     "title": "設定",
+    "tabs": {
+      "general": "一般",
+      "profile": "プロフィール",
+      "about": "情報"
+    },
     "language": { "label": "インターフェース言語", "description": "UIの表示言語を変更します。", "en": "English", "zh": "中文", "ko": "한국어", "ja": "日本語", "no": "Norsk" },
     "theme": { "label": "テーマ", "light": "ライト", "dark": "ダーク", "system": "システム" },
     "apiKeys": { "title": "APIキー", "create": "APIキーを作成", "empty": "APIキーはまだありません。" }
