@@ -34,19 +34,12 @@ export function MessageBubble({
   return (
     <div
       id={`msg-${messageIndex}`}
-      className={cn('flex w-full gap-3 py-4', isUser && 'justify-end')}
+      className={cn('flex w-full py-3', isUser ? 'justify-end' : 'justify-start')}
     >
-      {/* Assistant avatar */}
-      {!isUser && (
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-          MO
-        </div>
-      )}
-
       <div
         className={cn(
-          'max-w-[75%] rounded-2xl px-4 py-3',
-          isUser ? 'bg-primary text-primary-foreground' : 'bg-muted',
+          'max-w-[70%] rounded-2xl px-4 py-3',
+          isUser ? 'bg-primary text-primary-foreground ml-[15%]' : 'bg-muted mr-[15%]',
         )}
       >
         {isUser ? (
@@ -78,13 +71,6 @@ export function MessageBubble({
           </div>
         )}
       </div>
-
-      {/* User avatar */}
-      {isUser && (
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold">
-          U
-        </div>
-      )}
     </div>
   );
 }
