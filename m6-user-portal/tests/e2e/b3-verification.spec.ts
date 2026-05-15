@@ -128,4 +128,41 @@ test.describe('B-III Verification', () => {
     // Input should be cleared after sending
     await expect(input).toHaveValue('');
   });
+
+  test('citation panel opens, switches, and does not blur background', async ({ page }) => {
+    await page.goto('/en/chat');
+
+    // Send a message that produces citations
+    const suggestion = page.locator('button').filter({ hasText: /DNV requirements for LNG/ });
+    await suggestion.click();
+
+    // Wait for citation badges [1] and [2]
+    const badge1 = page.locator('[id^="msg-"]').last().getByText(/\[1\]/);
+    await expect(badge1).toBeVisible({ timeout: 15000 });
+
+    // Click citation [1] — panel should open
+    await badge1.click();
+    const panel = page.locator('[data-slot="citation-panel"]');
+    await expect(panel).toBeVisible({ timeout: 3000 });
+
+    // Verify panel shows DNV citation details
+    await expect(panel.getByText('DNV Rules for Classification of Ships')).toBeVisible();
+
+    // Main content area should NOT be blurred — no overlay element present
+    const overlay = page.locator('[data-slot="sheet-overlay"]');
+    await expect(overlay).toHaveCount(0);
+
+    // Click citation [2] — panel should stay open, content should switch
+    const badge2 = page.locator('[id^="msg-"]').last().getByText(/\[2\]/);
+    await badge2.click();
+
+    // Panel should still be visible
+    await expect(panel).toBeVisible({ timeout: 2000 });
+    // Panel should now show ABS citation details
+    await expect(panel.getByText('ABS Rules for Building')).toBeVisible();
+
+    // Close the panel by clicking the X button
+    await panel.locator('button').first().click();
+    await expect(panel).not.toBeVisible({ timeout: 2000 });
+  });
 });
