@@ -114,8 +114,8 @@ export function JumpNavigation() {
 
   return (
     <div
-      className="fixed top-0 bottom-0 flex items-center justify-center z-10"
-      style={{ right: FIXED_RIGHT }}
+      className="fixed flex items-center justify-center z-10"
+      style={{ right: FIXED_RIGHT, top: 44, bottom: 0 }}
       onWheel={handleWheel}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
