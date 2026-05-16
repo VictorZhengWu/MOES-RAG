@@ -21,7 +21,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useConversationStore } from '@/lib/stores/conversation-store';
@@ -46,6 +46,7 @@ export function ConversationSidebar() {
   const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
   const { authStatus, user, logout } = useAuthStore();
   const {
     conversations,
@@ -200,7 +201,7 @@ export function ConversationSidebar() {
           <Button
             variant="outline"
             className="w-full justify-start gap-2 h-9 text-sm"
-            onClick={() => router.push(`/${locale}/login`)}
+            onClick={() => router.push(`/${locale}/login?redirect=${encodeURIComponent(pathname)}`)}
           >
             <LogIn className="h-4 w-4" />
             {t('sidebar.logIn')}

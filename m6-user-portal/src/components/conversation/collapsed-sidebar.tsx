@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useChatStore } from '@/lib/stores/chat-store';
@@ -30,6 +30,7 @@ interface Props {
 
 export function CollapsedSidebar({ onExpand }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const locale = useLocale();
   const { authStatus, user } = useAuthStore();
   const clearMessages = useChatStore((s) => s.clearMessages);
@@ -126,7 +127,7 @@ export function CollapsedSidebar({ onExpand }: Props) {
       ) : (
         <Tooltip>
           <TooltipTrigger>
-            <button onClick={() => router.push(`/${locale}/login`)} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted transition-colors">
+            <button onClick={() => router.push(`/${locale}/login?redirect=${encodeURIComponent(pathname)}`)} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted transition-colors">
               <LogIn className="h-4 w-4 text-muted-foreground" />
             </button>
           </TooltipTrigger>

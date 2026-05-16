@@ -6,7 +6,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ export function LoginForm() {
   const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || `/${locale}/chat`;
   const login = useAuthStore((s) => s.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,7 +44,7 @@ export function LoginForm() {
       { user_id: 'user_mock_01', username: email.split('@')[0], email, role: 'viewer' },
       'mock-token',
     );
-    router.push(`/${locale}/chat`);
+    router.push(redirectTo);
   };
 
   return (
