@@ -16,7 +16,7 @@
 | M4 | Knowledge Graph Engine | 🔲 Not Started | 0 | — | — |
 | M5 | RAG QA Engine | 🔲 Not Started | 0 | — | — |
 | M6 | User Web Portal | 🔄 In Development | ~8 | 2026-05-16 | 00030 + 18 placeholders |
-| M7 | Admin Web Portal | 🔲 Not Started | 0 | — | — |
+| M7 | Admin Web Portal | 🔄 In Development (C-1 done) | 1 | 2026-05-16 | 00040 |
 | M8 | API Gateway | 🔲 Not Started | 0 | — | — |
 | — | contracts/ | ✅ Complete | 1 | 2026-05-12 | 00010 |
 | — | Mock Server (独立) | ✅ Complete | 1 | 2026-05-13 | 00020 |
