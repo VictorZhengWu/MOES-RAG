@@ -14,7 +14,8 @@
     "logOut": "Log out",
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",
-    "guestWarning": "Sign in to save conversations"
+    "guestWarning": "Sign in to save conversations",
+    "projects": "Projects"
   },
   "chat": {
     "input": {
@@ -75,7 +76,15 @@
       "placeholder": "Conversation title"
     },
     "empty": "No conversations yet. Start a new chat.",
-    "guestEmpty": "Sign in to view your conversation history."
+    "guestEmpty": "Sign in to view your conversation history.",
+    "menu": {
+      "share": "Share",
+      "rename": "Rename",
+      "moveToProject": "Move to project",
+      "pin": "Pin chat",
+      "delete": "Delete",
+      "recentProjects": "Recent projects"
+    }
   },
   "knowledge": {
     "title": "Knowledge Base",
@@ -158,6 +167,12 @@
       "loginFailed": "Invalid email or password.",
       "registerFailed": "Registration failed. Please try again."
     }
+  },
+  "share": {
+    "title": "Share Conversation",
+    "description": "Anyone with the link can view this conversation.",
+    "copyLink": "Copy Link",
+    "copied": "Copied!"
   },
   "common": {
     "loading": "Loading...",

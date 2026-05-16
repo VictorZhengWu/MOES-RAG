@@ -15,14 +15,16 @@ import { ConversationSidebar } from '@/components/conversation/conversation-side
 import { CollapsedSidebar } from '@/components/conversation/collapsed-sidebar';
 import { CitationPanel } from '@/components/chat/citation-panel';
 import { JumpNavigation } from '@/components/navigation/jump-navigation';
+import { ShareDialog } from '@/components/share/share-dialog';
 import { useChatStore } from '@/lib/stores/chat-store';
 import { useTranslations } from 'next-intl';
-import { PanelLeftClose, PanelLeft } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [viewportNarrow, setViewportNarrow] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const t = useTranslations();
   const citationOpen = useChatStore((s) => s.selectedCitationIndex !== null);
 
@@ -65,6 +67,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </Button>
             <span className="text-sm font-semibold">{t('app.shortName')}</span>
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setShareOpen(true)}
+            title="Share conversation"
+          >
+            <Share2 className="h-4 w-4" />
+          </Button>
         </header>
 
         {/* Chat content */}
@@ -85,6 +96,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       >
         <CitationPanel />
       </div>
+
+      {/* Share Dialog */}
+      <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} />
     </div>
   );
 }
