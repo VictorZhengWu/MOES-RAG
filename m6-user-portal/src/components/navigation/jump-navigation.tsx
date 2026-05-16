@@ -117,29 +117,14 @@ export function JumpNavigation() {
       className="fixed flex items-center justify-center z-10"
       style={{ right: FIXED_RIGHT, top: 44, bottom: 0 }}
     >
-      {/* Hit area — only covers the lines themselves, not the full viewport.
-          Mouse enter/leave here, not on the outer container. */}
-      <div
-        className="absolute pointer-events-auto"
-        onWheel={handleWheel}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        style={{
-          right: showBox ? 0 : -(LINE_WIDTH / 2),
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: showBox ? totalWidth : LINE_WIDTH + 4,
-          height: showBox ? boxHeight + 8 : totalHeight + 8,
-          // When closed, center the hit area over the visual lines
-          marginTop: showBox ? -(boxHeight / 2) - 4 : -(totalHeight / 2) - 4,
-        }}
-      />
-
       {/* Unified box: text (left) + lines (right) + optional thin scrollbar */}
       {showBox ? (
         <div
           className="relative flex rounded-xl border bg-popover shadow-2xl pointer-events-auto"
           style={{ height: boxHeight, width: totalWidth }}
+          onWheel={handleWheel}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
         >
           {/* Text column — native scrollbar hidden, uses custom thin one on right */}
           <div
@@ -229,10 +214,13 @@ export function JumpNavigation() {
           )}
         </div>
       ) : (
-        /* Closed state: only lines, centered */
+        /* Closed state: only lines, centered. Mouse events on the lines container. */
         <div
           className="flex flex-col items-center pointer-events-auto"
           style={{ gap: `${ROW_HEIGHT - LINE_HEIGHT}px`, height: totalHeight, justifyContent: 'center' }}
+          onWheel={handleWheel}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
         >
           {userQs.map((q) => {
             const isActive = q.index === activeIndex;

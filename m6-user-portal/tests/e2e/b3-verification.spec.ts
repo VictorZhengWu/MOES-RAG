@@ -235,5 +235,19 @@ test.describe('B-III Verification', () => {
     const jumpLines = page.locator('.fixed button.rounded-full');
     await expect(jumpLines.first()).toBeVisible({ timeout: 3000 });
     await expect(jumpLines).toHaveCount(2);
+
+    // Hover over the lines container (flex-col) — listbox should appear
+    const linesContainer = page.locator('.fixed .flex-col.items-center.pointer-events-auto').first();
+    await linesContainer.hover();
+    const listbox = page.locator('.rounded-xl.border.bg-popover');
+    await expect(listbox).toBeVisible({ timeout: 2000 });
+
+    // Move mouse away — listbox should disappear
+    await page.mouse.move(10, 300);
+    await expect(listbox).not.toBeVisible({ timeout: 2000 });
+
+    // Hover again — should reappear
+    await linesContainer.hover();
+    await expect(listbox).toBeVisible({ timeout: 2000 });
   });
 });
