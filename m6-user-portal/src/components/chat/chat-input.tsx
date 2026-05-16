@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Paperclip, Globe, X, FileText } from 'lucide-react';
+import type { FileAttachment } from '@/types';
 import { useChatStore } from '@/lib/stores/chat-store';
 import { useChatStream } from '@/lib/hooks/use-chat-stream';
 
@@ -44,9 +45,10 @@ export function ChatInput() {
 
   const handleAddFiles = useCallback((files: FileList | null) => {
     if (!files) return;
-    const newFiles: { name: string; size: number }[] = [];
+    const newFiles: FileAttachment[] = [];
     for (let i = 0; i < files.length; i++) {
-      newFiles.push({ name: files[i].name, size: files[i].size });
+      const f = files[i];
+      newFiles.push({ name: f.name, size: f.size, file: f });
     }
     addFiles(newFiles);
   }, [addFiles]);
@@ -54,16 +56,18 @@ export function ChatInput() {
   const handleSend = async () => {
     const content = inputValue.trim();
     if (!content || isLoading) return;
-    const fileNames = attachedFiles.map((f) => f.name).join(', ');
-    const displayContent = attachedFiles.length > 0
-      ? `[Attached: ${fileNames}]\n${content}`
-      : content;
     setInputValue('');
+
+    const files = [...attachedFiles];
     clearFiles();
 
     await startStream({
       model: 'marine-rag-mock',
-      messages: [...messages, { role: 'user', content: displayContent }],
+      messages: [...messages, {
+        role: 'user',
+        content,
+        attachments: files.length > 0 ? files : undefined,
+      }],
       web_search: webSearchEnabled,
     });
   };

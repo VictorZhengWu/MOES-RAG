@@ -14,6 +14,8 @@ export interface Message {
   content: string;
   /** Server-generated message ID for jump-navigation targeting */
   id?: string;
+  /** Files attached to this message (user messages only) */
+  attachments?: FileAttachment[];
 }
 
 export interface Citation {
@@ -91,9 +93,11 @@ export type AuthStatus = 'loading' | 'guest' | 'authenticated';
 // ── File Upload ─────────────────────────────────────────────────────
 
 export interface FileAttachment {
-  file: File;
-  previewUrl: string;
-  status: 'pending' | 'uploading' | 'uploaded' | 'error';
+  name: string;
+  size: number;
+  file?: File;
+  previewUrl?: string;
+  status?: 'pending' | 'uploading' | 'uploaded' | 'error';
 }
 
 // ── Conversations ──────────────────────────────────────────────────

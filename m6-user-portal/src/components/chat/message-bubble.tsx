@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import type { Message, Citation } from '@/types';
 import { useChatStore } from '@/lib/stores/chat-store';
 import { Badge } from '@/components/ui/badge';
+import { FileText } from 'lucide-react';
 
 interface Props {
   message: Message;
@@ -48,7 +49,23 @@ export function MessageBubble({
         )}
       >
         {isUser ? (
-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          <>
+            {/* File attachments with icons */}
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="mb-2 space-y-1">
+                {message.attachments.map((file, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 rounded-md bg-white/10 px-3 py-1.5 text-xs"
+                  >
+                    <FileText className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                    <span className="truncate">{file.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          </>
         ) : (
           <div className="prose prose-sm dark:prose-invert max-w-none">
             <ReactMarkdown>{message.content}</ReactMarkdown>

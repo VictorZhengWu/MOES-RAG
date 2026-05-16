@@ -9,17 +9,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Paperclip } from 'lucide-react';
+import type { FileAttachment } from '@/types';
 
-interface AttachedFile {
-  name: string;
-  size: number;
-}
-
-interface Props {
-  onFilesDropped: (files: AttachedFile[]) => void;
-}
-
-export function useGlobalDrop(onFilesDropped: (files: AttachedFile[]) => void) {
+export function useGlobalDrop(onFilesDropped: (files: FileAttachment[]) => void) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
 
@@ -56,9 +48,9 @@ export function useGlobalDrop(onFilesDropped: (files: AttachedFile[]) => void) {
     const files = e.dataTransfer?.files;
     if (!files || files.length === 0) return;
 
-    const dropped: AttachedFile[] = [];
+    const dropped: FileAttachment[] = [];
     for (let i = 0; i < files.length; i++) {
-      dropped.push({ name: files[i].name, size: files[i].size });
+      dropped.push({ name: files[i].name, size: files[i].size, file: files[i] });
     }
     onFilesDropped(dropped);
   }, [onFilesDropped]);

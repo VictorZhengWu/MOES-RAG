@@ -11,17 +11,12 @@
  */
 
 import { create } from 'zustand';
-import type { Message, Citation } from '@/types';
-
-export interface AttachedFile {
-  name: string;
-  size: number;
-}
+import type { Message, Citation, FileAttachment } from '@/types';
 
 interface ChatState {
   messages: Message[];
   citations: Citation[];
-  attachedFiles: AttachedFile[];
+  attachedFiles: FileAttachment[];
   isLoading: boolean;
   isStreaming: boolean;
   inputValue: string;
@@ -29,7 +24,7 @@ interface ChatState {
   selectedCitationIndex: number | null;
 
   setInputValue: (value: string) => void;
-  addFiles: (files: AttachedFile[]) => void;
+  addFiles: (files: FileAttachment[]) => void;
   removeFile: (index: number) => void;
   clearFiles: () => void;
   addMessage: (msg: Message) => void;
