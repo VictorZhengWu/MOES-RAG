@@ -116,13 +116,14 @@ export function JumpNavigation() {
     <div
       className="fixed flex items-center justify-center z-10"
       style={{ right: FIXED_RIGHT, top: 44, bottom: 0 }}
-      onWheel={handleWheel}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
-      {/* Hit area — extends left when box is open to cover text + lines + scrollbar */}
+      {/* Hit area — only covers the lines themselves, not the full viewport.
+          Mouse enter/leave here, not on the outer container. */}
       <div
         className="absolute pointer-events-auto"
+        onWheel={handleWheel}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         style={{
           right: showBox ? 0 : -(LINE_WIDTH / 2),
           top: '50%',
