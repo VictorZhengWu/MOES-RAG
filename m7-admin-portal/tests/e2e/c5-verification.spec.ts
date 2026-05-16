@@ -73,8 +73,8 @@ test.describe('C5 — Admin Layout & Sidebar', () => {
     await page.goto('/zh/admin/settings');
     await expect(page.getByText('界面语言')).toBeVisible();
 
-    // Click English
-    await page.getByText('English').click();
+    // Select English from dropdown
+    await page.locator('select').selectOption('en');
     await expect(page).toHaveURL(/\/en\/admin\/settings/);
     await expect(page.getByText('Interface Language')).toBeVisible();
   });

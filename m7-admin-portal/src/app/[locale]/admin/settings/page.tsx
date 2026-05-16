@@ -58,21 +58,15 @@ export default function AdminSettingsPage() {
           <CardHeader><CardTitle className="text-base">{t('admin.settings.language.label')}</CardTitle></CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">{t('admin.settings.language.description')}</p>
-            <div className="grid grid-cols-2 gap-2">
+            <select
+              value={locale}
+              onChange={(e) => switchLang(e.target.value as SupportedLanguage)}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            >
               {SUPPORTED_LANGUAGES.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => switchLang(lang.code)}
-                  className={`rounded-lg border px-4 py-2.5 text-left text-sm transition-colors ${
-                    locale === lang.code
-                      ? 'border-primary bg-primary/5 text-primary font-medium'
-                      : 'border-border hover:bg-muted'
-                  }`}
-                >
-                  {lang.label}
-                </button>
+                <option key={lang.code} value={lang.code}>{lang.label}</option>
               ))}
-            </div>
+            </select>
           </CardContent>
         </Card>
 
