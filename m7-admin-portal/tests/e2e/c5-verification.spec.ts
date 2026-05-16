@@ -44,13 +44,28 @@ test.describe('C5 — Admin Layout & Sidebar', () => {
     await expect(page).toHaveURL(/\/en\/admin$/);
   });
 
-  test('language switcher changes locale and URL', async ({ page }) => {
+  test('sidebar collapses to icon strip and expands back', async ({ page }) => {
     await page.goto('/en/admin');
+    // Expanded: sidebar is 220px wide
+    const sidebar = page.locator('aside.w-\\[220px\\]');
+    await expect(sidebar).toBeVisible();
 
-    // Switch to Chinese
-    await page.locator('select').selectOption('zh');
-    await expect(page).toHaveURL(/\/zh\/admin/);
-    // Sidebar should re-render in Chinese locale
-    await expect(page.getByText('MO Admin')).toBeVisible();
+    // Collapse via PanelLeftClose button
+    await page.locator('button').filter({ has: page.locator('svg.lucide-panel-left-close') }).first().click();
+
+    // Collapsed: sidebar is now 56px wide (icon strip)
+    const collapsedSidebar = page.locator('aside.w-\\[56px\\]');
+    await expect(collapsedSidebar).toBeVisible({ timeout: 3000 });
+
+    // Expand via PanelLeft button
+    await page.locator('button').filter({ has: page.locator('svg.lucide-panel-left') }).first().click();
+    await expect(sidebar).toBeVisible({ timeout: 3000 });
+  });
+
+  test('Chinese locale shows translated nav items', async ({ page }) => {
+    await page.goto('/zh/admin');
+    await expect(page.getByRole('button', { name: '仪表板' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '文档管理' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '知识图谱' })).toBeVisible();
   });
 });
