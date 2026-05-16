@@ -14,7 +14,8 @@
     "logOut": "Logg ut",
     "collapse": "Skjul sidepanel",
     "expand": "Vis sidepanel",
-    "guestWarning": "Logg inn for å lagre samtaler"
+    "guestWarning": "Logg inn for å lagre samtaler",
+    "projects": "Prosjekter"
   },
   "chat": {
     "input": {
@@ -64,7 +65,15 @@
     "delete": { "label": "Slett samtale", "confirm": "Sikker på at du vil slette?", "cancel": "Avbryt", "confirmButton": "Slett" },
     "rename": { "label": "Gi nytt navn", "placeholder": "Samtaletittel" },
     "empty": "Ingen samtaler ennå.",
-    "guestEmpty": "Logg inn for å se samtalehistorikk."
+    "guestEmpty": "Logg inn for å se samtalehistorikk.",
+    "menu": {
+      "share": "Del",
+      "rename": "Gi nytt navn",
+      "moveToProject": "Flytt til prosjekt",
+      "pin": "Fest",
+      "delete": "Slett",
+      "recentProjects": "Nylige prosjekter"
+    }
   },
   "knowledge": {
     "title": "Kunnskapsbase",
@@ -90,6 +99,12 @@
     "login": { "title": "Logg inn", "subtitle": "Velkommen tilbake", "email": "E-post", "password": "Passord", "submit": "Logg inn", "noAccount": "Ingen konto?", "register": "Opprett en" },
     "register": { "title": "Opprett konto", "subtitle": "Kom i gang", "username": "Brukernavn", "email": "E-post", "password": "Passord", "confirmPassword": "Bekreft passord", "submit": "Opprett", "hasAccount": "Har du konto?", "login": "Logg inn" },
     "errors": { "invalidEmail": "Ugyldig e-post.", "passwordLength": "Passord må være minst 8 tegn.", "passwordsMatch": "Passordene stemmer ikke.", "loginFailed": "Ugyldig e-post eller passord.", "registerFailed": "Registrering mislyktes." }
+  },
+  "share": {
+    "title": "Del samtale",
+    "description": "Alle med lenken kan se denne samtalen.",
+    "copyLink": "Kopier lenke",
+    "copied": "Kopiert!"
   },
   "common": { "loading": "Laster...", "error": "Noe gikk galt", "retry": "Prøv igjen", "cancel": "Avbryt", "save": "Lagre", "delete": "Slett", "search": "Søk", "noResults": "Ingen resultater", "close": "Lukk", "back": "Tilbake", "more": "Mer" }
 }

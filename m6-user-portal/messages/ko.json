@@ -14,7 +14,8 @@
     "logOut": "로그아웃",
     "collapse": "사이드바 접기",
     "expand": "사이드바 펼치기",
-    "guestWarning": "로그인하여 대화를 저장하세요"
+    "guestWarning": "로그인하여 대화를 저장하세요",
+    "projects": "프로젝트"
   },
   "chat": {
     "input": {
@@ -64,7 +65,15 @@
     "delete": { "label": "대화 삭제", "confirm": "이 대화를 삭제하시겠습니까?", "cancel": "취소", "confirmButton": "삭제" },
     "rename": { "label": "이름 변경", "placeholder": "대화 제목" },
     "empty": "아직 대화가 없습니다. 새 대화를 시작하세요.",
-    "guestEmpty": "대화 기록을 보려면 로그인하세요."
+    "guestEmpty": "대화 기록을 보려면 로그인하세요.",
+    "menu": {
+      "share": "공유",
+      "rename": "이름 변경",
+      "moveToProject": "프로젝트로 이동",
+      "pin": "고정",
+      "delete": "삭제",
+      "recentProjects": "최근 프로젝트"
+    }
   },
   "knowledge": {
     "title": "지식 베이스",
@@ -90,6 +99,12 @@
     "login": { "title": "로그인", "subtitle": "돌아오신 것을 환영합니다", "email": "이메일", "password": "비밀번호", "submit": "로그인", "noAccount": "계정이 없으신가요?", "register": "계정 만들기" },
     "register": { "title": "계정 만들기", "subtitle": "시작하기", "username": "사용자 이름", "email": "이메일", "password": "비밀번호", "confirmPassword": "비밀번호 확인", "submit": "계정 만들기", "hasAccount": "이미 계정이 있으신가요?", "login": "로그인" },
     "errors": { "invalidEmail": "유효한 이메일 주소를 입력하세요.", "passwordLength": "비밀번호는 8자 이상이어야 합니다.", "passwordsMatch": "비밀번호가 일치하지 않습니다.", "loginFailed": "이메일 또는 비밀번호가 올바르지 않습니다.", "registerFailed": "등록에 실패했습니다. 다시 시도하세요." }
+  },
+  "share": {
+    "title": "대화 공유",
+    "description": "링크가 있는 모든 사람이 이 대화를 볼 수 있습니다.",
+    "copyLink": "링크 복사",
+    "copied": "복사됨!"
   },
   "common": { "loading": "로딩 중...", "error": "오류 발생", "retry": "재시도", "cancel": "취소", "save": "저장", "delete": "삭제", "search": "검색", "noResults": "결과 없음", "close": "닫기", "back": "뒤로", "more": "더 보기" }
 }

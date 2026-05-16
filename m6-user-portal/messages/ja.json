@@ -14,7 +14,8 @@
     "logOut": "ログアウト",
     "collapse": "サイドバーを閉じる",
     "expand": "サイドバーを開く",
-    "guestWarning": "ログインして会話を保存"
+    "guestWarning": "ログインして会話を保存",
+    "projects": "プロジェクト"
   },
   "chat": {
     "input": {
@@ -64,7 +65,15 @@
     "delete": { "label": "会話を削除", "confirm": "この会話を削除しますか？", "cancel": "キャンセル", "confirmButton": "削除" },
     "rename": { "label": "名前変更", "placeholder": "会話タイトル" },
     "empty": "まだ会話がありません。新しい会話を始めましょう。",
-    "guestEmpty": "会話履歴を表示するにはログインしてください。"
+    "guestEmpty": "会話履歴を表示するにはログインしてください。",
+    "menu": {
+      "share": "共有",
+      "rename": "名前変更",
+      "moveToProject": "プロジェクトへ移動",
+      "pin": "ピン留め",
+      "delete": "削除",
+      "recentProjects": "最近のプロジェクト"
+    }
   },
   "knowledge": {
     "title": "ナレッジベース",
@@ -90,6 +99,12 @@
     "login": { "title": "ログイン", "subtitle": "おかえりなさい", "email": "メールアドレス", "password": "パスワード", "submit": "ログイン", "noAccount": "アカウント未登録ですか？", "register": "作成する" },
     "register": { "title": "アカウント作成", "subtitle": "はじめましょう", "username": "ユーザー名", "email": "メールアドレス", "password": "パスワード", "confirmPassword": "パスワード確認", "submit": "作成", "hasAccount": "アカウントをお持ちですか？", "login": "ログイン" },
     "errors": { "invalidEmail": "有効なメールアドレスを入力してください。", "passwordLength": "パスワードは8文字以上必要です。", "passwordsMatch": "パスワードが一致しません。", "loginFailed": "メールアドレスまたはパスワードが無効です。", "registerFailed": "登録に失敗しました。" }
+  },
+  "share": {
+    "title": "会話を共有",
+    "description": "リンクを知っている人は誰でもこの会話を見ることができます。",
+    "copyLink": "リンクをコピー",
+    "copied": "コピーしました！"
   },
   "common": { "loading": "読み込み中...", "error": "エラー発生", "retry": "再試行", "cancel": "キャンセル", "save": "保存", "delete": "削除", "search": "検索", "noResults": "結果なし", "close": "閉じる", "back": "戻る", "more": "もっと見る" }
 }
