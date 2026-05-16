@@ -15,7 +15,7 @@
 | M3 | Retrieval Engine | 🔲 Not Started | 0 | — | — |
 | M4 | Knowledge Graph Engine | 🔲 Not Started | 0 | — | — |
 | M5 | RAG QA Engine | 🔲 Not Started | 0 | — | — |
-| M6 | User Web Portal | 🔲 Not Started | 0 | — | — |
+| M6 | User Web Portal | 🔄 In Development | ~8 | 2026-05-16 | 00030 + 18 placeholders |
 | M7 | Admin Web Portal | 🔲 Not Started | 0 | — | — |
 | M8 | API Gateway | 🔲 Not Started | 0 | — | — |
 | — | contracts/ | ✅ Complete | 1 | 2026-05-12 | 00010 |

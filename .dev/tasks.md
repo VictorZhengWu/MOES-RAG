@@ -41,21 +41,52 @@
 
 ---
 
-### 🔲 00030 — M6 用户前端（含 i18n）
+### 🔄 00030 — M6 用户前端（含 i18n）
 
-**功能描述：**
-- 类 DeepSeek 问答对话界面
-- Markdown 渲染 + 代码高亮 + 引用标注
-- 会话管理（新建/切换/搜索/删除）
-- 知识库浏览
-- 个人设置 & API Key 管理
-- 响应式布局
-- **i18n**: 5 语种支持（EN/ZH/KO/JA/NO），缺省英文；所有 UI 文字零硬编码，语言资源文件化管理；语言切换即时生效无需刷新
-- **代码注释**: 所有 TypeScript/TSX 文件必须包含详细英文注释（WHAT + WHY）
+> **核心 UI 已完成（11 项功能），18 项占位功能待后端就绪后完善。**
+> **Playwright: 9/9 tests passing.**
+
+**已完成功能：**
+- ✅ 聊天界面（消息气泡、Markdown、流式输出、停止生成）
+- ✅ 引用面板（右侧第三列，规范来源/章节/条款/摘录）
+- ✅ 可折叠侧边栏（展开/图标条双态，New Chat/Search/Deep Research/Projects）
+- ✅ 5 语种 i18n（URL 路由、即时切换、Settings 中管理）
+- ✅ 主题切换（Light/Dark/System，即时生效）
+- ✅ 跳转窄条（固定定位横线、悬停列表框、点击跳转、滚动同步）
+- ✅ Settings 对话框（General/Profile/About 三标签）
+- ✅ 知识库浏览（从 API 加载、搜索+船级社+专业筛选）
+- ✅ 全局拖放上传（浏览器任意位置、覆盖层提示、消息气泡显示文件图标）
+- ✅ 会话右键菜单（Share/Rename/Move to Project/Pin/Delete）
+- ✅ 登录/注册 UI（表单校验、社交登录按钮）
+- ✅ 输入框（附件按钮、Web Search 开关、Enter/Shift+Enter）
+- ✅ Playwright E2E（9 tests, all passing）
+
+**占位功能（🔸 待后端就绪后完善）：**
+
+| ID | 功能 | 当前状态 | 依赖 |
+|----|------|---------|------|
+| 00030-P1 | 邮箱登录 | 客户端校验+localStorage，永远成功 | M5 Auth API |
+| 00030-P2 | 邮箱注册 | 客户端校验后直接"登录" | M5 Auth API |
+| 00030-P3 | 社交登录(OAuth) | 6 图标按钮，点击仅 console.log | M5 OAuth |
+| 00030-P4 | 会话历史持久化 | Mock Server 3 条假数据 | M5 Conversation API |
+| 00030-P5 | 会话重命名 | 调用 Mock API | M5 Conversation API |
+| 00030-P6 | 会话删除 | 调用 Mock API | M5 Conversation API |
+| 00030-P7 | 会话分享 | 弹窗显示假链接+复制 | M5 Share API |
+| 00030-P8 | Move to Project | 10 个 mock 项目，仅 console.log | M5 Project API |
+| 00030-P9 | Pin 对话 | console.log | M5 Conversation API |
+| 00030-P10 | 文件真实上传 | UI 就绪，仅存文件名 | M1 文件处理管线 |
+| 00030-P11 | 头像上传 | Profile 页文件选择器，仅 log | M5 User API |
+| 00030-P12 | Web Search | UI 开关可切换 | M5 搜索集成 |
+| 00030-P13 | Deep Research | 按钮 disabled 或 console.log | M5 Agent 流程 |
+| 00030-P14 | 会话搜索 | 客户端输入过滤 | M5 Search API |
+| 00030-P15 | Projects 页面 | 4 个 mock 项目 | M5 Project API |
+| 00030-P16 | Help 页面 | 按钮无响应 | 文档编写 |
+| 00030-P17 | Delete Account | 按钮 disabled | M5 User API |
+| 00030-P18 | About 社交链接 | 占位 URL | 真实地址配置 |
 
 **验证方法：** Playwright E2E 测试覆盖核心用户路径
 **自动化验证命令：** `npx playwright test`
-**通过条件：** 全部 passed，0 failed
+**通过条件：** 全部 passed，0 failed（当前 9/9）
 **Task 类型：** 模块/服务类
 **依赖：** 00020（Mock Server）
 **关联文件：** `m6-user-portal/src/`
