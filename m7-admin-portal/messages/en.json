@@ -113,6 +113,11 @@
       },
       "deleteConfirm": "Permanently delete this user account? All associated data will be removed."
     },
+    "settings": {
+      "title": "Settings",
+      "language": { "label": "Interface Language", "description": "Change the display language of the admin interface." },
+      "theme": { "label": "Theme", "light": "Light", "dark": "Dark", "system": "System" }
+    },
     "monitoring": {
       "title": "System Monitoring",
       "subtitle": "Real-time system health and performance metrics",

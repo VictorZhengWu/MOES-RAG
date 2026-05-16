@@ -17,6 +17,11 @@
     "knowledgeGraph": { "title": "知识图谱", "subtitle": "可视化文档中抽取的实体与关系" },
     "llmConfig": { "title": "LLM 配置", "subtitle": "管理各专业 Agent 的 AI 模型后端" },
     "users": { "title": "用户管理", "subtitle": "管理用户账户、角色与配额" },
+    "settings": {
+      "title": "设置",
+      "language": { "label": "界面语言", "description": "更改管理后台的显示语言。" },
+      "theme": { "label": "主题", "light": "浅色", "dark": "深色", "system": "跟随系统" }
+    },
     "monitoring": { "title": "系统监控", "subtitle": "实时系统健康与性能指标" }
   },
   "common": { "loading": "加载中...", "error": "出错了", "save": "保存", "cancel": "取消", "delete": "删除", "search": "搜索", "close": "关闭", "back": "返回", "confirm": "确认" }

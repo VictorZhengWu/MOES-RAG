@@ -68,4 +68,14 @@ test.describe('C5 — Admin Layout & Sidebar', () => {
     await expect(page.getByRole('button', { name: '文档管理' })).toBeVisible();
     await expect(page.getByRole('button', { name: '知识图谱' })).toBeVisible();
   });
+
+  test('settings page switches language from Chinese back to English', async ({ page }) => {
+    await page.goto('/zh/admin/settings');
+    await expect(page.getByText('界面语言')).toBeVisible();
+
+    // Click English
+    await page.getByText('English').click();
+    await expect(page).toHaveURL(/\/en\/admin\/settings/);
+    await expect(page.getByText('Interface Language')).toBeVisible();
+  });
 });
