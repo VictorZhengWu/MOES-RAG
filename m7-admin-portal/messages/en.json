@@ -1,0 +1,132 @@
+{
+  "app": { "name": "Marine & Offshore Expert System", "shortName": "MO Admin" },
+  "nav": {
+    "dashboard": "Dashboard",
+    "documents": "Documents",
+    "knowledgeGraph": "Knowledge Graph",
+    "llmConfig": "LLM Config",
+    "users": "Users",
+    "monitoring": "Monitoring",
+    "settings": "Settings",
+    "help": "Help",
+    "backToChat": "Back to Chat"
+  },
+  "admin": {
+    "dashboard": {
+      "title": "Dashboard",
+      "subtitle": "System overview and key metrics",
+      "totalDocuments": "Total Documents",
+      "totalChunks": "Total Chunks",
+      "totalEntities": "Entities",
+      "totalRelations": "Relations",
+      "totalUsers": "Users",
+      "totalConversations": "Conversations",
+      "storageUsed": "Storage Used",
+      "avgLatency": "Avg Retrieval Latency"
+    },
+    "documents": {
+      "title": "Document Management",
+      "subtitle": "Upload, parse, and manage knowledge base documents",
+      "upload": {
+        "title": "Upload Documents",
+        "dragDrop": "Drag & drop files here, or click to browse",
+        "supportedFormats": "Supported: PDF, DOCX, DWG, TIFF, PNG (max 500MB per file)",
+        "uploading": "Uploading...",
+        "success": "Upload successful",
+        "error": "Upload failed"
+      },
+      "metadata": {
+        "classificationSociety": "Classification Society",
+        "regulationName": "Regulation Name",
+        "versionYear": "Version Year",
+        "domain": "Domain",
+        "vesselTypes": "Vessel Types",
+        "systemType": "System Type",
+        "manufacturer": "Manufacturer",
+        "language": "Document Language",
+        "customTags": "Custom Tags"
+      },
+      "status": {
+        "queued": "Queued", "processing": "Processing",
+        "completed": "Completed", "failed": "Failed",
+        "active": "Active", "deprecated": "Superseded", "error": "Error"
+      },
+      "table": {
+        "filename": "Filename", "society": "Society", "domain": "Domain",
+        "version": "Version", "chunks": "Chunks", "status": "Status",
+        "ingested": "Ingested", "actions": "Actions"
+      },
+      "actions": {
+        "view": "View Details", "reparse": "Re-parse",
+        "deprecate": "Mark Deprecated", "delete": "Delete",
+        "deleteConfirm": "Permanently delete this document and all its chunks? This cannot be undone."
+      }
+    },
+    "knowledgeGraph": {
+      "title": "Knowledge Graph",
+      "subtitle": "Visualize entities and relations extracted from documents",
+      "search": "Search entities...",
+      "entityTypes": {
+        "regulation_clause": "Regulation Clause", "vessel_type": "Vessel Type",
+        "system": "System", "equipment": "Equipment", "manufacturer": "Manufacturer"
+      },
+      "relationTypes": {
+        "regulates": "Regulates", "references": "References",
+        "applies_to": "Applies To", "equivalent_to": "Equivalent To",
+        "replaces": "Replaces", "requires": "Requires", "prohibits": "Prohibits"
+      },
+      "noData": "No knowledge graph data yet. Upload and parse documents to build the graph."
+    },
+    "llmConfig": {
+      "title": "LLM Backend Configuration",
+      "subtitle": "Manage AI model backends for different domain agents",
+      "addBackend": "Add Backend",
+      "backendType": "Backend Type",
+      "modelName": "Model Name",
+      "baseUrl": "Base URL",
+      "apiKey": "API Key",
+      "maxTokens": "Max Tokens",
+      "temperature": "Temperature",
+      "isDefault": "Default",
+      "assignedAgents": "Assigned Agents",
+      "testConnection": "Test Connection",
+      "testing": "Testing...",
+      "connected": "Connected",
+      "failed": "Connection Failed",
+      "deleteConfirm": "Remove this LLM backend configuration?"
+    },
+    "users": {
+      "title": "User Management",
+      "subtitle": "Manage user accounts, roles, and quotas",
+      "addUser": "Add User",
+      "table": {
+        "username": "Username", "email": "Email", "role": "Role",
+        "status": "Status", "queries": "Queries", "apiKeys": "API Keys",
+        "created": "Created", "actions": "Actions"
+      },
+      "roles": { "admin": "Admin", "editor": "Editor", "viewer": "Viewer" },
+      "status": { "active": "Active", "suspended": "Suspended" },
+      "form": {
+        "createTitle": "Create User", "editTitle": "Edit User",
+        "username": "Username", "email": "Email", "password": "Password",
+        "role": "Role", "quotaLimit": "Monthly Query Limit", "save": "Save User"
+      },
+      "deleteConfirm": "Permanently delete this user account? All associated data will be removed."
+    },
+    "monitoring": {
+      "title": "System Monitoring",
+      "subtitle": "Real-time system health and performance metrics",
+      "health": { "title": "Module Health", "ok": "Healthy", "degraded": "Degraded", "down": "Down" },
+      "metrics": {
+        "requestsPerMinute": "Requests/min", "avgResponseTime": "Avg Response Time",
+        "errorRate": "Error Rate", "uptime": "Uptime"
+      },
+      "logs": { "title": "Recent Logs", "level": "Level", "timestamp": "Time", "message": "Message", "module": "Module" }
+    }
+  },
+  "common": {
+    "loading": "Loading...", "error": "Something went wrong", "retry": "Retry",
+    "cancel": "Cancel", "save": "Save", "delete": "Delete", "search": "Search",
+    "noResults": "No results found", "close": "Close", "back": "Back", "more": "More", "confirm": "Confirm"
+  }
+}
