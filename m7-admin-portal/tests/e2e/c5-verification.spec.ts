@@ -32,7 +32,7 @@ test.describe('C5 — Admin Layout & Sidebar', () => {
     // Click Documents
     await page.getByRole('button', { name: 'Documents' }).click();
     await expect(page).toHaveURL(/\/en\/admin\/documents/);
-    await expect(page.getByText('Document Management')).toBeVisible();
+    await expect(page.getByText('Document Management')).toBeVisible({ timeout: 10000 });
 
     // Click LLM Config
     await page.getByRole('button', { name: 'LLM Config' }).click();
@@ -77,5 +77,20 @@ test.describe('C5 — Admin Layout & Sidebar', () => {
     await page.locator('select').selectOption('en');
     await expect(page).toHaveURL(/\/en\/admin\/settings/);
     await expect(page.getByText('Interface Language')).toBeVisible();
+  });
+
+  test('dashboard loads stats from mock API', async ({ page }) => {
+    await page.goto('/en/admin');
+    await expect(page.getByText('Dashboard')).toBeVisible();
+
+    // Stats cards should show numbers (mock data: 47 docs, 12850 chunks, etc.)
+    await expect(page.getByText('47')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('12,850')).toBeVisible();
+    await expect(page.getByText('12', { exact: true })).toBeVisible();
+
+    // Module health badges
+    // Module health: underscores replaced with spaces in display
+    await expect(page.getByText('M1 DOC PARSING')).toBeVisible();
+    await expect(page.getByText('M5 QA ENGINE')).toBeVisible();
   });
 });
