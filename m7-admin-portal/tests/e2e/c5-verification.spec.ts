@@ -93,4 +93,14 @@ test.describe('C5 — Admin Layout & Sidebar', () => {
     await expect(page.getByText('M1 DOC PARSING')).toBeVisible();
     await expect(page.getByText('M5 QA ENGINE')).toBeVisible();
   });
+
+  test('documents page lists mock documents from API', async ({ page }) => {
+    await page.goto('/en/admin/documents');
+    await expect(page.getByText('Document Management')).toBeVisible({ timeout: 10000 });
+
+    // Table should show mock documents (DNV, ABS, IMO)
+    await expect(page.getByText('DNV-RU-SHIP-Pt4Ch3-2024.pdf')).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText('ABS-Rules-Pt5B-2024.pdf')).toBeVisible();
+    await expect(page.getByText('IMO-BWMS-Code-2023.pdf')).toBeVisible();
+  });
 });
