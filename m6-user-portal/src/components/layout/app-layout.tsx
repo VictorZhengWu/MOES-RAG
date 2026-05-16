@@ -16,6 +16,7 @@ import { CollapsedSidebar } from '@/components/conversation/collapsed-sidebar';
 import { CitationPanel } from '@/components/chat/citation-panel';
 import { JumpNavigation } from '@/components/navigation/jump-navigation';
 import { ShareDialog } from '@/components/share/share-dialog';
+import { useGlobalDrop, DropOverlay } from '@/components/chat/drop-overlay';
 import { useChatStore } from '@/lib/stores/chat-store';
 import { useTranslations } from 'next-intl';
 import { PanelLeftClose, PanelLeft, Share2 } from 'lucide-react';
@@ -27,6 +28,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [shareOpen, setShareOpen] = useState(false);
   const t = useTranslations();
   const citationOpen = useChatStore((s) => s.selectedCitationIndex !== null);
+  const addFiles = useChatStore((s) => s.addFiles);
+
+  // Global drag-and-drop on the entire window
+  const isDragOver = useGlobalDrop(addFiles);
 
   useEffect(() => {
     const check = () => setViewportNarrow(window.innerWidth < 1024);
@@ -99,6 +104,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Share Dialog */}
       <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} />
+
+      {/* Global drop overlay */}
+      <DropOverlay visible={isDragOver} />
     </div>
   );
 }

@@ -13,9 +13,15 @@
 import { create } from 'zustand';
 import type { Message, Citation } from '@/types';
 
+export interface AttachedFile {
+  name: string;
+  size: number;
+}
+
 interface ChatState {
   messages: Message[];
   citations: Citation[];
+  attachedFiles: AttachedFile[];
   isLoading: boolean;
   isStreaming: boolean;
   inputValue: string;
@@ -23,6 +29,9 @@ interface ChatState {
   selectedCitationIndex: number | null;
 
   setInputValue: (value: string) => void;
+  addFiles: (files: AttachedFile[]) => void;
+  removeFile: (index: number) => void;
+  clearFiles: () => void;
   addMessage: (msg: Message) => void;
   appendToLastMessage: (content: string) => void;
   setCitations: (citations: Citation[]) => void;
@@ -42,8 +51,12 @@ export const useChatStore = create<ChatState>((set) => ({
   inputValue: '',
   webSearchEnabled: false,
   selectedCitationIndex: null,
+  attachedFiles: [],
 
   setInputValue: (value) => set({ inputValue: value }),
+  addFiles: (files) => set((s) => ({ attachedFiles: [...s.attachedFiles, ...files] })),
+  removeFile: (index) => set((s) => ({ attachedFiles: s.attachedFiles.filter((_, i) => i !== index) })),
+  clearFiles: () => set({ attachedFiles: [] }),
 
   addMessage: (msg) =>
     set((s) => ({ messages: [...s.messages, msg] })),

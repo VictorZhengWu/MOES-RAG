@@ -13,20 +13,15 @@
 
 'use client';
 
-import { useState, useRef, useCallback, DragEvent } from 'react';
+import { useRef, useCallback } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Paperclip, Globe, X } from 'lucide-react';
+import { Paperclip, Globe, X, FileText } from 'lucide-react';
 import { useChatStore } from '@/lib/stores/chat-store';
 import { useChatStream } from '@/lib/hooks/use-chat-stream';
-
-interface AttachedFile {
-  name: string;
-  size: number;
-}
 
 export function ChatInput() {
   const t = useTranslations();
@@ -38,36 +33,37 @@ export function ChatInput() {
     messages,
     webSearchEnabled,
     toggleWebSearch,
+    attachedFiles,
+    addFiles,
+    removeFile,
+    clearFiles,
   } = useChatStore();
   const { startStream, stopStream } = useChatStream();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
-  const [isDragOver, setIsDragOver] = useState(false);
 
-  const addFiles = useCallback((files: FileList | null) => {
+  const handleAddFiles = useCallback((files: FileList | null) => {
     if (!files) return;
-    const newFiles: AttachedFile[] = [];
+    const newFiles: { name: string; size: number }[] = [];
     for (let i = 0; i < files.length; i++) {
       newFiles.push({ name: files[i].name, size: files[i].size });
     }
-    setAttachedFiles((prev) => [...prev, ...newFiles]);
-    // Phase 2: actual file upload to server
-  }, []);
-
-  const removeFile = useCallback((index: number) => {
-    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+    addFiles(newFiles);
+  }, [addFiles]);
 
   const handleSend = async () => {
     const content = inputValue.trim();
     if (!content || isLoading) return;
+    const fileNames = attachedFiles.map((f) => f.name).join(', ');
+    const displayContent = attachedFiles.length > 0
+      ? `[Attached: ${fileNames}]\n${content}`
+      : content;
     setInputValue('');
-    setAttachedFiles([]);
+    clearFiles();
 
     await startStream({
       model: 'marine-rag-mock',
-      messages: [...messages, { role: 'user', content }],
+      messages: [...messages, { role: 'user', content: displayContent }],
       web_search: webSearchEnabled,
     });
   };
@@ -81,60 +77,33 @@ export function ChatInput() {
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      addFiles(e.target.files);
+      handleAddFiles(e.target.files);
       // Reset so the same file can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = '';
     },
-    [addFiles],
+    [handleAddFiles],
   );
 
-  // Drag-and-drop handlers
-  const handleDragOver = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-    addFiles(e.dataTransfer.files);
-  };
-
   return (
-    <div
-      className={`border-t bg-background p-3 transition-colors ${
-        isDragOver ? 'bg-primary/5 ring-2 ring-primary/20 rounded-lg' : ''
-      }`}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      {/* Attached file chips */}
+    <div className="border-t bg-background p-3">
+      {/* Attached file chips with icons */}
       {attachedFiles.length > 0 && (
-        <div className="mx-auto mb-2 flex max-w-3xl flex-wrap gap-1.5">
+        <div className="mx-auto mb-2 flex max-w-3xl flex-wrap gap-2">
           {attachedFiles.map((file, i) => (
-            <Badge
+            <div
               key={i}
-              variant="secondary"
-              className="gap-1 pr-1 text-xs cursor-default"
+              className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
             >
-              {file.name}
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <span className="max-w-[200px] truncate">{file.name}</span>
               <button
                 onClick={() => removeFile(i)}
-                className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
                 aria-label={`Remove ${file.name}`}
               >
-                <X className="h-3 w-3" />
+                <X className="h-3.5 w-3.5" />
               </button>
-            </Badge>
+            </div>
           ))}
         </div>
       )}
