@@ -1,6 +1,12 @@
 /**
- * Document Management page — upload, list, filter, delete.
- * Fetches data from Mock Server (Phase 1) or real backend (Phase 2).
+ * Document Management — upload with filename parsing.
+ *
+ * Flow:
+ * 1. Drop/browse files → filenames parsed client-side
+ * 2. Preview parsed metadata in a table
+ * 3. User adds domain + language per file
+ * 4. Confirm → uploaded to Mock Server (Phase 1) / real backend (Phase 2)
+ * 5. Document list below with filters and status management
  */
 
 'use client';
@@ -9,6 +15,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import type { DocumentRecord } from '@/types';
 import { listDocuments, uploadDocument, deleteDocument } from '@/lib/api/documents';
+import { parseFilename, batchParse, formatVersion, type ParsedDocument } from '@/lib/filename-parser';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,61 +27,114 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
-import { Upload, FileText, Search, Trash2, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Upload, FileText, Search, Trash2, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 
-const DOMAINS = ['all', 'structure', 'machinery', 'piping', 'electrical', 'communication', 'automation', 'general'];
+const DOMAINS = ['structure', 'machinery', 'piping', 'electrical', 'communication', 'automation', 'general'];
 const SOCIETIES = ['all', 'DNV', 'ABS', 'CCS', 'LR', 'BV', 'IMO', 'IACS'];
 
-const STATUS_COLORS: Record<string, string> = {
-  active: 'bg-green-500', deprecated: 'bg-yellow-500', error: 'bg-red-500',
-  queued: 'bg-blue-300', processing: 'bg-blue-500', completed: 'bg-green-500', failed: 'bg-red-500',
-};
+interface PendingFile extends ParsedDocument {
+  /** Original File object for upload */
+  file: File;
+  /** User-selected domain */
+  domain: string;
+  /** Document language */
+  language: string;
+}
 
 export default function DocumentsPage() {
   const t = useTranslations();
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [domainFilter, setDomainFilter] = useState('all');
   const [societyFilter, setSocietyFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
+  // Upload state
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
-    try {
-      const res = await listDocuments();
-      setDocuments(res.documents);
-    } catch { setDocuments([]); }
+    try { const res = await listDocuments(); setDocuments(res.documents); }
+    catch { setDocuments([]); }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchDocuments(); }, [fetchDocuments]);
 
-  const filtered = documents.filter((d) => {
-    const ms = !search || d.source_filename.toLowerCase().includes(search.toLowerCase()) ||
-      (d.regulation_name || '').toLowerCase().includes(search.toLowerCase());
-    const md = domainFilter === 'all' || d.domain === domainFilter;
-    const ms2 = societyFilter === 'all' || d.classification_society === societyFilter;
-    return ms && md && ms2;
-  });
+  // ── File processing ──────────────────────────────────────────────
+  const processFiles = useCallback((fileList: FileList | null) => {
+    if (!fileList) return;
+    const files = Array.from(fileList);
+    const names = files.map((f) => f.name);
+    const { valid, invalid } = batchParse(names);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setUploadMsg('');
-    try {
-      await uploadDocument({ file_name: file.name, domain: 'general' });
-      setUploadMsg('Upload successful. Parsing started.');
-      setTimeout(() => { setUploadMsg(''); fetchDocuments(); }, 1500);
-    } catch {
-      setUploadMsg('Upload failed.');
-    } finally { setUploading(false); }
+    const pending: PendingFile[] = [];
+    // Only add valid files to pending list
+    for (const parsed of valid) {
+      const file = files.find((f) => f.name === parsed.raw || f.name.startsWith(parsed.raw))!;
+      pending.push({ ...parsed, file, domain: 'general', language: 'en' });
+    }
+
+    // Show warning for invalid filenames
+    if (invalid.length > 0) {
+      const names = invalid.map((i) => i.raw).join(', ');
+      setUploadMsg(`Skipped ${invalid.length} file(s) with invalid names: ${names}`);
+    }
+
+    if (pending.length > 0) setPendingFiles((prev) => [...prev, ...pending]);
+  }, []);
+
+  const removePending = (index: number) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const updatePendingField = (index: number, field: 'domain' | 'language', value: string) => {
+    setPendingFiles((prev) =>
+      prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)),
+    );
+  };
+
+  // ── Upload ────────────────────────────────────────────────────────
+  const handleUploadAll = async () => {
+    if (pendingFiles.length === 0) return;
+    setUploading(true);
+    setUploadMsg('');
+    let success = 0;
+    let fail = 0;
+
+    for (const pf of pendingFiles) {
+      try {
+        await uploadDocument({
+          file_name: pf.file.name,
+          classification_society: pf.society,
+          regulation_name: pf.name,
+          version_year: parseInt(pf.version?.substring(0, 4) || '0'),
+          domain: pf.domain,
+          language: pf.language,
+          custom_tags: {
+            category: pf.category,
+            section: pf.section,
+            version_full: pf.version,
+          },
+        });
+        success++;
+      } catch {
+        fail++;
+      }
+    }
+
+    setUploadMsg(`Upload complete: ${success} succeeded, ${fail} failed.`);
+    setPendingFiles([]);
+    setUploading(false);
+    setTimeout(() => { setUploadMsg(''); fetchDocuments(); }, 2000);
+  };
+
+  // ── Delete ────────────────────────────────────────────────────────
   const handleDelete = async () => {
     if (!deleteTarget) return;
     await deleteDocument(deleteTarget);
@@ -82,45 +142,153 @@ export default function DocumentsPage() {
     setDeleteTarget(null);
   };
 
+  // ── Filters ───────────────────────────────────────────────────────
+  const filtered = documents.filter((d) => {
+    const ms = !search || d.source_filename.toLowerCase().includes(search.toLowerCase());
+    const ms2 = societyFilter === 'all' || d.classification_society === societyFilter;
+    const ms3 = statusFilter === 'all' || d.status === statusFilter;
+    return ms && ms2 && ms3;
+  });
+
+  const STATUS_COLORS: Record<string, string> = {
+    active: 'bg-green-500', deprecated: 'bg-yellow-500', error: 'bg-red-500',
+  };
+
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <h1 className="text-xl font-bold">{t('admin.documents.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('admin.documents.subtitle')}</p>
-        </div>
-      </div>
+      <h1 className="text-xl font-bold mb-1">{t('admin.documents.title')}</h1>
+      <p className="text-sm text-muted-foreground mb-6">{t('admin.documents.subtitle')}</p>
 
-      {/* Upload area */}
-      <Card className="mb-6 border-dashed">
-        <CardContent className="flex flex-col items-center justify-center py-8">
-          <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-          <p className="text-sm font-medium">{t('admin.documents.upload.dragDrop')}</p>
-          <p className="text-xs text-muted-foreground mt-1 mb-4">{t('admin.documents.upload.supportedFormats')}</p>
-          <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} disabled={uploading} />
-          <Button variant="outline" size="sm" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
-            {uploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {uploading ? t('admin.documents.upload.uploading') : 'Browse Files'}
-          </Button>
-          {uploadMsg && <p className="text-xs text-primary mt-2">{uploadMsg}</p>}
+      {/* ── Upload Area ──────────────────────────────────────────── */}
+      <Card className="mb-6 border-2 border-dashed">
+        <CardContent
+          className="flex flex-col items-center justify-center py-10 cursor-pointer"
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onDrop={(e) => { e.preventDefault(); e.stopPropagation(); processFiles(e.dataTransfer.files); }}
+        >
+          <Upload className="h-10 w-10 text-muted-foreground mb-3" />
+          <p className="text-sm font-medium">Drop files here or click to browse</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Expected format: [Society][Category][Section][Name][YYYYMM].pdf
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Example: [DNV][RU-SHIP][Pt.1-Ch.1][General regulations][202507].pdf
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            multiple
+            onChange={(e) => { processFiles(e.target.files); e.target.value = ''; }}
+          />
         </CardContent>
       </Card>
 
-      {/* Filters */}
+      {/* ── Pending files preview ────────────────────────────────── */}
+      {pendingFiles.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold">
+              Pending Upload ({pendingFiles.length} file{pendingFiles.length > 1 ? 's' : ''})
+            </h2>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setPendingFiles([])} disabled={uploading}>
+                Clear All
+              </Button>
+              <Button size="sm" onClick={handleUploadAll} disabled={uploading}>
+                {uploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {uploading ? 'Uploading...' : `Upload ${pendingFiles.length} File${pendingFiles.length > 1 ? 's' : ''}`}
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[30px]">#</TableHead>
+                  <TableHead>Filename</TableHead>
+                  <TableHead>Society</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Section</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Version</TableHead>
+                  <TableHead>Domain</TableHead>
+                  <TableHead>Lang</TableHead>
+                  <TableHead className="w-[30px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingFiles.map((pf, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+                    <TableCell className="text-xs font-medium max-w-[180px] truncate">{pf.file.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs">{pf.society}</Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">{pf.category}</TableCell>
+                    <TableCell className="text-xs font-mono">{pf.section}</TableCell>
+                    <TableCell className="text-xs max-w-[160px] truncate">{pf.name}</TableCell>
+                    <TableCell className="text-xs">{formatVersion(pf.version)}</TableCell>
+                    <TableCell>
+                      <select
+                        value={pf.domain}
+                        onChange={(e) => updatePendingField(i, 'domain', e.target.value)}
+                        className="text-xs rounded border bg-background px-1 py-0.5"
+                      >
+                        {DOMAINS.map((d) => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </TableCell>
+                    <TableCell>
+                      <select
+                        value={pf.language}
+                        onChange={(e) => updatePendingField(i, 'language', e.target.value)}
+                        className="text-xs rounded border bg-background px-1 py-0.5"
+                      >
+                        <option value="en">EN</option>
+                        <option value="zh">ZH</option>
+                        <option value="ko">KO</option>
+                        <option value="ja">JA</option>
+                        <option value="no">NO</option>
+                      </select>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removePending(i)}>
+                        <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {uploadMsg && (
+            <p className={`text-xs mt-2 ${uploadMsg.includes('failed') || uploadMsg.includes('Skipped') ? 'text-yellow-600' : 'text-green-600'}`}>
+              {uploadMsg}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── Filters ────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('common.search') + '...'} className="pl-8" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="pl-8" />
         </div>
         <select value={societyFilter} onChange={(e) => setSocietyFilter(e.target.value)} className="rounded-lg border bg-background px-3 py-2 text-sm">
           {SOCIETIES.map((s) => <option key={s} value={s}>{s === 'all' ? 'All Societies' : s}</option>)}
         </select>
-        <select value={domainFilter} onChange={(e) => setDomainFilter(e.target.value)} className="rounded-lg border bg-background px-3 py-2 text-sm">
-          {DOMAINS.map((d) => <option key={d} value={d}>{d === 'all' ? 'All Domains' : d}</option>)}
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-lg border bg-background px-3 py-2 text-sm">
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="deprecated">Obsolete</option>
         </select>
       </div>
 
-      {/* Document Table */}
+      {/* ── Document Table ─────────────────────────────────────────── */}
       {loading ? (
         <p className="text-sm text-muted-foreground py-8 text-center">{t('common.loading')}</p>
       ) : filtered.length === 0 ? (
@@ -130,51 +298,63 @@ export default function DocumentsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('admin.documents.table.filename')}</TableHead>
-                <TableHead>{t('admin.documents.table.society')}</TableHead>
-                <TableHead>{t('admin.documents.table.domain')}</TableHead>
-                <TableHead>{t('admin.documents.table.version')}</TableHead>
-                <TableHead className="text-right">{t('admin.documents.table.chunks')}</TableHead>
-                <TableHead>{t('admin.documents.table.status')}</TableHead>
-                <TableHead className="text-right">{t('admin.documents.table.actions')}</TableHead>
+                <TableHead>Filename</TableHead>
+                <TableHead>Society</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Section</TableHead>
+                <TableHead>Domain</TableHead>
+                <TableHead className="text-right">Chunks</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((doc) => (
-                <TableRow key={doc.doc_id}>
-                  <TableCell className="font-medium text-sm max-w-[280px] truncate">{doc.source_filename}</TableCell>
-                  <TableCell className="text-sm">{doc.classification_society || '—'}</TableCell>
-                  <TableCell className="text-sm">{doc.domain}</TableCell>
-                  <TableCell className="text-sm">{doc.version_year || '—'}</TableCell>
-                  <TableCell className="text-sm text-right">{doc.chunks_count}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="gap-1.5 text-xs">
-                      <span className={`h-1.5 w-1.5 rounded-full ${STATUS_COLORS[doc.status] || 'bg-gray-400'}`} />
-                      {t(`admin.documents.status.${doc.status}` as any) || doc.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteTarget(doc.doc_id)} title={t('common.delete')}>
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filtered.map((doc) => {
+                // Try to parse filename for extra display fields
+                const parsed = parseFilename(doc.source_filename);
+                return (
+                  <TableRow key={doc.doc_id}>
+                    <TableCell className="font-medium text-sm max-w-[300px] truncate">{doc.source_filename}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs">{doc.classification_society || '—'}</Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {parsed.valid ? parsed.category : doc.domain}
+                    </TableCell>
+                    <TableCell className="text-xs font-mono text-muted-foreground">
+                      {parsed.valid ? parsed.section : '—'}
+                    </TableCell>
+                    <TableCell className="text-xs">{doc.domain}</TableCell>
+                    <TableCell className="text-xs text-right">{doc.chunks_count}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="gap-1.5 text-xs">
+                        <span className={`h-1.5 w-1.5 rounded-full ${STATUS_COLORS[doc.status] || 'bg-gray-400'}`} />
+                        {doc.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteTarget(doc.doc_id)}>
+                        <Trash2 className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
       )}
 
-      {/* Delete confirmation dialog */}
+      {/* Delete confirmation */}
       <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('admin.documents.actions.delete')}</DialogTitle>
-            <DialogDescription>{t('admin.documents.actions.deleteConfirm')}</DialogDescription>
+            <DialogTitle>Delete Document</DialogTitle>
+            <DialogDescription>Permanently delete this document and all its chunks? This cannot be undone.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>{t('common.cancel')}</Button>
-            <Button variant="destructive" onClick={handleDelete}>{t('common.delete')}</Button>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

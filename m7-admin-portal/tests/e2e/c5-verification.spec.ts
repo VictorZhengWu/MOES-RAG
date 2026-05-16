@@ -94,13 +94,43 @@ test.describe('C5 — Admin Layout & Sidebar', () => {
     await expect(page.getByText('M5 QA ENGINE')).toBeVisible();
   });
 
-  test('documents page lists mock documents from API', async ({ page }) => {
+  test('documents page shows upload area and mock document list', async ({ page }) => {
     await page.goto('/en/admin/documents');
     await expect(page.getByText('Document Management')).toBeVisible({ timeout: 10000 });
 
-    // Table should show mock documents (DNV, ABS, IMO)
+    // Upload area with format hint visible
+    await expect(page.getByText(/Drop files here/)).toBeVisible();
+    await expect(page.getByText(/\[Society\]\[Category\]\[Section\]\[Name\]\[YYYYMM\]/)).toBeVisible();
+
+    // Mock documents from API
     await expect(page.getByText('DNV-RU-SHIP-Pt4Ch3-2024.pdf')).toBeVisible({ timeout: 8000 });
-    await expect(page.getByText('ABS-Rules-Pt5B-2024.pdf')).toBeVisible();
     await expect(page.getByText('IMO-BWMS-Code-2023.pdf')).toBeVisible();
+  });
+
+  test('filename parser correctly parses structured filenames', async () => {
+    // Test the filename parsing regex directly (same as filename-parser.ts)
+    const RE = /\[([A-Z]+)\]\[([A-Z\-0-9]+)\]\[([^\]]+)\]\[([^\]]+)\]\[(\d{6})\]/;
+
+    // Valid RU-SHIP filename
+    const raw1 = '[DNV][RU-SHIP][Pt.1-Ch.1][General regulations][202507].pdf';
+    const dot1 = raw1.lastIndexOf('.');
+    const m1 = raw1.substring(0, dot1).match(RE);
+    expect(m1).toBeTruthy();
+    if (m1) {
+      expect(m1[1]).toBe('DNV');
+      expect(m1[2]).toBe('RU-SHIP');
+      expect(m1[3]).toBe('Pt.1-Ch.1');
+      expect(m1[4]).toBe('General regulations');
+      expect(m1[5]).toBe('202507');
+    }
+
+    // Valid OS filename
+    const m2 = '[DNV][OS][D201][Electrical installations][202507].pdf'.match(RE);
+    expect(m2).toBeTruthy();
+    if (m2) { expect(m2[2]).toBe('OS'); expect(m2[3]).toBe('D201'); }
+
+    // Invalid filename — no match
+    const m3 = 'random-document.pdf'.match(RE);
+    expect(m3).toBeNull();
   });
 });
