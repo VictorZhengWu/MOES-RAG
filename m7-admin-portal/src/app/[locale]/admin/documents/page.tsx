@@ -49,6 +49,8 @@ export default function DocumentsPage() {
   const [search, setSearch] = useState('');
   const [societyFilter, setSocietyFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sortField, setSortField] = useState<string>('source_filename');
+  const [sortAsc, setSortAsc] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   // Upload state
@@ -171,12 +173,25 @@ export default function DocumentsPage() {
   };
 
   // ── Filters ───────────────────────────────────────────────────────
-  const filtered = documents.filter((d) => {
-    const ms = !search || d.source_filename.toLowerCase().includes(search.toLowerCase());
-    const ms2 = societyFilter === 'all' || d.classification_society === societyFilter;
-    const ms3 = statusFilter === 'all' || d.status === statusFilter;
-    return ms && ms2 && ms3;
-  });
+  const filtered = documents
+    .filter((d) => {
+      const ms = !search || d.source_filename.toLowerCase().includes(search.toLowerCase());
+      const ms2 = societyFilter === 'all' || d.classification_society === societyFilter;
+      const ms3 = statusFilter === 'all' || d.status === statusFilter;
+      return ms && ms2 && ms3;
+    })
+    .sort((a, b) => {
+      const va = (a as any)[sortField] ?? '';
+      const vb = (b as any)[sortField] ?? '';
+      const cmp = String(va).localeCompare(String(vb), undefined, { numeric: true });
+      return sortAsc ? cmp : -cmp;
+    });
+  const handleSort = (field: string) => {
+    if (sortField === field) setSortAsc(!sortAsc);
+    else { setSortField(field); setSortAsc(true); }
+  };
+  const sortIcon = (field: string) =>
+    sortField === field ? (sortAsc ? ' ▲' : ' ▼') : '';
 
   const STATUS_COLORS: Record<string, string> = {
     active: 'bg-green-500', deprecated: 'bg-yellow-500', error: 'bg-red-500',
@@ -349,14 +364,14 @@ export default function DocumentsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Filename</TableHead>
-                <TableHead>Society</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Section</TableHead>
-                <TableHead>Domain</TableHead>
-                <TableHead className="text-right">Chunks</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('source_filename')}>{t('admin.documents.table.filename')}{sortIcon('source_filename')}</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('classification_society')}>{t('admin.documents.table.society')}{sortIcon('classification_society')}</TableHead>
+                <TableHead>{t('admin.documents.table.domain')}</TableHead>
+                <TableHead>{t('admin.documents.table.version')}</TableHead>
+                <TableHead>{t('admin.documents.table.domain')}</TableHead>
+                <TableHead className="text-right cursor-pointer select-none" onClick={() => handleSort('chunks_count')}>{t('admin.documents.table.chunks')}{sortIcon('chunks_count')}</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('status')}>{t('admin.documents.table.status')}{sortIcon('status')}</TableHead>
+                <TableHead className="text-right">{t('admin.documents.table.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

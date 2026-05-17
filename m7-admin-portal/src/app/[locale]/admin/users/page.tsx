@@ -60,6 +60,8 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sortField, setSortField] = useState('username');
+  const [sortAsc, setSortAsc] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<MockUser | null>(null);
   const [form, setForm] = useState<Partial<MockUser>>(emptyForm());
@@ -106,6 +108,21 @@ export default function UsersPage() {
   let splitIndex = filtered.findIndex((u) => !ADMIN_ROLES.includes(u.role));
   if (splitIndex > 0 && splitIndex < filtered.length) showDivider = true;
   if (splitIndex === -1) splitIndex = filtered.length;
+
+  // Apply sort
+  const sorted = [...filtered].sort((a, b) => {
+    const va = (a as any)[sortField] ?? '';
+    const vb = (b as any)[sortField] ?? '';
+    const cmp = String(va).localeCompare(String(vb), undefined, { numeric: true });
+    return sortAsc ? cmp : -cmp;
+  });
+
+  const handleUserSort = (field: string) => {
+    if (sortField === field) setSortAsc(!sortAsc);
+    else { setSortField(field); setSortAsc(true); }
+  };
+  const userSortIcon = (field: string) =>
+    sortField === field ? (sortAsc ? ' ▲' : ' ▼') : '';
 
   const openCreate = () => { setEditingUser(null); setForm(emptyForm()); setDialogOpen(true); };
   const openEdit = (u: MockUser) => { setEditingUser(u); setForm({ ...u }); setDialogOpen(true); };
@@ -174,25 +191,25 @@ export default function UsersPage() {
       {/* User table */}
       {loading ? (
         <p className="text-sm text-muted-foreground py-8 text-center">Loading...</p>
-      ) : filtered.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">No users found.</p>
       ) : (
         <div className="rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Social</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Queries</TableHead>
-                <TableHead className="text-right">API Keys</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="cursor-pointer select-none resize-x overflow-auto" onClick={() => handleUserSort('username')}>Username{userSortIcon('username')}</TableHead>
+                <TableHead className="cursor-pointer select-none resize-x overflow-auto" onClick={() => handleUserSort('email')}>Email{userSortIcon('email')}</TableHead>
+                <TableHead className="cursor-pointer select-none resize-x overflow-auto" onClick={() => handleUserSort('role')}>Role{userSortIcon('role')}</TableHead>
+                <TableHead className="resize-x overflow-auto">Social</TableHead>
+                <TableHead className="resize-x overflow-auto">Status</TableHead>
+                <TableHead className="text-right cursor-pointer select-none resize-x overflow-auto" onClick={() => handleUserSort('total_queries')}>Queries{userSortIcon('total_queries')}</TableHead>
+                <TableHead className="text-right resize-x overflow-auto">API Keys</TableHead>
+                <TableHead className="text-right resize-x overflow-auto">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((u, i) => (
+              {sorted.map((u, i) => (
                 <React.Fragment key={u.user_id}>
                   {/* Divider between admin/editor and regular users */}
                   {showDivider && i === splitIndex && (
