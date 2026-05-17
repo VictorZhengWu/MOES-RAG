@@ -313,12 +313,13 @@ def mock_kg_relations() -> list[dict]:
 # ── Admin: LLM Backend Mock Data ─────────────────────────────────────
 
 def mock_llm_backends() -> list[dict]:
-    """Generate fake LLM backend configurations."""
+    """Generate fake LLM backend configurations with purpose classification."""
     return [
         {
-            "backend_id": "deepseek-default",
+            "backend_id": "deepseek-chat",
             "backend_type": "deepseek",
             "model_name": "deepseek-chat",
+            "purpose": "chat",
             "base_url": "https://api.deepseek.com",
             "api_key": None,
             "max_tokens": 4096,
@@ -327,15 +328,52 @@ def mock_llm_backends() -> list[dict]:
             "assigned_agents": ["structure", "machinery", "piping"],
         },
         {
-            "backend_id": "ollama-local",
+            "backend_id": "deepseek-reasoner",
+            "backend_type": "deepseek",
+            "model_name": "deepseek-reasoner",
+            "purpose": "thinking",
+            "base_url": "https://api.deepseek.com",
+            "api_key": None,
+            "max_tokens": 32768,
+            "temperature": 0.3,
+            "is_default": False,
+            "assigned_agents": ["structure", "machinery", "piping", "electrical", "communication", "automation"],
+        },
+        {
+            "backend_id": "bge-m3-embed",
             "backend_type": "ollama",
-            "model_name": "qwen2.5:14b",
+            "model_name": "bge-m3",
+            "purpose": "embedding",
             "base_url": "http://localhost:11434",
             "api_key": None,
             "max_tokens": 8192,
+            "temperature": 0.0,
+            "is_default": False,
+            "assigned_agents": [],
+        },
+        {
+            "backend_id": "bge-reranker",
+            "backend_type": "ollama",
+            "model_name": "bge-reranker-v2-m3",
+            "purpose": "reranking",
+            "base_url": "http://localhost:11434",
+            "api_key": None,
+            "max_tokens": 8192,
+            "temperature": 0.0,
+            "is_default": False,
+            "assigned_agents": [],
+        },
+        {
+            "backend_id": "gpt4o-vision",
+            "backend_type": "openai",
+            "model_name": "gpt-4o",
+            "purpose": "vision",
+            "base_url": "https://api.openai.com",
+            "api_key": None,
+            "max_tokens": 4096,
             "temperature": 0.3,
             "is_default": False,
-            "assigned_agents": ["electrical", "communication", "automation"],
+            "assigned_agents": ["structure", "piping", "electrical"],
         },
     ]
 

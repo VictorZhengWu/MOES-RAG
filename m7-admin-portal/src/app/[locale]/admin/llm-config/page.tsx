@@ -6,7 +6,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import type { LLMBackend, LLMBackendType } from '@/types';
+import type { LLMBackend, LLMBackendType, LLMPurpose } from '@/types';
 import { listBackends, createBackend, updateBackend, deleteBackend } from '@/lib/api/llm-config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,10 +28,21 @@ const BACKEND_TYPES: { value: LLMBackendType; label: string }[] = [
   { value: 'custom', label: 'Custom' },
 ];
 
+const PURPOSE_OPTIONS: { value: LLMPurpose; label: string }[] = [
+  { value: 'chat', label: 'Chat / Generation' },
+  { value: 'thinking', label: 'Thinking / Reasoning' },
+  { value: 'embedding', label: 'Embedding' },
+  { value: 'reranking', label: 'Reranking' },
+  { value: 'ocr', label: 'OCR' },
+  { value: 'vision', label: 'Vision / Multimodal' },
+  { value: 'parsing', label: 'Document Parsing' },
+];
+
 const AGENTS = ['structure', 'machinery', 'piping', 'electrical', 'communication', 'automation'];
 
 const emptyForm = (): Partial<LLMBackend> => ({
   backend_type: 'openai',
+  purpose: 'chat' as LLMPurpose,
   model_name: '',
   base_url: '',
   api_key: '',
@@ -117,7 +128,8 @@ export default function LLMConfigPage() {
                   <div className="flex items-center gap-2 mb-1">
                     <Cpu className="h-4 w-4 text-muted-foreground" />
                     <span className="font-semibold text-sm">{b.model_name}</span>
-                    {b.is_default && <Badge className="text-[10px]">Default</Badge>}
+                    {b.purpose && <Badge className="text-[10px]">{b.purpose}</Badge>}
+                    {b.is_default && <Badge variant="secondary" className="text-[10px]">Default</Badge>}
                     <Badge variant="outline" className="text-[10px]">{b.backend_type}</Badge>
                   </div>
                   {b.base_url && <p className="text-xs text-muted-foreground mt-1">URL: {b.base_url}</p>}
@@ -153,6 +165,16 @@ export default function LLMConfigPage() {
             <DialogTitle>{editingId ? 'Edit Backend' : 'Add Backend'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
+            <div>
+              <label className="text-xs font-medium">Purpose</label>
+              <select
+                value={form.purpose || 'chat'}
+                onChange={(e) => updateField('purpose', e.target.value as LLMPurpose)}
+                className="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm"
+              >
+                {PURPOSE_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+              </select>
+            </div>
             <div>
               <label className="text-xs font-medium">Backend Type</label>
               <select

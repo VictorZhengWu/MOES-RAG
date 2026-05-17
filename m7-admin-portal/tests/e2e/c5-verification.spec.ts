@@ -134,15 +134,20 @@ test.describe('C5 — Admin Layout & Sidebar', () => {
     expect(m3).toBeNull();
   });
 
-  test('llm config page shows mock backends', async ({ page }) => {
+  test('llm config page shows mock backends with purposes', async ({ page }) => {
     await page.goto('/en/admin/llm-config');
     await expect(page.getByText('LLM Configuration')).toBeVisible({ timeout: 10000 });
 
-    // Should show mock backends from API (deepseek-chat + qwen2.5:14b)
+    // Should show 5 mock backends with different purposes
     await expect(page.getByText('deepseek-chat')).toBeVisible({ timeout: 8000 });
-    await expect(page.getByText('qwen2.5:14b')).toBeVisible();
+    await expect(page.getByText('deepseek-reasoner')).toBeVisible();
+    await expect(page.getByText('bge-m3')).toBeVisible();
 
-    // DeepSeek should be marked as Default
-    await expect(page.getByText('Default').first()).toBeVisible();
+    // Purpose badges
+    await expect(page.getByText('chat').first()).toBeVisible();
+    await expect(page.getByText('thinking').first()).toBeVisible();
+    await expect(page.getByText('embedding').first()).toBeVisible();
+    await expect(page.getByText('reranking').first()).toBeVisible();
+    await expect(page.getByText('vision').first()).toBeVisible();
   });
 });

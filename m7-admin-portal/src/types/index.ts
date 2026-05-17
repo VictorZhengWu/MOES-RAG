@@ -24,8 +24,11 @@ export interface KGRelation {
   confidence: number;
 }
 
+export type LLMPurpose = 'chat' | 'thinking' | 'embedding' | 'reranking' | 'ocr' | 'vision' | 'parsing';
+
 export interface LLMBackend {
   backend_id: string; backend_type: string; model_name: string;
+  purpose: LLMPurpose;
   base_url?: string; api_key?: string; max_tokens: number;
   temperature: number; is_default: boolean; assigned_agents: string[];
 }
