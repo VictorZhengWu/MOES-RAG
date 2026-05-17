@@ -133,4 +133,16 @@ test.describe('C5 — Admin Layout & Sidebar', () => {
     const m3 = 'random-document.pdf'.match(RE);
     expect(m3).toBeNull();
   });
+
+  test('llm config page shows mock backends', async ({ page }) => {
+    await page.goto('/en/admin/llm-config');
+    await expect(page.getByText('LLM Configuration')).toBeVisible({ timeout: 10000 });
+
+    // Should show mock backends from API (deepseek-chat + qwen2.5:14b)
+    await expect(page.getByText('deepseek-chat')).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText('qwen2.5:14b')).toBeVisible();
+
+    // DeepSeek should be marked as Default
+    await expect(page.getByText('Default').first()).toBeVisible();
+  });
 });
