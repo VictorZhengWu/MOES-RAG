@@ -388,8 +388,8 @@ export default function DocumentsPage() {
                     <TableCell className="text-xs font-mono text-muted-foreground">
                       {parsed.valid ? parsed.section : '—'}
                     </TableCell>
-                    <TableCell className="text-xs">{doc.domain}</TableCell>
-                    <TableCell className="text-xs">{doc.chunks_count}</TableCell>
+                    <TableCell className="text-xs text-left">{doc.domain}</TableCell>
+                    <TableCell className="text-xs text-left">{doc.chunks_count}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="gap-1.5 text-xs">
                         <span className={`h-1.5 w-1.5 rounded-full ${STATUS_COLORS[doc.status] || 'bg-gray-400'}`} />
