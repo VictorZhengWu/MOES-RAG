@@ -364,14 +364,12 @@ export default function DocumentsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('source_filename')}>{t('admin.documents.table.filename')}{sortIcon('source_filename')}</TableHead>
-                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('classification_society')}>{t('admin.documents.table.society')}{sortIcon('classification_society')}</TableHead>
-                <TableHead>{t('admin.documents.table.domain')}</TableHead>
-                <TableHead>{t('admin.documents.table.version')}</TableHead>
-                <TableHead>{t('admin.documents.table.domain')}</TableHead>
-                <TableHead className="text-right cursor-pointer select-none" onClick={() => handleSort('chunks_count')}>{t('admin.documents.table.chunks')}{sortIcon('chunks_count')}</TableHead>
-                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('status')}>{t('admin.documents.table.status')}{sortIcon('status')}</TableHead>
-                <TableHead className="text-right">{t('admin.documents.table.actions')}</TableHead>
+                <TableHead><div className="inline-block resize-x overflow-auto min-w-[100px] cursor-pointer select-none" onClick={() => handleSort('source_filename')}>{t('admin.documents.table.filename')}{sortIcon('source_filename')}</div></TableHead>
+                <TableHead><div className="inline-block resize-x overflow-auto min-w-[64px] cursor-pointer select-none" onClick={() => handleSort('classification_society')}>{t('admin.documents.table.society')}{sortIcon('classification_society')}</div></TableHead>
+                <TableHead><div className="inline-block resize-x overflow-auto min-w-[64px]">{t('admin.documents.table.domain')}</div></TableHead>
+                <TableHead><div className="inline-block resize-x overflow-auto min-w-[48px] cursor-pointer select-none" onClick={() => handleSort('chunks_count')}>{t('admin.documents.table.chunks')}{sortIcon('chunks_count')}</div></TableHead>
+                <TableHead><div className="inline-block resize-x overflow-auto min-w-[64px] cursor-pointer select-none" onClick={() => handleSort('status')}>{t('admin.documents.table.status')}{sortIcon('status')}</div></TableHead>
+                <TableHead><div className="inline-block resize-x overflow-auto min-w-[48px]">{t('admin.documents.table.actions')}</div></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

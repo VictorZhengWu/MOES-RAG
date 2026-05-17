@@ -203,9 +203,9 @@ export default function UsersPage() {
                 <TableHead className="cursor-pointer select-none resize-x overflow-auto" onClick={() => handleUserSort('role')}>Role{userSortIcon('role')}</TableHead>
                 <TableHead className="resize-x overflow-auto">Social</TableHead>
                 <TableHead className="resize-x overflow-auto">Status</TableHead>
-                <TableHead className="text-right cursor-pointer select-none resize-x overflow-auto" onClick={() => handleUserSort('total_queries')}>Queries{userSortIcon('total_queries')}</TableHead>
-                <TableHead className="text-right resize-x overflow-auto">API Keys</TableHead>
-                <TableHead className="text-right resize-x overflow-auto">Actions</TableHead>
+                <TableHead className="cursor-pointer select-none resize-x overflow-auto" onClick={() => handleUserSort('total_queries')}>Queries{userSortIcon('total_queries')}</TableHead>
+                <TableHead className="resize-x overflow-auto">API Keys</TableHead>
+                <TableHead className="resize-x overflow-auto">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -242,9 +242,9 @@ export default function UsersPage() {
                       {u.is_active ? 'Active' : 'Suspended'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-right">{u.total_queries.toLocaleString()}</TableCell>
-                  <TableCell className="text-sm text-right">{u.api_key_count}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-sm">{u.total_queries.toLocaleString()}</TableCell>
+                  <TableCell className="text-sm">{u.api_key_count}</TableCell>
+                  <TableCell>
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)}>
                         <Pencil className="h-4 w-4" />
