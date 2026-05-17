@@ -178,4 +178,21 @@ test.describe('C5 — Admin Layout & Sidebar', () => {
     await page.getByRole('tab', { name: 'Cross-Reference' }).click();
     await expect(page.getByText('LNG Cargo Tank Boundaries')).toBeVisible();
   });
+
+  test('monitoring page shows module health and logs', async ({ page }) => {
+    await page.goto('/en/admin/monitoring');
+    await expect(page.getByText('System Monitoring')).toBeVisible({ timeout: 10000 });
+
+    // Module health cards
+    // Module health cards (inside Card components, not in log Badges)
+    await expect(page.getByText('Healthy').first()).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText('Avg Retrieval Latency')).toBeVisible();
+    await expect(page.getByText('Recent Logs')).toBeVisible();
+
+    // Performance metrics
+    await expect(page.getByText('Avg Retrieval Latency')).toBeVisible();
+
+    // Recent logs
+    await expect(page.getByText('Rate limit exceeded')).toBeVisible();
+  });
 });
