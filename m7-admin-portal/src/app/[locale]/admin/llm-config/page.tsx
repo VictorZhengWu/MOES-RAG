@@ -21,10 +21,11 @@ import {
 
 // ── Types ──────────────────────────────────────────────────────────
 
-type Provider = 'openai_compatible' | 'ollama' | 'vllm' | 'lmstudio' | 'none';
+type Provider = 'openai_compatible' | 'anthropic' | 'ollama' | 'vllm' | 'lmstudio' | 'none';
 
 const PROVIDERS: { value: Provider; label: string }[] = [
   { value: 'openai_compatible', label: 'OpenAI Compatible' },
+  { value: 'anthropic', label: 'Anthropic' },
   { value: 'ollama', label: 'Ollama' },
   { value: 'vllm', label: 'vLLM' },
   { value: 'lmstudio', label: 'LM Studio' },
@@ -81,20 +82,13 @@ interface PurposeDef {
 }
 
 const PURPOSES: PurposeDef[] = [
-  { purpose: 'chat', icon: MessageSquare, label: 'Chat Model', canDisable: false,
-    fields: ['provider', 'api_key', 'model_name', 'temperature', 'test'] },
-  { purpose: 'thinking', icon: Brain, label: 'Reasoning Model', canDisable: true,
-    fields: ['provider', 'api_key', 'model_name', 'test'] },
-  { purpose: 'embedding', icon: Layers, label: 'Embedding Model', canDisable: false,
-    fields: ['provider', 'api_key', 'model_name', 'embedding_dim', 'chunk_size', 'chunk_overlap', 'test'] },
-  { purpose: 'reranking', icon: ArrowUpDown, label: 'Reranking Model', canDisable: false,
-    fields: ['provider', 'api_key', 'model_name', 'top_n', 'match_threshold', 'test'] },
-  { purpose: 'ocr', icon: ScanText, label: 'OCR Model', canDisable: false,
-    fields: ['provider', 'api_key', 'model_name', 'test'] },
-  { purpose: 'vision', icon: Eye, label: 'Vision / Multimodal Model', canDisable: true,
-    fields: ['provider', 'api_key', 'model_name', 'test'] },
-  { purpose: 'parsing', icon: FileText, label: 'Document Parsing Engine', canDisable: false,
-    fields: ['provider', 'test'], noApiKey: true },
+  { purpose: 'chat', icon: MessageSquare, label: 'Chat Model', canDisable: false },
+  { purpose: 'thinking', icon: Brain, label: 'Reasoning Model', canDisable: true },
+  { purpose: 'embedding', icon: Layers, label: 'Embedding Model', canDisable: false },
+  { purpose: 'reranking', icon: ArrowUpDown, label: 'Reranking Model', canDisable: false },
+  { purpose: 'ocr', icon: ScanText, label: 'OCR Model', canDisable: false },
+  { purpose: 'vision', icon: Eye, label: 'Vision / Multimodal Model', canDisable: true },
+  { purpose: 'parsing', icon: FileText, label: 'Document Parsing Engine', canDisable: false, noApiKey: true },
 ];
 
 const PARSING_ENGINES = [
@@ -112,34 +106,38 @@ export default function LLMConfigPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
 
-  // Load from API → init form state
+  // Init form state with defaults. Phase 1: always starts fresh.
+  // Phase 2: load saved configs from relational DB.
   const loadConfigs = useCallback(async () => {
     setLoading(true);
+    // Always start with defaults — Mock data doesn't match the 7-box design
+    const map: Record<string, BoxConfig> = {};
+    PURPOSES.forEach((p) => { map[p.purpose] = defaultConfig(p.purpose); });
+    setConfigs(map);
+
+    // Phase 2: attempt loading saved configs from API
     try {
       const res = await listBackends();
-      const map: Record<string, BoxConfig> = {};
-      // Initialize defaults for all 7 purposes
-      PURPOSES.forEach((p) => { map[p.purpose] = defaultConfig(p.purpose); });
-      // Override with API data
       res.backends.forEach((b: LLMBackend) => {
-        if (map[b.purpose]) {
-          map[b.purpose] = {
-            ...map[b.purpose],
-            provider: (b.backend_type as Provider) || 'openai_compatible',
+        const purpose = b.purpose;
+        if (!purpose || !map[purpose]) return;
+        const existingProvider = (b.backend_type as Provider);
+        // Only override if the saved provider is valid (not 'none' for disable-able ones)
+        if (existingProvider && existingProvider !== 'none') {
+          map[purpose] = {
+            ...map[purpose],
+            provider: existingProvider,
             model_name: b.model_name || '',
             api_key: b.api_key || '',
             base_url: b.base_url || '',
-            temperature: b.temperature ?? 0.5,
-            max_tokens: b.max_tokens ?? 4096,
+            temperature: b.temperature ?? map[purpose].temperature,
+            max_tokens: b.max_tokens ?? map[purpose].max_tokens,
           };
         }
       });
-      setConfigs(map);
-    } catch {
-      const map: Record<string, BoxConfig> = {};
-      PURPOSES.forEach((p) => { map[p.purpose] = defaultConfig(p.purpose); });
-      setConfigs(map);
-    } finally { setLoading(false); }
+      setConfigs({ ...map });
+    } catch { /* keep defaults */ }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { loadConfigs(); }, [loadConfigs]);
