@@ -81,7 +81,7 @@ test.describe('C5 — Admin Layout & Sidebar', () => {
 
   test('dashboard loads stats from mock API', async ({ page }) => {
     await page.goto('/en/admin');
-    await expect(page.getByText('Dashboard')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
 
     // Stats cards should show numbers (mock data: 47 docs, 12850 chunks, etc.)
     await expect(page.getByText('47')).toBeVisible({ timeout: 5000 });
@@ -159,5 +159,23 @@ test.describe('C5 — Admin Layout & Sidebar', () => {
     // Mock users: admin (admin@shipyard.no) + editor_li (li.wang@shipyard.cn)
     await expect(page.getByText('admin@shipyard.no')).toBeVisible({ timeout: 8000 });
     await expect(page.getByText('li.wang@shipyard.cn')).toBeVisible();
+  });
+
+  test('knowledge graph page shows entities and relations', async ({ page }) => {
+    await page.goto('/en/admin/knowledge-graph');
+    await expect(page.getByText('Knowledge Graph')).toBeVisible({ timeout: 10000 });
+
+    // Entities tab: should show mock entities
+    await expect(page.getByText('LNG Cargo Tank')).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText('DNV Pt.4 Ch.3 Sec.5')).toBeVisible();
+
+    // All three tabs visible
+    await expect(page.getByRole('tab', { name: 'Entities' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Relations' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Cross-Reference' })).toBeVisible();
+
+    // Cross-Reference tab shows mock mappings
+    await page.getByRole('tab', { name: 'Cross-Reference' }).click();
+    await expect(page.getByText('LNG Cargo Tank Boundaries')).toBeVisible();
   });
 });
