@@ -1,23 +1,43 @@
 {
   "app": { "name": "Marine & Offshore Expert System", "shortName": "MO 관리" },
   "nav": {
-    "dashboard": "대시보드",
-    "documents": "문서 관리",
-    "knowledgeGraph": "지식 그래프",
-    "llmConfig": "LLM 설정",
-    "users": "사용자 관리",
-    "monitoring": "시스템 모니터링",
-    "settings": "설정",
-    "help": "도움말",
-    "backToChat": "대화로 돌아가기"
+    "dashboard": "대시보드", "documents": "문서 관리", "knowledgeGraph": "지식 그래프",
+    "llmConfig": "LLM 설정", "users": "사용자 관리", "monitoring": "시스템 모니터링",
+    "settings": "설정", "help": "도움말", "backToChat": "대화로 돌아가기"
   },
   "admin": {
-    "dashboard": { "title": "대시보드", "subtitle": "시스템 개요 및 주요 지표" },
-    "documents": { "title": "문서 관리", "subtitle": "지식 베이스 문서 업로드, 파싱, 관리" },
-    "knowledgeGraph": { "title": "지식 그래프", "subtitle": "문서에서 추출된 엔티티와 관계 시각화" },
-    "llmConfig": { "title": "LLM 설정", "subtitle": "도메인 에이전트별 AI 모델 백엔드 관리" },
-    "users": { "title": "사용자 관리", "subtitle": "사용자 계정, 역할, 할당량 관리" },
-    "monitoring": { "title": "시스템 모니터링", "subtitle": "실시간 시스템 상태 및 성능 지표" }
+    "dashboard": { "title": "대시보드", "subtitle": "시스템 개요 및 주요 지표", "totalDocuments": "총 문서", "totalChunks": "총 청크", "totalEntities": "엔티티", "totalRelations": "관계", "totalUsers": "사용자", "totalConversations": "대화", "storageUsed": "저장소 사용량", "avgLatency": "평균 검색 지연" },
+    "documents": {
+      "title": "문서 관리", "subtitle": "지식 베이스 문서 업로드, 파싱, 관리",
+      "upload": { "title": "문서 업로드", "dragDrop": "파일을 여기에 끌어다 놓거나 클릭하여 찾아보기", "supportedFormats": "지원: PDF, DOCX, DOC, MD, HTML, TXT (최대 500MB)", "uploading": "업로드 중...", "success": "업로드 성공", "error": "업로드 실패" },
+      "metadata": { "classificationSociety": "선급", "regulationName": "규정명", "versionYear": "버전 연도", "domain": "분야", "vesselTypes": "선박 유형", "systemType": "시스템 유형", "manufacturer": "제조사", "language": "문서 언어", "customTags": "사용자 태그" },
+      "status": { "queued": "대기 중", "processing": "처리 중", "completed": "완료", "failed": "실패", "active": "유효", "deprecated": "대체됨", "error": "오류" },
+      "table": { "filename": "파일명", "society": "선급", "domain": "분야", "version": "버전", "chunks": "청크", "status": "상태", "ingested": "수집일", "actions": "작업" },
+      "actions": { "view": "상세 보기", "reparse": "재파싱", "deprecate": "대체 표시", "delete": "삭제", "deleteConfirm": "이 문서와 모든 청크를 영구적으로 삭제하시겠습니까? 취소할 수 없습니다." }
+    },
+    "knowledgeGraph": {
+      "title": "지식 그래프", "subtitle": "문서에서 추출된 엔티티와 관계 시각화",
+      "search": "엔티티 검색...",
+      "entityTypes": { "regulation_clause": "규정 조항", "vessel_type": "선박 유형", "system": "시스템", "equipment": "장비", "manufacturer": "제조사" },
+      "relationTypes": { "regulates": "규제", "references": "참조", "applies_to": "적용 대상", "equivalent_to": "동등", "replaces": "대체", "requires": "필요", "prohibits": "금지" },
+      "noData": "지식 그래프 데이터가 없습니다. 문서를 업로드하고 파싱하여 그래프를 구축하세요."
+    },
+    "llmConfig": { "title": "LLM 설정", "subtitle": "도메인 에이전트별 AI 모델 백엔드 관리", "addBackend": "백엔드 추가", "backendType": "백엔드 유형", "modelName": "모델명", "baseUrl": "기본 URL", "apiKey": "API 키", "maxTokens": "최대 토큰", "temperature": "온도", "isDefault": "기본값", "assignedAgents": "할당된 에이전트", "testConnection": "연결 테스트", "testing": "테스트 중...", "connected": "연결됨", "failed": "연결 실패", "deleteConfirm": "이 LLM 백엔드 구성을 제거하시겠습니까?" },
+    "users": {
+      "title": "사용자 관리", "subtitle": "사용자 계정, 역할, 할당량 관리", "addUser": "사용자 추가",
+      "table": { "username": "사용자명", "email": "이메일", "role": "역할", "status": "상태", "queries": "쿼리 수", "apiKeys": "API 키", "created": "생성일", "actions": "작업" },
+      "roles": { "admin": "관리자", "editor": "편집자", "viewer": "조회자", "free": "무료", "basic": "기본", "pro": "프로", "enterprise": "기업" },
+      "status": { "active": "활성", "suspended": "정지" },
+      "form": { "createTitle": "사용자 생성", "editTitle": "사용자 편집", "username": "사용자명", "email": "이메일", "password": "비밀번호", "role": "역할", "quotaLimit": "월간 할당량", "save": "저장" },
+      "deleteConfirm": "이 사용자 계정을 영구적으로 삭제하시겠습니까? 모든 관련 데이터가 제거됩니다."
+    },
+    "monitoring": {
+      "title": "시스템 모니터링", "subtitle": "실시간 시스템 상태 및 성능 지표",
+      "health": { "title": "모듈 상태", "ok": "정상", "degraded": "저하", "down": "중단" },
+      "metrics": { "requestsPerMinute": "요청/분", "avgResponseTime": "평균 응답 시간", "errorRate": "오류율", "uptime": "가동 시간" },
+      "logs": { "title": "최근 로그", "level": "레벨", "timestamp": "시간", "message": "메시지", "module": "모듈" }
+    },
+    "settings": { "title": "설정", "language": { "label": "인터페이스 언어", "description": "관리 인터페이스의 표시 언어를 변경합니다." }, "theme": { "label": "테마", "light": "라이트", "dark": "다크", "system": "시스템" } }
   },
-  "common": { "loading": "로딩 중...", "error": "오류 발생", "save": "저장", "cancel": "취소", "delete": "삭제", "search": "검색", "close": "닫기", "back": "뒤로", "confirm": "확인" }
+  "common": { "loading": "로딩 중...", "error": "오류 발생", "save": "저장", "cancel": "취소", "delete": "삭제", "search": "검색", "noResults": "결과 없음", "close": "닫기", "back": "뒤로", "confirm": "확인" }
 }

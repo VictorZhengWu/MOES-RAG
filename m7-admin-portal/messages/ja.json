@@ -1,23 +1,43 @@
 {
   "app": { "name": "Marine & Offshore Expert System", "shortName": "MO 管理" },
   "nav": {
-    "dashboard": "ダッシュボード",
-    "documents": "文書管理",
-    "knowledgeGraph": "ナレッジグラフ",
-    "llmConfig": "LLM 設定",
-    "users": "ユーザー管理",
-    "monitoring": "システム監視",
-    "settings": "設定",
-    "help": "ヘルプ",
-    "backToChat": "会話に戻る"
+    "dashboard": "ダッシュボード", "documents": "文書管理", "knowledgeGraph": "ナレッジグラフ",
+    "llmConfig": "LLM 設定", "users": "ユーザー管理", "monitoring": "システム監視",
+    "settings": "設定", "help": "ヘルプ", "backToChat": "会話に戻る"
   },
   "admin": {
-    "dashboard": { "title": "ダッシュボード", "subtitle": "システム概要と主要指標" },
-    "documents": { "title": "文書管理", "subtitle": "ナレッジベース文書のアップロード、解析、管理" },
-    "knowledgeGraph": { "title": "ナレッジグラフ", "subtitle": "文書から抽出されたエンティティと関係の可視化" },
-    "llmConfig": { "title": "LLM 設定", "subtitle": "ドメインエージェント別AIモデルバックエンドの管理" },
-    "users": { "title": "ユーザー管理", "subtitle": "ユーザーアカウント、役割、割り当ての管理" },
-    "monitoring": { "title": "システム監視", "subtitle": "リアルタイムのシステム状態とパフォーマンス指標" }
+    "dashboard": { "title": "ダッシュボード", "subtitle": "システム概要と主要指標", "totalDocuments": "総ドキュメント", "totalChunks": "総チャンク", "totalEntities": "エンティティ", "totalRelations": "関係", "totalUsers": "ユーザー", "totalConversations": "会話", "storageUsed": "ストレージ使用量", "avgLatency": "平均検索遅延" },
+    "documents": {
+      "title": "文書管理", "subtitle": "ナレッジベース文書のアップロード、解析、管理",
+      "upload": { "title": "文書アップロード", "dragDrop": "ファイルをここにドロップ、またはクリックして参照", "supportedFormats": "対応形式：PDF、DOCX、DOC、MD、HTML、TXT（最大500MB）", "uploading": "アップロード中...", "success": "アップロード成功", "error": "アップロード失敗" },
+      "metadata": { "classificationSociety": "船級協会", "regulationName": "規則名", "versionYear": "バージョン年", "domain": "分野", "vesselTypes": "船舶タイプ", "systemType": "システムタイプ", "manufacturer": "メーカー", "language": "文書言語", "customTags": "カスタムタグ" },
+      "status": { "queued": "待機中", "processing": "処理中", "completed": "完了", "failed": "失敗", "active": "有効", "deprecated": "置換済", "error": "エラー" },
+      "table": { "filename": "ファイル名", "society": "船級", "domain": "分野", "version": "バージョン", "chunks": "チャンク", "status": "状態", "ingested": "取込日", "actions": "操作" },
+      "actions": { "view": "詳細", "reparse": "再解析", "deprecate": "置換マーク", "delete": "削除", "deleteConfirm": "この文書と全チャンクを完全に削除しますか？取り消せません。" }
+    },
+    "knowledgeGraph": {
+      "title": "ナレッジグラフ", "subtitle": "文書から抽出されたエンティティと関係の可視化",
+      "search": "エンティティ検索...",
+      "entityTypes": { "regulation_clause": "規則条項", "vessel_type": "船舶タイプ", "system": "システム", "equipment": "機器", "manufacturer": "メーカー" },
+      "relationTypes": { "regulates": "規制", "references": "参照", "applies_to": "適用対象", "equivalent_to": "同等", "replaces": "置換", "requires": "要求", "prohibits": "禁止" },
+      "noData": "ナレッジグラフデータはまだありません。文書をアップロード・解析してグラフを構築してください。"
+    },
+    "llmConfig": { "title": "LLM 設定", "subtitle": "ドメインエージェント向けAIモデルバックエンドの管理", "addBackend": "バックエンド追加", "backendType": "バックエンド種別", "modelName": "モデル名", "baseUrl": "ベースURL", "apiKey": "APIキー", "maxTokens": "最大トークン", "temperature": "温度", "isDefault": "デフォルト", "assignedAgents": "割当エージェント", "testConnection": "接続テスト", "testing": "テスト中...", "connected": "接続済", "failed": "接続失敗", "deleteConfirm": "このLLMバックエンド設定を削除しますか？" },
+    "settings": { "title": "設定", "language": { "label": "インターフェース言語", "description": "管理インターフェースの表示言語を変更します。" }, "theme": { "label": "テーマ", "light": "ライト", "dark": "ダーク", "system": "システム" } },
+    "users": {
+      "title": "ユーザー管理", "subtitle": "ユーザーアカウント、役割、割り当ての管理", "addUser": "ユーザー追加",
+      "table": { "username": "ユーザー名", "email": "メール", "role": "役割", "status": "状態", "queries": "クエリ数", "apiKeys": "APIキー", "created": "作成日", "actions": "操作" },
+      "roles": { "free": "無料", "basic": "ベーシック", "pro": "プロ", "enterprise": "エンタープライズ", "admin": "管理者", "editor": "編集者", "viewer": "閲覧者" },
+      "status": { "active": "有効", "suspended": "停止中" },
+      "form": { "createTitle": "ユーザー作成", "editTitle": "ユーザー編集", "username": "ユーザー名", "email": "メール", "password": "パスワード", "role": "役割", "quotaLimit": "月間割当", "save": "保存" },
+      "deleteConfirm": "このユーザーアカウントを完全に削除しますか？すべての関連データが削除されます。"
+    },
+    "monitoring": {
+      "title": "システム監視", "subtitle": "リアルタイムのシステム状態とパフォーマンス指標",
+      "health": { "title": "モジュール状態", "ok": "正常", "degraded": "低下", "down": "停止" },
+      "metrics": { "requestsPerMinute": "リクエスト/分", "avgResponseTime": "平均応答時間", "errorRate": "エラー率", "uptime": "稼働時間" },
+      "logs": { "title": "最近のログ", "level": "レベル", "timestamp": "時刻", "message": "メッセージ", "module": "モジュール" }
+    }
   },
-  "common": { "loading": "読み込み中...", "error": "エラー", "save": "保存", "cancel": "キャンセル", "delete": "削除", "search": "検索", "close": "閉じる", "back": "戻る", "confirm": "確認" }
+  "common": { "loading": "読み込み中...", "error": "エラー", "save": "保存", "cancel": "キャンセル", "delete": "削除", "search": "検索", "noResults": "結果なし", "close": "閉じる", "back": "戻る", "confirm": "確認" }
 }

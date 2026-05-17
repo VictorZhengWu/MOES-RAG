@@ -1,28 +1,43 @@
 {
   "app": { "name": "船舶与海洋工程专家系统", "shortName": "MO 管理" },
   "nav": {
-    "dashboard": "仪表板",
-    "documents": "文档管理",
-    "knowledgeGraph": "知识图谱",
-    "llmConfig": "LLM 配置",
-    "users": "用户管理",
-    "monitoring": "系统监控",
-    "settings": "设置",
-    "help": "帮助",
-    "backToChat": "返回对话"
+    "dashboard": "仪表板", "documents": "文档管理", "knowledgeGraph": "知识图谱",
+    "llmConfig": "LLM 配置", "users": "用户管理", "monitoring": "系统监控",
+    "settings": "设置", "help": "帮助", "backToChat": "返回对话"
   },
   "admin": {
-    "dashboard": { "title": "仪表板", "subtitle": "系统概览与关键指标" },
-    "documents": { "title": "文档管理", "subtitle": "上传、解析、管理知识库文档" },
-    "knowledgeGraph": { "title": "知识图谱", "subtitle": "可视化文档中抽取的实体与关系" },
-    "llmConfig": { "title": "LLM 配置", "subtitle": "管理各专业 Agent 的 AI 模型后端" },
-    "users": { "title": "用户管理", "subtitle": "管理用户账户、角色与配额" },
-    "settings": {
-      "title": "设置",
-      "language": { "label": "界面语言", "description": "更改管理后台的显示语言。" },
-      "theme": { "label": "主题", "light": "浅色", "dark": "深色", "system": "跟随系统" }
+    "dashboard": { "title": "仪表板", "subtitle": "系统概览与关键指标", "totalDocuments": "文档总数", "totalChunks": "总块数", "totalEntities": "实体数", "totalRelations": "关系数", "totalUsers": "用户数", "totalConversations": "会话数", "storageUsed": "已用存储", "avgLatency": "平均检索延迟" },
+    "documents": {
+      "title": "文档管理", "subtitle": "上传、解析、管理知识库文档",
+      "upload": { "title": "上传文档", "dragDrop": "拖放文件到此处，或点击浏览", "supportedFormats": "支持：PDF、DOCX、DOC、MD、HTML、TXT（最大500MB）", "uploading": "上传中...", "success": "上传成功", "error": "上传失败" },
+      "metadata": { "classificationSociety": "船级社", "regulationName": "规范名称", "versionYear": "版本年份", "domain": "专业领域", "vesselTypes": "船型", "systemType": "系统类型", "manufacturer": "厂商", "language": "文档语言", "customTags": "自定义标签" },
+      "status": { "queued": "排队中", "processing": "处理中", "completed": "已完成", "failed": "失败", "active": "有效", "deprecated": "已替代", "error": "错误" },
+      "table": { "filename": "文件名", "society": "船级社", "domain": "专业", "version": "版本", "chunks": "块数", "status": "状态", "ingested": "入库时间", "actions": "操作" },
+      "actions": { "view": "查看详情", "reparse": "重新解析", "deprecate": "标记为替代", "delete": "删除", "deleteConfirm": "永久删除此文档及其所有块？此操作不可撤销。" }
     },
-    "monitoring": { "title": "系统监控", "subtitle": "实时系统健康与性能指标" }
+    "knowledgeGraph": {
+      "title": "知识图谱", "subtitle": "可视化文档中抽取的实体与关系",
+      "search": "搜索实体...",
+      "entityTypes": { "regulation_clause": "规范条款", "vessel_type": "船型", "system": "系统", "equipment": "设备", "manufacturer": "厂商" },
+      "relationTypes": { "regulates": "规范", "references": "引用", "applies_to": "适用于", "equivalent_to": "等价于", "replaces": "替代", "requires": "要求", "prohibits": "禁止" },
+      "noData": "暂无知识图谱数据。上传并解析文档后可构建图谱。"
+    },
+    "llmConfig": { "title": "LLM 配置", "subtitle": "管理各专业领域的 AI 模型后端", "addBackend": "添加后端", "backendType": "后端类型", "modelName": "模型名称", "baseUrl": "基础 URL", "apiKey": "API 密钥", "maxTokens": "最大 Token", "temperature": "温度", "isDefault": "默认", "assignedAgents": "分配的 Agent", "testConnection": "测试连接", "testing": "测试中...", "connected": "已连接", "failed": "连接失败", "deleteConfirm": "移除此 LLM 后端配置？" },
+    "settings": { "title": "设置", "language": { "label": "界面语言", "description": "更改管理后台的显示语言。" }, "theme": { "label": "主题", "light": "浅色", "dark": "深色", "system": "跟随系统" } },
+    "users": {
+      "title": "用户管理", "subtitle": "管理用户账户、角色与配额", "addUser": "添加用户",
+      "table": { "username": "用户名", "email": "邮箱", "role": "角色", "status": "状态", "queries": "查询次数", "apiKeys": "API 密钥", "created": "创建时间", "actions": "操作" },
+      "roles": { "free": "免费", "basic": "基础", "pro": "专业", "enterprise": "企业", "admin": "管理员", "editor": "编辑者", "viewer": "查看者" },
+      "status": { "active": "正常", "suspended": "已停用" },
+      "form": { "createTitle": "创建用户", "editTitle": "编辑用户", "username": "用户名", "email": "邮箱", "password": "密码", "role": "角色", "quotaLimit": "月度配额", "save": "保存" },
+      "deleteConfirm": "永久删除此用户账户？所有关联数据将被移除。"
+    },
+    "monitoring": {
+      "title": "系统监控", "subtitle": "实时系统健康与性能指标",
+      "health": { "title": "模块健康", "ok": "正常", "degraded": "降级", "down": "宕机" },
+      "metrics": { "requestsPerMinute": "请求/分钟", "avgResponseTime": "平均响应时间", "errorRate": "错误率", "uptime": "运行时间" },
+      "logs": { "title": "最近日志", "level": "级别", "timestamp": "时间", "message": "消息", "module": "模块" }
+    }
   },
-  "common": { "loading": "加载中...", "error": "出错了", "save": "保存", "cancel": "取消", "delete": "删除", "search": "搜索", "close": "关闭", "back": "返回", "confirm": "确认" }
+  "common": { "loading": "加载中...", "error": "出错了", "save": "保存", "cancel": "取消", "delete": "删除", "search": "搜索", "noResults": "无结果", "close": "关闭", "back": "返回", "confirm": "确认" }
 }

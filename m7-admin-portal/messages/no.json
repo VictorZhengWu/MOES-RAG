@@ -1,23 +1,43 @@
 {
   "app": { "name": "Marine & Offshore Expert System", "shortName": "MO Admin" },
   "nav": {
-    "dashboard": "Dashbord",
-    "documents": "Dokumenter",
-    "knowledgeGraph": "Kunnskapsgraf",
-    "llmConfig": "LLM-innst.",
-    "users": "Brukere",
-    "monitoring": "Overvåking",
-    "settings": "Innstillinger",
-    "help": "Hjelp",
-    "backToChat": "Tilbake til chat"
+    "dashboard": "Dashbord", "documents": "Dokumenter", "knowledgeGraph": "Kunnskapsgraf",
+    "llmConfig": "LLM-innst.", "users": "Brukere", "monitoring": "Overvåking",
+    "settings": "Innstillinger", "help": "Hjelp", "backToChat": "Tilbake til chat"
   },
   "admin": {
-    "dashboard": { "title": "Dashbord", "subtitle": "Systemoversikt og nøkkeltall" },
-    "documents": { "title": "Dokumenter", "subtitle": "Last opp, parse og administrer kunnskapsdokumenter" },
-    "knowledgeGraph": { "title": "Kunnskapsgraf", "subtitle": "Visualiser enheter og relasjoner fra dokumenter" },
-    "llmConfig": { "title": "LLM-innstillinger", "subtitle": "Administrer AI-modell-backends for domeneagenter" },
-    "users": { "title": "Brukere", "subtitle": "Administrer brukerkontoer, roller og kvoter" },
-    "monitoring": { "title": "Overvåking", "subtitle": "Sanntids systemhelse og ytelsesmålinger" }
+    "dashboard": { "title": "Dashbord", "subtitle": "Systemoversikt og nøkkeltall", "totalDocuments": "Totalt dokumenter", "totalChunks": "Totalt chunks", "totalEntities": "Entiteter", "totalRelations": "Relasjoner", "totalUsers": "Brukere", "totalConversations": "Samtaler", "storageUsed": "Lagringsbruk", "avgLatency": "Gj.snittlig søketid" },
+    "documents": {
+      "title": "Dokumenter", "subtitle": "Last opp, parse og administrer kunnskapsdokumenter",
+      "upload": { "title": "Last opp dokumenter", "dragDrop": "Dra og slipp filer her, eller klikk for å bla", "supportedFormats": "Støttes: PDF, DOCX, DOC, MD, HTML, TXT (maks 500MB)", "uploading": "Laster opp...", "success": "Opplasting vellykket", "error": "Opplasting feilet" },
+      "metadata": { "classificationSociety": "Klasseselskap", "regulationName": "Regelverksnavn", "versionYear": "Versjonsår", "domain": "Fagområde", "vesselTypes": "Fartøytyper", "systemType": "Systemtype", "manufacturer": "Produsent", "language": "Dokumentspråk", "customTags": "Egendefinerte tagger" },
+      "status": { "queued": "I kø", "processing": "Behandler", "completed": "Fullført", "failed": "Feilet", "active": "Aktiv", "deprecated": "Erstattet", "error": "Feil" },
+      "table": { "filename": "Filnavn", "society": "Selskap", "domain": "Område", "version": "Versjon", "chunks": "Chunks", "status": "Status", "ingested": "Inntaksdato", "actions": "Handlinger" },
+      "actions": { "view": "Vis detaljer", "reparse": "Parse på nytt", "deprecate": "Merk som erstattet", "delete": "Slett", "deleteConfirm": "Slett dette dokumentet og alle chunks permanent? Dette kan ikke angres." }
+    },
+    "knowledgeGraph": {
+      "title": "Kunnskapsgraf", "subtitle": "Visualiser entiteter og relasjoner ekstrahert fra dokumenter",
+      "search": "Søk entiteter...",
+      "entityTypes": { "regulation_clause": "Regelverksklausul", "vessel_type": "Fartøytype", "system": "System", "equipment": "Utstyr", "manufacturer": "Produsent" },
+      "relationTypes": { "regulates": "Regulerer", "references": "Refererer", "applies_to": "Gjelder for", "equivalent_to": "Tilsvarer", "replaces": "Erstatter", "requires": "Krever", "prohibits": "Forbyr" },
+      "noData": "Ingen kunnskapsgrafdata ennå. Last opp og parse dokumenter for å bygge grafen."
+    },
+    "llmConfig": { "title": "LLM-innstillinger", "subtitle": "Administrer AI-modell-backends for domeneagenter", "addBackend": "Legg til backend", "backendType": "Backend-type", "modelName": "Modellnavn", "baseUrl": "Basis-URL", "apiKey": "API-nøkkel", "maxTokens": "Maks tokens", "temperature": "Temperatur", "isDefault": "Standard", "assignedAgents": "Tildelte agenter", "testConnection": "Test tilkobling", "testing": "Tester...", "connected": "Tilkoblet", "failed": "Tilkobling feilet", "deleteConfirm": "Fjern denne LLM-backend-konfigurasjonen?" },
+    "settings": { "title": "Innstillinger", "language": { "label": "Grensesnittspråk", "description": "Endre visningsspråk for admin-grensesnittet." }, "theme": { "label": "Tema", "light": "Lyst", "dark": "Mørkt", "system": "System" } },
+    "users": {
+      "title": "Brukere", "subtitle": "Administrer brukerkontoer, roller og kvoter", "addUser": "Legg til bruker",
+      "table": { "username": "Brukernavn", "email": "E-post", "role": "Rolle", "status": "Status", "queries": "Spørringer", "apiKeys": "API-nøkler", "created": "Opprettet", "actions": "Handlinger" },
+      "roles": { "free": "Gratis", "basic": "Basic", "pro": "Pro", "enterprise": "Enterprise", "admin": "Admin", "editor": "Redaktør", "viewer": "Leser" },
+      "status": { "active": "Aktiv", "suspended": "Suspendert" },
+      "form": { "createTitle": "Opprett bruker", "editTitle": "Rediger bruker", "username": "Brukernavn", "email": "E-post", "password": "Passord", "role": "Rolle", "quotaLimit": "Månedlig kvote", "save": "Lagre" },
+      "deleteConfirm": "Slett denne brukerkontoen permanent? Alle tilknyttede data vil bli fjernet."
+    },
+    "monitoring": {
+      "title": "Overvåking", "subtitle": "Sanntids systemhelse og ytelsesmålinger",
+      "health": { "title": "Modulstatus", "ok": "OK", "degraded": "Redusert", "down": "Nede" },
+      "metrics": { "requestsPerMinute": "Forespørsler/min", "avgResponseTime": "Gj.snitt responstid", "errorRate": "Feilrate", "uptime": "Oppetid" },
+      "logs": { "title": "Nylige logger", "level": "Nivå", "timestamp": "Tid", "message": "Melding", "module": "Modul" }
+    }
   },
-  "common": { "loading": "Laster...", "error": "Feil", "save": "Lagre", "cancel": "Avbryt", "delete": "Slett", "search": "Søk", "close": "Lukk", "back": "Tilbake", "confirm": "Bekreft" }
+  "common": { "loading": "Laster...", "error": "Feil", "save": "Lagre", "cancel": "Avbryt", "delete": "Slett", "search": "Søk", "noResults": "Ingen resultater", "close": "Lukk", "back": "Tilbake", "confirm": "Bekreft" }
 }
