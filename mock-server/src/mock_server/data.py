@@ -375,6 +375,30 @@ def mock_llm_backends() -> list[dict]:
             "is_default": False,
             "assigned_agents": ["structure", "piping", "electrical"],
         },
+        {
+            "backend_id": "paddleocr",
+            "backend_type": "custom",
+            "model_name": "PaddleOCR",
+            "purpose": "ocr",
+            "base_url": None,
+            "api_key": None,
+            "max_tokens": 0,
+            "temperature": 0.0,
+            "is_default": False,
+            "assigned_agents": [],
+        },
+        {
+            "backend_id": "docling-parser",
+            "backend_type": "custom",
+            "model_name": "Docling",
+            "purpose": "parsing",
+            "base_url": None,
+            "api_key": None,
+            "max_tokens": 0,
+            "temperature": 0.0,
+            "is_default": False,
+            "assigned_agents": [],
+        },
     ]
 
 

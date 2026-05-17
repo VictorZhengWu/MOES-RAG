@@ -6,6 +6,12 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('C5 — Admin Layout & Sidebar', () => {
+  // Set admin auth token before each test (Auth Guard check)
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => localStorage.setItem('m7-admin-auth', 'true'));
+  });
+
   test('redirects / to /en/admin', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveURL(/\/en\/admin/);

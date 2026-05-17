@@ -14,7 +14,9 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, GitBranch, ArrowRightLeft, Link2, FileText, Tag } from 'lucide-react';
+import { Search, GitBranch, ArrowRightLeft, Link2, FileText, Tag, Pencil, Trash2, X, Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 const ENTITY_TYPES: Record<string, string> = {
   regulation_clause: 'Regulation Clause',
@@ -64,6 +66,10 @@ export default function KnowledgeGraphPage() {
   const [selectedEntity, setSelectedEntity] = useState<KGEntity | null>(null);
   const [entityTypeFilter, setEntityTypeFilter] = useState('all');
   const [relationTypeFilter, setRelationTypeFilter] = useState('all');
+  const [editingEntity, setEditingEntity] = useState<KGEntity | null>(null);
+  const [editName, setEditName] = useState('');
+  const [deleteEntityTarget, setDeleteEntityTarget] = useState<KGEntity | null>(null);
+  const [deleteRelationTarget, setDeleteRelationTarget] = useState<KGRelation | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -89,6 +95,30 @@ export default function KnowledgeGraphPage() {
     const mt = relationTypeFilter === 'all' || r.relation_type === relationTypeFilter;
     return ms && mt;
   });
+
+  // ── Edit / Delete actions (Phase 1: local state) ─────────────
+  const handleSaveEntity = () => {
+    if (!editingEntity || !editName.trim()) return;
+    setEntities((prev) => prev.map((e) => e.entity_id === editingEntity.entity_id ? { ...e, name: editName } : e));
+    if (selectedEntity?.entity_id === editingEntity.entity_id) {
+      setSelectedEntity({ ...selectedEntity, name: editName });
+    }
+    setEditingEntity(null);
+  };
+
+  const handleDeleteEntity = () => {
+    if (!deleteEntityTarget) return;
+    setEntities((prev) => prev.filter((e) => e.entity_id !== deleteEntityTarget.entity_id));
+    setRelations((prev) => prev.filter((r) => r.source_entity_id !== deleteEntityTarget.entity_id && r.target_entity_id !== deleteEntityTarget.entity_id));
+    setSelectedEntity(null);
+    setDeleteEntityTarget(null);
+  };
+
+  const handleDeleteRelation = () => {
+    if (!deleteRelationTarget) return;
+    setRelations((prev) => prev.filter((r) => r.relation_id !== deleteRelationTarget.relation_id));
+    setDeleteRelationTarget(null);
+  };
 
   // Relations for selected entity
   const entityRelations = selectedEntity
@@ -155,7 +185,19 @@ export default function KnowledgeGraphPage() {
                 <div className="space-y-4">
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-base">{selectedEntity.name}</CardTitle>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base">{selectedEntity.name}</CardTitle>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7"
+                            onClick={() => { setEditingEntity(selectedEntity); setEditName(selectedEntity.name); }}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7"
+                            onClick={() => setDeleteEntityTarget(selectedEntity)}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       <div className="flex gap-2 mb-3">
@@ -242,6 +284,10 @@ export default function KnowledgeGraphPage() {
                   <Badge variant="outline" className="text-[10px] shrink-0 ml-3">
                     {(r.confidence * 100).toFixed(0)}% confident
                   </Badge>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 ml-1"
+                    onClick={() => setDeleteRelationTarget(r)}>
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
                 </CardContent>
               </Card>
             ))}
@@ -272,6 +318,51 @@ export default function KnowledgeGraphPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Entity Dialog */}
+      <Dialog open={!!editingEntity} onOpenChange={(o) => !o && setEditingEntity(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Entity</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Name</label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="mt-1" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingEntity(null)}>Cancel</Button>
+            <Button onClick={handleSaveEntity}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Entity Dialog */}
+      <Dialog open={!!deleteEntityTarget} onOpenChange={(o) => !o && setDeleteEntityTarget(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Delete Entity</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground">
+            Delete "{deleteEntityTarget?.name}"? This will also remove all its relations.
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteEntityTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteEntity}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Relation Dialog */}
+      <Dialog open={!!deleteRelationTarget} onOpenChange={(o) => !o && setDeleteRelationTarget(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Delete Relation</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground">
+            Delete this relation? This cannot be undone.
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteRelationTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteRelation}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

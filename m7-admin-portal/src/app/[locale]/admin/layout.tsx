@@ -1,10 +1,9 @@
 /**
- * Admin route group layout — wraps all /admin/* pages with AdminLayout.
- * AdminLayout has its own sidebar, independent of the main app layout.
+ * Admin route group layout — Auth Guard → AdminLayout.
  */
 
-import { AdminLayoutWrapper } from '@/components/layout/admin-layout-wrapper';
+import { AdminAuthWrapper } from '@/components/layout/admin-auth-wrapper';
 
 export default function AdminRouteLayout({ children }: { children: React.ReactNode }) {
-  return <AdminLayoutWrapper>{children}</AdminLayoutWrapper>;
+  return <AdminAuthWrapper>{children}</AdminAuthWrapper>;
 }
