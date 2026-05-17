@@ -15,7 +15,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import type { DocumentRecord } from '@/types';
 import { listDocuments, uploadDocument, deleteDocument } from '@/lib/api/documents';
-import { parseFilename, batchParse, formatVersion, type ParsedDocument } from '@/lib/filename-parser';
+import { parseFilename, batchParse, formatVersion, SUPPORTED_FORMATS_DISPLAY, MAX_FILE_SIZE, type ParsedDocument } from '@/lib/filename-parser';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,21 +76,40 @@ export default function DocumentsPage() {
     const names = files.map((f) => f.name);
     const { valid, invalid } = batchParse(names);
 
+    // Collect error messages for invalid files (format + pattern errors)
+    const errors: string[] = [];
+    for (const inv of invalid) {
+      errors.push(`${inv.raw}: ${inv.error}`);
+    }
+
     const pending: PendingFile[] = [];
-    // Only add valid files to pending list
     for (const parsed of valid) {
       const file = files.find((f) => f.name === parsed.raw || f.name.startsWith(parsed.raw))!;
+
+      // Check file size
+      if (file.size > MAX_FILE_SIZE) {
+        errors.push(`${file.name}: File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max ${MAX_FILE_SIZE / 1024 / 1024}MB.`);
+        continue;
+      }
+
+      // Check duplicate against existing documents
+      const dup = documents.find((d) => d.source_filename === file.name);
+      if (dup) {
+        errors.push(`${file.name}: A document with this name already exists (status: ${dup.status}).`);
+        continue;
+      }
+
       pending.push({ ...parsed, file, domain: 'general', language: 'en' });
     }
 
-    // Show dialog for invalid filenames
-    if (invalid.length > 0) {
-      setInvalidFilenames(invalid.map((i) => i.raw));
+    // Show errors in dialog
+    if (errors.length > 0) {
+      setInvalidFilenames(errors);
       setInvalidDialogOpen(true);
     }
 
     if (pending.length > 0) setPendingFiles((prev) => [...prev, ...pending]);
-  }, []);
+  }, [documents]);
 
   const removePending = (index: number) => {
     setPendingFiles((prev) => prev.filter((_, i) => i !== index));
@@ -107,6 +126,7 @@ export default function DocumentsPage() {
     if (pendingFiles.length === 0) return;
     setUploading(true);
     setUploadMsg('');
+    const results: string[] = [];
     let success = 0;
     let fail = 0;
 
@@ -126,15 +146,20 @@ export default function DocumentsPage() {
           },
         });
         success++;
-      } catch {
+        results.push(`✓ ${pf.file.name}`);
+      } catch (err: unknown) {
         fail++;
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        results.push(`✗ ${pf.file.name} — ${msg}`);
       }
     }
 
-    setUploadMsg(`Upload complete: ${success} succeeded, ${fail} failed.`);
-    setPendingFiles([]);
+    setUploadMsg(results.join('\n'));
+    if (success > 0) {
+      setPendingFiles([]);
+      setTimeout(() => { setUploadMsg(''); fetchDocuments(); }, 4000);
+    }
     setUploading(false);
-    setTimeout(() => { setUploadMsg(''); fetchDocuments(); }, 2000);
   };
 
   // ── Delete ────────────────────────────────────────────────────────
@@ -181,7 +206,10 @@ export default function DocumentsPage() {
               {isDragOver ? 'Release to add files' : 'Drop files here or click to browse'}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Expected format: [Society][Category][Section][Name][YYYYMM].pdf
+              Expected: [Society][Category][Section][Name][YYYYMM].ext
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Supported: {SUPPORTED_FORMATS_DISPLAY}
             </p>
             <p className="text-xs text-muted-foreground">
               Example: [DNV][RU-SHIP][Pt.1-Ch.1][General regulations][202507].pdf

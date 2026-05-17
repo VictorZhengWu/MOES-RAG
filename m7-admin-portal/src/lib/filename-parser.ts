@@ -33,14 +33,39 @@ export interface ParsedDocument {
 
 const RE_FILENAME = /\[([A-Z]+)\]\[([A-Z\-0-9]+)\]\[([^\]]+)\]\[([^\]]+)\]\[(\d{6})\]/;
 
+/** Supported file formats for upload */
+export const SUPPORTED_FORMATS = ['.pdf', '.docx', '.doc', '.md', '.html', '.htm', '.txt'];
+export const SUPPORTED_FORMATS_DISPLAY = 'PDF, DOCX, DOC, MD, HTML, TXT';
+
+/** Max file size: 500MB */
+export const MAX_FILE_SIZE = 500 * 1024 * 1024;
+
+export interface ParseResult {
+  valid: boolean;
+  parsed?: ParsedDocument;
+  errors: string[];
+}
+
 /**
  * Parse a filename string into structured metadata.
- * Strips file extension before parsing.
+ * Strips file extension before parsing. Checks format support.
+ *
+ * WHY: Two-phase validation — first check the extension is supported,
+ * then check the filename pattern. Separate errors for each.
  */
 export function parseFilename(filename: string): ParsedDocument {
-  // Remove file extension
+  // Check file extension
   const dotIndex = filename.lastIndexOf('.');
+  const ext = dotIndex > 0 ? filename.substring(dotIndex).toLowerCase() : '';
   const raw = dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
+
+  if (ext && !SUPPORTED_FORMATS.includes(ext)) {
+    return {
+      raw: filename,
+      valid: false,
+      error: `Unsupported file format "${ext}". Supported: ${SUPPORTED_FORMATS_DISPLAY}`,
+    };
+  }
 
   const match = raw.match(RE_FILENAME);
 
@@ -48,7 +73,7 @@ export function parseFilename(filename: string): ParsedDocument {
     return {
       raw: filename,
       valid: false,
-      error: `Filename does not match expected pattern: [Society][Category][Section][Name][YYYYMM]`,
+      error: `Filename does not match expected pattern: [Society][Category][Section][Name][YYYYMM]${ext || '.pdf'}`,
     };
   }
 
