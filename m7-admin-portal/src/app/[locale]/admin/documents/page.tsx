@@ -401,19 +401,19 @@ export default function DocumentsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Invalid Filename Format</DialogTitle>
-            <DialogDescription>
-              <p className="mb-3">The following file{invalidFilenames.length > 1 ? 's do' : ' does'} not match the required naming format:</p>
-              <div className="space-y-1 mb-3">
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>The following file{invalidFilenames.length > 1 ? 's do' : ' does'} not match the required format:</p>
+              <div className="space-y-1">
                 {invalidFilenames.map((name, i) => (
-                  <p key={i} className="text-sm font-mono bg-muted px-2 py-1 rounded">{name}</p>
+                  <div key={i} className="text-sm font-mono bg-muted px-2 py-1 rounded">{name}</div>
                 ))}
               </div>
-              <p className="font-medium">Required format:</p>
-              <p className="font-mono text-sm mt-1 bg-muted px-2 py-1 rounded inline-block">
-                [Society][Category][Section][Name][YYYYMM].pdf
-              </p>
-              <p className="text-xs mt-2">Example: <code>[DNV][RU-SHIP][Pt.1-Ch.1][General regulations][202507].pdf</code></p>
-            </DialogDescription>
+              <p className="font-medium text-foreground">Required format:</p>
+              <div className="font-mono text-sm bg-muted px-2 py-1 rounded inline-block">
+                [Society][Category][Section][Name][YYYYMM].ext
+              </div>
+              <p>Example: <code>[DNV][RU-SHIP][Pt.1-Ch.1][General regulations][202507].pdf</code></p>
+            </div>
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setInvalidDialogOpen(false)}>Understood</Button>
@@ -426,7 +426,7 @@ export default function DocumentsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Document</DialogTitle>
-            <DialogDescription>Permanently delete this document and all its chunks? This cannot be undone.</DialogDescription>
+            <DialogDescription>Permanently delete this document and all its chunks? This action cannot be undone.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
