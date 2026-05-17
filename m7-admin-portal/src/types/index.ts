@@ -37,7 +37,7 @@ export type LLMBackendType = 'openai' | 'deepseek' | 'claude' | 'ollama' | 'vllm
 
 export interface AdminUser {
   user_id: string; username: string; email: string;
-  role: 'admin' | 'editor' | 'viewer'; is_active: boolean;
+  role: string; is_active: boolean;
   api_key_count: number; total_queries: number; created_at: string;
 }
 

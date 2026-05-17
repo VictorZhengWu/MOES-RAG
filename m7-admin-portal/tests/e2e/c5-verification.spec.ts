@@ -151,4 +151,13 @@ test.describe('C5 — Admin Layout & Sidebar', () => {
     const testButtons = page.getByText('Test Connection');
     await expect(testButtons).toHaveCount(7);
   });
+
+  test('users page shows mock users from API', async ({ page }) => {
+    await page.goto('/en/admin/users');
+    await expect(page.getByText('User Management')).toBeVisible({ timeout: 10000 });
+    // "admin" appears in sidebar brand "MO Admin" too — use exact match
+    // Mock users: admin (admin@shipyard.no) + editor_li (li.wang@shipyard.cn)
+    await expect(page.getByText('admin@shipyard.no')).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText('li.wang@shipyard.cn')).toBeVisible();
+  });
 });
