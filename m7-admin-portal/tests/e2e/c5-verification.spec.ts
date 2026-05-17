@@ -134,20 +134,21 @@ test.describe('C5 — Admin Layout & Sidebar', () => {
     expect(m3).toBeNull();
   });
 
-  test('llm config page shows mock backends with purposes', async ({ page }) => {
+  test('llm config page shows 7 purpose boxes', async ({ page }) => {
     await page.goto('/en/admin/llm-config');
     await expect(page.getByText('LLM Configuration')).toBeVisible({ timeout: 10000 });
 
-    // Should show 5 mock backends with different purposes
-    await expect(page.getByText('deepseek-chat')).toBeVisible({ timeout: 8000 });
-    await expect(page.getByText('deepseek-reasoner')).toBeVisible();
-    await expect(page.getByText('bge-m3')).toBeVisible();
+    // 7 purpose boxes should be visible
+    await expect(page.getByText('Chat Model')).toBeVisible();
+    await expect(page.getByText('Reasoning Model')).toBeVisible();
+    await expect(page.getByText('Embedding Model')).toBeVisible();
+    await expect(page.getByText('Reranking Model')).toBeVisible();
+    await expect(page.getByText('OCR Model')).toBeVisible();
+    await expect(page.getByText('Vision / Multimodal Model')).toBeVisible();
+    await expect(page.getByText('Document Parsing Engine')).toBeVisible();
 
-    // Purpose badges
-    await expect(page.getByText('chat').first()).toBeVisible();
-    await expect(page.getByText('thinking').first()).toBeVisible();
-    await expect(page.getByText('embedding').first()).toBeVisible();
-    await expect(page.getByText('reranking').first()).toBeVisible();
-    await expect(page.getByText('vision').first()).toBeVisible();
+    // Each box has a Test Connection button
+    const testButtons = page.getByText('Test Connection');
+    await expect(testButtons).toHaveCount(7);
   });
 });
