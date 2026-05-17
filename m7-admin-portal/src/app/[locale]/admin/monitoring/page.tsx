@@ -6,6 +6,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import type { SystemStats, ModuleHealth } from '@/types';
 import { getStats, getHealth } from '@/lib/api/monitoring';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,6 +36,7 @@ function healthIcon(s: string) {
 }
 
 export default function MonitoringPage() {
+  const t = useTranslations();
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [health, setHealth] = useState<{ status: string; modules: ModuleHealth; uptime_seconds: number } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,8 +57,8 @@ export default function MonitoringPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-xl font-bold mb-1">System Monitoring</h1>
-      <p className="text-sm text-muted-foreground mb-6">Real-time system health and performance metrics.</p>
+      <h1 className="text-xl font-bold mb-1">{t('admin.monitoring.title')}</h1>
+      <p className="text-sm text-muted-foreground mb-6">{t('admin.monitoring.subtitle')}</p>
 
       {/* Module Health */}
       <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">

@@ -6,8 +6,9 @@
 
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import type { AdminUser } from '@/types';
+import { useTranslations } from 'next-intl';
 import { listUsers, createUser, deleteUser } from '@/lib/api/users';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +51,7 @@ const emptyForm = (): Partial<MockUser> => ({
 });
 
 export default function UsersPage() {
+  const t = useTranslations();
   const [users, setUsers] = useState<MockUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState('');
@@ -82,13 +84,28 @@ export default function UsersPage() {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-  const filtered = users.filter((u) => {
-    const ms = !search || u.username.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase());
-    const mr = roleFilter === 'all' || u.role === roleFilter;
-    const mst = statusFilter === 'all' || (u.is_active ? 'active' : 'suspended') === statusFilter;
-    return ms && mr && mst;
-  });
+  // Sort: admin/editor first, then by role level descending
+  const ADMIN_ROLES = ['admin', 'editor'];
+  const filtered = [...users]
+    .filter((u) => {
+      const ms = !search || u.username.toLowerCase().includes(search.toLowerCase()) ||
+        u.email.toLowerCase().includes(search.toLowerCase());
+      const mr = roleFilter === 'all' || u.role === roleFilter;
+      const mst = statusFilter === 'all' || (u.is_active ? 'active' : 'suspended') === statusFilter;
+      return ms && mr && mst;
+    })
+    .sort((a, b) => {
+      const aAdmin = ADMIN_ROLES.includes(a.role) ? 0 : 1;
+      const bAdmin = ADMIN_ROLES.includes(b.role) ? 0 : 1;
+      if (aAdmin !== bAdmin) return aAdmin - bAdmin;
+      return a.username.localeCompare(b.username);
+    });
+
+  // Find the split point between admin/editor and regular users
+  let showDivider = false;
+  let splitIndex = filtered.findIndex((u) => !ADMIN_ROLES.includes(u.role));
+  if (splitIndex > 0 && splitIndex < filtered.length) showDivider = true;
+  if (splitIndex === -1) splitIndex = filtered.length;
 
   const openCreate = () => { setEditingUser(null); setForm(emptyForm()); setDialogOpen(true); };
   const openEdit = (u: MockUser) => { setEditingUser(u); setForm({ ...u }); setDialogOpen(true); };
@@ -129,8 +146,8 @@ export default function UsersPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold">User Management</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage user accounts, roles, and access.</p>
+          <h1 className="text-xl font-bold">{t('admin.users.title')}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t('admin.users.subtitle')}</p>
         </div>
         <Button onClick={openCreate} size="sm" className="gap-1.5">
           <UserPlus className="h-4 w-4" /> Add User
@@ -175,8 +192,17 @@ export default function UsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((u) => (
-                <TableRow key={u.user_id} className={!u.is_active ? 'opacity-60' : ''}>
+              {filtered.map((u, i) => (
+                <React.Fragment key={u.user_id}>
+                  {/* Divider between admin/editor and regular users */}
+                  {showDivider && i === splitIndex && (
+                    <TableRow className="border-t-2 border-border">
+                      <TableCell colSpan={8} className="py-2 text-xs text-muted-foreground font-medium">
+                        ── Regular Users ──
+                      </TableCell>
+                    </TableRow>
+                  )}
+                <TableRow className={!u.is_active ? 'opacity-60' : ''}>
                   <TableCell className="font-medium text-sm">{u.username}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
                   <TableCell>
@@ -218,6 +244,7 @@ export default function UsersPage() {
                     </div>
                   </TableCell>
                 </TableRow>
+                </React.Fragment>
               ))}
             </TableBody>
           </Table>

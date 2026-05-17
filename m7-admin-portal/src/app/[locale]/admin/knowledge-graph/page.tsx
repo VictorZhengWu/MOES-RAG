@@ -6,6 +6,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import type { KGEntity, KGRelation } from '@/types';
 import { listEntities, listRelations } from '@/lib/api/knowledge-graph';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -70,6 +71,7 @@ export default function KnowledgeGraphPage() {
   const [editName, setEditName] = useState('');
   const [deleteEntityTarget, setDeleteEntityTarget] = useState<KGEntity | null>(null);
   const [deleteRelationTarget, setDeleteRelationTarget] = useState<KGRelation | null>(null);
+  const t = useTranslations();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -130,7 +132,7 @@ export default function KnowledgeGraphPage() {
   return (
     <div className="p-8">
       <h1 className="text-xl font-bold mb-1">Knowledge Graph</h1>
-      <p className="text-sm text-muted-foreground mb-6">Visualize entities and relations extracted from documents.</p>
+      <p className="text-sm text-muted-foreground mb-6">{t('admin.knowledgeGraph.subtitle')}</p>
 
       <Tabs defaultValue="entities" className="w-full">
         <TabsList className="mb-4">
@@ -156,8 +158,8 @@ export default function KnowledgeGraphPage() {
               </div>
               <select value={entityTypeFilter} onChange={(e) => setEntityTypeFilter(e.target.value)}
                 className="w-full rounded-lg border bg-background px-3 py-2 text-sm">
-                <option value="all">All Types</option>
-                {Object.entries(ENTITY_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                <option value="all">{t('knowledge.filter.all')}</option>
+                {Object.entries(ENTITY_TYPES).map(([k, v]) => <option key={k} value={k}>{t(`admin.knowledgeGraph.entityTypes.${k}` as any) || v}</option>)}
               </select>
               <ScrollArea className="h-[500px]">
                 <div className="space-y-1">
@@ -211,7 +213,7 @@ export default function KnowledgeGraphPage() {
                       </div>
                       {selectedEntity.properties && Object.keys(selectedEntity.properties).length > 0 && (
                         <div className="space-y-1">
-                          <p className="text-xs font-medium text-muted-foreground">Properties</p>
+                          <p className="text-xs font-medium text-muted-foreground">{t('knowledge.table.status')}</p>
                           {Object.entries(selectedEntity.properties).map(([k, v]) => (
                             <div key={k} className="flex gap-2 text-sm">
                               <span className="text-muted-foreground">{k}:</span>

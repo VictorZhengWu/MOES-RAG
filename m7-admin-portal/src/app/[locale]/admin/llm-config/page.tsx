@@ -7,6 +7,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import type { LLMBackend } from '@/types';
 import { listBackends, createBackend, updateBackend } from '@/lib/api/llm-config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -128,6 +129,7 @@ const PARSING_ENGINES = [
 // ── Component ──────────────────────────────────────────────────────
 
 export default function LLMConfigPage() {
+  const t = useTranslations();
   const [configs, setConfigs] = useState<Record<string, BoxConfig>>({});
   const [statuses, setStatuses] = useState<Record<string, ConnectionStatus>>({});
   const [loading, setLoading] = useState(true);
@@ -211,9 +213,9 @@ export default function LLMConfigPage() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-xl font-bold">LLM Configuration</h1>
+        <h1 className="text-xl font-bold">{t('admin.llmConfig.title')}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Configure one model backend for each purpose. The system calls the appropriate model based on the task.
+          {t('admin.llmConfig.subtitle')}
         </p>
       </div>
 
