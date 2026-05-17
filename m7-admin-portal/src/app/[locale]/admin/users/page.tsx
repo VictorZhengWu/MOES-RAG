@@ -30,6 +30,7 @@ const USER_ROLES = [
   { value: 'basic', label: 'Basic', level: 2 },
   { value: 'pro', label: 'Pro', level: 3 },
   { value: 'enterprise', label: 'Enterprise', level: 4 },
+  { value: 'editor', label: 'Editor', level: 4 },
   { value: 'admin', label: 'Admin', level: 5 },
 ];
 
@@ -51,6 +52,9 @@ const emptyForm = (): Partial<MockUser> => ({
 export default function UsersPage() {
   const [users, setUsers] = useState<MockUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState('');
+
+  useEffect(() => { setCurrentUser(localStorage.getItem('m7-admin-user') || ''); }, []);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -105,7 +109,7 @@ export default function UsersPage() {
   };
 
   const handleSuspend = async (u: MockUser) => {
-    // Phase 1: toggle locally. Phase 2: PUT /api/v1/admin/users/{id}
+    if (u.username === currentUser) return; // prevent self-disable
     setUsers((prev) =>
       prev.map((user) =>
         user.user_id === u.user_id ? { ...user, is_active: !user.is_active } : user,
@@ -202,7 +206,10 @@ export default function UsersPage() {
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSuspendTarget(u)} title={u.is_active ? 'Suspend' : 'Reactivate'}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8"
+                        onClick={() => setSuspendTarget(u)}
+                        disabled={u.username === currentUser}
+                        title={u.username === currentUser ? 'Cannot suspend yourself' : u.is_active ? 'Suspend' : 'Reactivate'}>
                         {u.is_active ? <ShieldBan className="h-4 w-4 text-muted-foreground" /> : <ShieldCheck className="h-4 w-4 text-green-500" />}
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteTarget(u.user_id)}>

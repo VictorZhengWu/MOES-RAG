@@ -93,15 +93,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return (
-    <>
-      <div className="fixed top-2 right-4 z-50 flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">{currentUser}</span>
-        <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={handleLogout}>
-          Logout
-        </Button>
-      </div>
-      {children}
-    </>
-  );
+  // Sidebar handles user display + logout
+  return <>{children}</>;
 }

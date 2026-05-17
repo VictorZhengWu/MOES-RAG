@@ -6,16 +6,21 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, FileText, Share2, Cpu, Users, Activity,
   Settings, HelpCircle, ArrowLeft, PanelLeftClose, PanelLeft,
-  LogIn,
+  LogIn, LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+
+const AUTH_KEY = 'm7-admin-auth';
+const USER_KEY = 'm7-admin-user';
 
 const NAV_ITEMS = [
   { id: 'dashboard', href: '/admin', icon: LayoutDashboard },
@@ -36,6 +41,25 @@ export function AdminSidebar({ collapsed, onToggle }: Props) {
   const pathname = usePathname();
   const locale = useLocale();
   const t = useTranslations();
+  const [username, setUsername] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const auth = localStorage.getItem(AUTH_KEY);
+    const user = localStorage.getItem(USER_KEY) || '';
+    setIsLoggedIn(auth === 'true');
+    setUsername(user);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem(AUTH_KEY);
+    localStorage.removeItem(USER_KEY);
+    setIsLoggedIn(false);
+    setUsername('');
+    router.push(`/${locale}/admin`);
+  };
+
+  const initials = username.slice(0, 2).toUpperCase();
 
   const isActive = (href: string) => {
     const fullHref = `/${locale}${href}`;
@@ -70,9 +94,15 @@ export function AdminSidebar({ collapsed, onToggle }: Props) {
         <button onClick={() => router.push(`/${locale}/admin/settings`)} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground" title={t('nav.settings')}>
           <Settings className="h-4 w-4" />
         </button>
-        <button onClick={() => router.push(`/${locale}/login`)} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground" title="Log in">
-          <LogIn className="h-4 w-4" />
-        </button>
+        {isLoggedIn ? (
+          <button onClick={handleLogout} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground" title={`Logout (${username})`}>
+            <Avatar className="h-7 w-7"><AvatarFallback className="text-[10px]">{initials}</AvatarFallback></Avatar>
+          </button>
+        ) : (
+          <button onClick={() => router.push(`/${locale}/login`)} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground" title="Log in">
+            <LogIn className="h-4 w-4" />
+          </button>
+        )}
       </aside>
     );
   }
@@ -125,9 +155,19 @@ export function AdminSidebar({ collapsed, onToggle }: Props) {
           <ArrowLeft className="h-4 w-4" />{t('nav.backToChat')}
         </a>
         <Separator className="my-2" />
-        <Button variant="outline" className="w-full justify-start gap-2 h-9 text-sm" onClick={() => router.push(`/${locale}/login`)}>
-          <LogIn className="h-4 w-4" />Log in
-        </Button>
+        {isLoggedIn ? (
+          <div className="flex items-center gap-2 px-1 py-0.5">
+            <Avatar className="h-7 w-7"><AvatarFallback className="text-[10px]">{initials}</AvatarFallback></Avatar>
+            <span className="flex-1 text-sm truncate">{username}</span>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleLogout} title="Logout">
+              <LogOut className="h-3 w-3" />
+            </Button>
+          </div>
+        ) : (
+          <Button variant="outline" className="w-full justify-start gap-2 h-9 text-sm" onClick={() => router.push(`/${locale}/login`)}>
+            <LogIn className="h-4 w-4" />{t('sidebar.logIn') || 'Log in'}
+          </Button>
+        )}
       </div>
     </aside>
   );
