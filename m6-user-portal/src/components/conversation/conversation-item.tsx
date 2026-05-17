@@ -102,18 +102,17 @@ export function ConversationItem({ conversation, isActive, onSelect }: Props) {
         <span className="flex-1 truncate">{conversation.title}</span>
       )}
 
-      {/* "..." menu — visible on hover */}
+      {/* "..." menu — visible on hover.
+          Use <div> inside DropdownMenuTrigger to avoid nested <button> error (Base UI). */}
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-        <DropdownMenuTrigger>
-          <button
-            className={cn(
-              'h-6 w-6 flex items-center justify-center rounded-md hover:bg-muted transition-opacity',
-              menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
-            )}
-            onClick={(e) => { e.stopPropagation(); setMenuOpen(true); }}
-          >
-            <MoreHorizontal className="h-3.5 w-3.5" />
-          </button>
+        <DropdownMenuTrigger
+          className={cn(
+            'h-6 w-6 flex items-center justify-center rounded-md hover:bg-muted transition-opacity',
+            menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+          )}
+          onClick={(e) => { e.stopPropagation(); setMenuOpen(true); }}
+        >
+          <MoreHorizontal className="h-3.5 w-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48" onClick={(e) => e.stopPropagation()}>
           <DropdownMenuItem onClick={handleShare}>
