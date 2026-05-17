@@ -6,10 +6,13 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('C5 — Admin Layout & Sidebar', () => {
-  // Set admin auth token before each test (Auth Guard check)
+  // Set admin auth token before each test (bypasses Auth Guard)
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.evaluate(() => localStorage.setItem('m7-admin-auth', 'true'));
+    await page.evaluate(() => {
+      localStorage.setItem('m7-admin-auth', 'true');
+      localStorage.setItem('m7-admin-user', 'admin');
+    });
   });
 
   test('redirects / to /en/admin', async ({ page }) => {
