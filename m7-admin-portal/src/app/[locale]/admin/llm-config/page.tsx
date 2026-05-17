@@ -36,6 +36,19 @@ const PROVIDERS_WITH_NONE: { value: Provider; label: string }[] = [
   ...PROVIDERS,
 ];
 
+/**
+ * User role tiers — configurable. Add/remove/reorder as needed.
+ * Each role determines which model purposes a user can access.
+ * The `level` determines priority (higher = more access).
+ */
+const USER_ROLES: { value: string; label: string; level: number }[] = [
+  { value: 'free', label: 'Free', level: 1 },
+  { value: 'basic', label: 'Basic', level: 2 },
+  { value: 'pro', label: 'Pro', level: 3 },
+  { value: 'enterprise', label: 'Enterprise', level: 4 },
+  { value: 'admin', label: 'Admin', level: 5 },
+];
+
 type ConnectionStatus = 'idle' | 'testing' | 'connected' | 'failed';
 
 interface BoxConfig {
@@ -44,6 +57,8 @@ interface BoxConfig {
   model_name: string;
   api_key: string;
   base_url: string;
+  /** Roles allowed to use this model. Empty = all roles. */
+  allowed_roles: string[];
   // Chat/Thinking
   temperature?: number;
   max_tokens?: number;
@@ -56,12 +71,24 @@ interface BoxConfig {
   match_threshold?: number;
 }
 
+/** Default allowed roles per purpose — configurable, not hardcoded logic. */
+const DEFAULT_ROLES_BY_PURPOSE: Record<string, string[]> = {
+  chat: ['free', 'basic', 'pro', 'enterprise', 'admin'],
+  thinking: ['pro', 'enterprise', 'admin'],
+  embedding: ['basic', 'pro', 'enterprise', 'admin'],
+  reranking: ['basic', 'pro', 'enterprise', 'admin'],
+  ocr: ['pro', 'enterprise', 'admin'],
+  vision: ['pro', 'enterprise', 'admin'],
+  parsing: ['admin'],
+};
+
 const defaultConfig = (purpose: string): BoxConfig => ({
   purpose,
   provider: purpose === 'reasoning' || purpose === 'vision' ? 'none' : 'openai_compatible',
   model_name: '',
   api_key: '',
   base_url: '',
+  allowed_roles: DEFAULT_ROLES_BY_PURPOSE[purpose] || [],
   temperature: 0.5,
   max_tokens: 4096,
   embedding_dim: undefined,
@@ -263,6 +290,36 @@ export default function LLMConfigPage() {
                     />
                   </div>
                 )}
+
+                {/* Available to Roles — all boxes */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Available to Roles</label>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {USER_ROLES.map((role) => {
+                      const selected = (cfg.allowed_roles || []).includes(role.value);
+                      return (
+                        <button
+                          key={role.value}
+                          onClick={() => {
+                            const current = cfg.allowed_roles || [];
+                            updateField(
+                              pDef.purpose,
+                              'allowed_roles',
+                              selected ? current.filter((r) => r !== role.value) : [...current, role.value],
+                            );
+                          }}
+                          className={`rounded-full px-2.5 py-0.5 text-[11px] border transition-colors ${
+                            selected
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                          }`}
+                        >
+                          {role.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
                 {/* Temperature — Chat only */}
                 {pDef.purpose === 'chat' && (
