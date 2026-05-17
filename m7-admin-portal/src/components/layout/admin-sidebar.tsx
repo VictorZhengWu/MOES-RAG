@@ -165,7 +165,7 @@ export function AdminSidebar({ collapsed, onToggle }: Props) {
           </div>
         ) : (
           <Button variant="outline" className="w-full justify-start gap-2 h-9 text-sm" onClick={() => router.push(`/${locale}/login`)}>
-            <LogIn className="h-4 w-4" />{t('sidebar.logIn') || 'Log in'}
+            <LogIn className="h-4 w-4" />Log in
           </Button>
         )}
       </div>
