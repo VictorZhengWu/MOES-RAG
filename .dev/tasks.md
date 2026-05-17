@@ -83,6 +83,9 @@
 | 00030-P16 | Help 页面 | 按钮无响应 | 文档编写 |
 | 00030-P17 | Delete Account | 按钮 disabled | M5 User API |
 | 00030-P18 | About 社交链接 | 占位 URL | 真实地址配置 |
+| 00030-P19 | 忘记密码 / 重置密码 | 未开始（UI 入口待加） | M5 Auth API + SMTP |
+| 00030-P20 | 项目/Project CRUD | 占位页面，4 个 mock 项目 | M5 Project API |
+| 00030-P21 | 文件上传 — 真实存储 | UI 就绪（拖放+解析+预览），仅 Mock | M1 文件处理管线 + M2 存储 |
 
 **验证方法：** Playwright E2E 测试覆盖核心用户路径
 **自动化验证命令：** `npx playwright test`
@@ -113,6 +116,21 @@
 **Task 类型：** 模块/服务类
 **依赖：** 00020（Mock Server）
 **关联文件：** `m7-admin-portal/src/`
+
+**M7 待实现功能（ 🔸 跨模块 / Phase 2 实现）：**
+
+| ID | 功能 | 当前状态 | 依赖 |
+|----|------|---------|------|
+| 00040-P1 | 付款/计费模块 | 未开始 | deploy.yaml features.billing 开关 + M5 Billing API + Stripe/PayPal |
+| 00040-P2 | 部署模式 feature 开关 | 未开始 | deploy.yaml → 控制 billing/web_search/deep_research 显隐 |
+| 00040-P3 | 忘记密码 / 重置密码流程 | 未开始（UI 入口待加） | M5 Auth API + SMTP 邮件服务 |
+| 00040-P4 | 社交登录真实 OAuth | 6 按钮 UI 就绪，仅 console.log | M5 OAuth 集成 |
+| 00040-P5 | 知识图谱可视化（图形版） | 当前为卡片+列表 | D3.js/vis.js + 真实 KG 数据 |
+| 00040-P6 | 系统监控真实数据 | Mock 数据 | M5 Monitoring API |
+| 00040-P7 | 管理员登录保护 | 无鉴权，直接可访问 | M5 Auth + 管理员角色校验 |
+
+> 注：付款模块仅在 SaaS 部署模式下启用（`deploy.yaml` → `features.billing: true`）。
+> Personal 和 Enterprise 模式自动隐藏。
 
 ---
 
