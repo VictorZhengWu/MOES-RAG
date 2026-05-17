@@ -55,6 +55,9 @@ export default function DocumentsPage() {
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState('');
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [invalidDialogOpen, setInvalidDialogOpen] = useState(false);
+  const [invalidFilenames, setInvalidFilenames] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchDocuments = useCallback(async () => {
@@ -80,10 +83,10 @@ export default function DocumentsPage() {
       pending.push({ ...parsed, file, domain: 'general', language: 'en' });
     }
 
-    // Show warning for invalid filenames
+    // Show dialog for invalid filenames
     if (invalid.length > 0) {
-      const names = invalid.map((i) => i.raw).join(', ');
-      setUploadMsg(`Skipped ${invalid.length} file(s) with invalid names: ${names}`);
+      setInvalidFilenames(invalid.map((i) => i.raw));
+      setInvalidDialogOpen(true);
     }
 
     if (pending.length > 0) setPendingFiles((prev) => [...prev, ...pending]);
@@ -160,30 +163,50 @@ export default function DocumentsPage() {
       <p className="text-sm text-muted-foreground mb-6">{t('admin.documents.subtitle')}</p>
 
       {/* ── Upload Area ──────────────────────────────────────────── */}
-      <Card className="mb-6 border-2 border-dashed">
-        <CardContent
-          className="flex flex-col items-center justify-center py-10 cursor-pointer"
-          onClick={() => fileInputRef.current?.click()}
-          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onDrop={(e) => { e.preventDefault(); e.stopPropagation(); processFiles(e.dataTransfer.files); }}
-        >
-          <Upload className="h-10 w-10 text-muted-foreground mb-3" />
-          <p className="text-sm font-medium">Drop files here or click to browse</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Expected format: [Society][Category][Section][Name][YYYYMM].pdf
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Example: [DNV][RU-SHIP][Pt.1-Ch.1][General regulations][202507].pdf
-          </p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            multiple
-            onChange={(e) => { processFiles(e.target.files); e.target.value = ''; }}
-          />
-        </CardContent>
-      </Card>
+      <div className="relative mb-6">
+        <Card className={`border-2 border-dashed transition-colors ${isDragOver ? 'border-primary bg-primary/5' : ''}`}>
+          <CardContent
+            className="flex flex-col items-center justify-center py-10 cursor-pointer"
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(true); }}
+            onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(false); }}
+            onDrop={(e) => {
+              e.preventDefault(); e.stopPropagation();
+              setIsDragOver(false);
+              processFiles(e.dataTransfer.files);
+            }}
+          >
+            <Upload className={`h-10 w-10 mb-3 ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
+            <p className={`text-sm font-medium ${isDragOver ? 'text-primary' : ''}`}>
+              {isDragOver ? 'Release to add files' : 'Drop files here or click to browse'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Expected format: [Society][Category][Section][Name][YYYYMM].pdf
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Example: [DNV][RU-SHIP][Pt.1-Ch.1][General regulations][202507].pdf
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              multiple
+              onChange={(e) => { processFiles(e.target.files); e.target.value = ''; }}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Drag-over overlay with blur */}
+        {isDragOver && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/60 backdrop-blur-sm pointer-events-none">
+            <div className="flex flex-col items-center gap-2 rounded-2xl border-2 border-primary/50 bg-background/90 px-12 py-8 shadow-2xl">
+              <Upload className="h-12 w-12 text-primary" />
+              <p className="text-lg font-semibold">Add documents</p>
+              <p className="text-sm text-muted-foreground">Drop any file here to add it</p>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ── Pending files preview ────────────────────────────────── */}
       {pendingFiles.length > 0 && (
@@ -344,6 +367,31 @@ export default function DocumentsPage() {
           </Table>
         </div>
       )}
+
+      {/* Invalid filename dialog */}
+      <Dialog open={invalidDialogOpen} onOpenChange={setInvalidDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invalid Filename Format</DialogTitle>
+            <DialogDescription>
+              <p className="mb-3">The following file{invalidFilenames.length > 1 ? 's do' : ' does'} not match the required naming format:</p>
+              <div className="space-y-1 mb-3">
+                {invalidFilenames.map((name, i) => (
+                  <p key={i} className="text-sm font-mono bg-muted px-2 py-1 rounded">{name}</p>
+                ))}
+              </div>
+              <p className="font-medium">Required format:</p>
+              <p className="font-mono text-sm mt-1 bg-muted px-2 py-1 rounded inline-block">
+                [Society][Category][Section][Name][YYYYMM].pdf
+              </p>
+              <p className="text-xs mt-2">Example: <code>[DNV][RU-SHIP][Pt.1-Ch.1][General regulations][202507].pdf</code></p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setInvalidDialogOpen(false)}>Understood</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirmation */}
       <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
