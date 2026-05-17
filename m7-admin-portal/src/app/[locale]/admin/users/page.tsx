@@ -195,7 +195,7 @@ export default function UsersPage() {
         <p className="text-sm text-muted-foreground py-8 text-center">No users found.</p>
       ) : (
         <div className="rounded-lg border">
-          <Table>
+          <Table className="[&_td]:text-left [&_th]:text-left">
             <TableHeader>
               <TableRow>
                 <TableHead className="cursor-pointer select-none resize-x overflow-auto" onClick={() => handleUserSort('username')}>Username{userSortIcon('username')}</TableHead>

@@ -361,7 +361,7 @@ export default function DocumentsPage() {
         <p className="text-sm text-muted-foreground py-8 text-center">{t('common.noResults')}</p>
       ) : (
         <div className="rounded-lg border">
-          <Table>
+          <Table className="[&_td]:text-left [&_th]:text-left">
             <TableHeader>
               <TableRow>
                 <TableHead><div className="inline-block resize-x overflow-auto min-w-[100px] cursor-pointer select-none" onClick={() => handleSort('source_filename')}>{t('admin.documents.table.filename')}{sortIcon('source_filename')}</div></TableHead>
