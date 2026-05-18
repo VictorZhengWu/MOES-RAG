@@ -56,7 +56,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState('');
 
-  useEffect(() => { setCurrentUser(localStorage.getItem('m7-admin-user') || ''); }, []);
+  useEffect(() => { setCurrentUser(sessionStorage.getItem('m7-admin-user') || ''); }, []);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');

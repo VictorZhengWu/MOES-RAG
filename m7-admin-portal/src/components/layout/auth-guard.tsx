@@ -32,8 +32,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState('');
 
   useEffect(() => {
-    const stored = localStorage.getItem(AUTH_KEY);
-    const user = localStorage.getItem(USER_KEY) || '';
+    const stored = sessionStorage.getItem(AUTH_KEY);
+    const user = sessionStorage.getItem(USER_KEY) || '';
     setAuthed(stored === 'true');
     setCurrentUser(user);
   }, []);
@@ -43,8 +43,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       (u) => u.username === username && u.password === password,
     );
     if (user) {
-      localStorage.setItem(AUTH_KEY, 'true');
-      localStorage.setItem(USER_KEY, user.username);
+      sessionStorage.setItem(AUTH_KEY, 'true');
+      sessionStorage.setItem(USER_KEY, user.username);
       setAuthed(true);
       setCurrentUser(user.username);
       setError('');
@@ -54,8 +54,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem(AUTH_KEY);
-    localStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem(AUTH_KEY);
+    sessionStorage.removeItem(USER_KEY);
     setAuthed(false);
     setCurrentUser('');
     setUsername('');

@@ -45,16 +45,16 @@ export function AdminSidebar({ collapsed, onToggle }: Props) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const auth = localStorage.getItem(AUTH_KEY);
-    const user = localStorage.getItem(USER_KEY) || '';
+    const auth = sessionStorage.getItem(AUTH_KEY);
+    const user = sessionStorage.getItem(USER_KEY) || '';
     setIsLoggedIn(auth === 'true');
     setUsername(user);
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem(AUTH_KEY);
-    localStorage.removeItem(USER_KEY);
-    // Force full reload so AuthGuard re-reads localStorage
+    sessionStorage.removeItem(AUTH_KEY);
+    sessionStorage.removeItem(USER_KEY);
+    // Force full reload so AuthGuard re-reads sessionStorage
     window.location.href = `/${locale}/admin`;
   };
 

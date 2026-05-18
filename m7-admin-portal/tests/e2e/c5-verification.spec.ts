@@ -10,8 +10,8 @@ test.describe('C5 — Admin Layout & Sidebar', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => {
-      localStorage.setItem('m7-admin-auth', 'true');
-      localStorage.setItem('m7-admin-user', 'admin');
+      sessionStorage.setItem('m7-admin-auth', 'true');
+      sessionStorage.setItem('m7-admin-user', 'admin');
     });
   });
 
