@@ -53,5 +53,8 @@ logs/
 htmlcov/
 .pytest_cache/
 
+# Worktrees
+.worktrees/
+
 # Uploads
 uploads/
