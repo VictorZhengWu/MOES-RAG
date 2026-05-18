@@ -2,7 +2,7 @@
 
 > **Purpose**: Fast-lookup index for all module memory files. Read this first when starting a new session to understand the overall project state, then dive into the specific module file you need.
 
-> **Last Updated**: 2026-05-12
+> **Last Updated**: 2026-05-17
 
 ---
 
