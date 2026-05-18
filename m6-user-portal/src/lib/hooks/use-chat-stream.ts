@@ -11,13 +11,16 @@
 
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 import { useChatStore } from '@/lib/stores/chat-store';
 import { streamChat } from '@/lib/api/chat';
 import type { ChatRequest, Citation } from '@/types';
 
+// Module-level ref so ALL hook instances share the same controller.
+// Fixes: stop button only works for messages from the same component
+const sharedAbortRef = { current: null as AbortController | null };
+
 export function useChatStream() {
-  const abortRef = useRef<AbortController | null>(null);
   const {
     addMessage,
     appendToLastMessage,
@@ -42,7 +45,7 @@ export function useChatStream() {
 
       // Create abort controller for cancellation
       const controller = new AbortController();
-      abortRef.current = controller;
+      sharedAbortRef.current = controller;
 
       try {
         const body = await streamChat(request, controller.signal);
@@ -93,7 +96,7 @@ export function useChatStream() {
   );
 
   const stopStream = useCallback(() => {
-    abortRef.current?.abort();
+    sharedAbortRef.current?.abort();
   }, []);
 
   return { startStream, stopStream };
