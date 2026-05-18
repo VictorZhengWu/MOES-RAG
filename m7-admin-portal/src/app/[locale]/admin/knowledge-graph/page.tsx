@@ -158,7 +158,7 @@ export default function KnowledgeGraphPage() {
               </div>
               <select value={entityTypeFilter} onChange={(e) => setEntityTypeFilter(e.target.value)}
                 className="w-full rounded-lg border bg-background px-3 py-2 text-sm">
-                <option value="all">{t('knowledge.filter.all')}</option>
+                <option value="all">All</option>
                 {Object.entries(ENTITY_TYPES).map(([k, v]) => <option key={k} value={k}>{t(`admin.knowledgeGraph.entityTypes.${k}` as any) || v}</option>)}
               </select>
               <ScrollArea className="h-[500px]">
