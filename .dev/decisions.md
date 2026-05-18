@@ -184,6 +184,18 @@ New sessions recover context by reading L1 → L2 → L3 files in order.
 
 ---
 
+### D013: M2 Backend Delivery Strategy — Personal First, Enterprise/SaaS in Phase 3
+
+**Date**: 2026-05-18 | **Status**: ✅ Decided
+
+**Decision**: M2 (Storage Abstraction Layer) first implements Personal mode backends only — ChromaDB (VectorStore), Meilisearch (DocumentIndex), SQLite (RelationalDB), Local FS (FileStore). Qdrant/Milvus/PostgreSQL/MariaDB/MinIO/S3 are deferred to Phase 3 alongside `deploy/` configuration.
+
+**Why**: Phase 2's goal is end-to-end system flow (M2 → M1 → M3 → M4 → M5). Personal mode backends are sufficient to validate the full pipeline. Enterprise/SaaS backends are deployment concerns that naturally pair with `deploy.yaml` and Docker Compose/K8s configs in Phase 3.
+
+**Impact**: M2 task list is scoped to 4 backend implementations + factory/config system. Enterprise/SaaS backends will be tracked as Phase 3 tasks.
+
+---
+
 ## Pending Decisions
 
 > *No pending cross-module decisions at this time.*
