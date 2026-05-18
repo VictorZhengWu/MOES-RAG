@@ -54,9 +54,8 @@ export function AdminSidebar({ collapsed, onToggle }: Props) {
   const handleLogout = () => {
     localStorage.removeItem(AUTH_KEY);
     localStorage.removeItem(USER_KEY);
-    setIsLoggedIn(false);
-    setUsername('');
-    router.push(`/${locale}/admin`);
+    // Force full reload so AuthGuard re-reads localStorage
+    window.location.href = `/${locale}/admin`;
   };
 
   const initials = username.slice(0, 2).toUpperCase();
