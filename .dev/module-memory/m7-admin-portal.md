@@ -121,11 +121,11 @@
 
 新会话开始 M7 开发时，按顺序读取：
 
-1. `docs/superpowers/specs/rag-system-design-2026-05-12.md` — 架构总览
+1. `.dev/specs/rag-system-design-2026-05-12.md` — 架构总览
 2. `.dev/decisions.md` — 全局决策
 3. `.dev/tasks.md` — 任务状态（00040 待开始）
 4. `.dev/module-memory/m7-admin-portal.md` — 本文件
-5. `docs/superpowers/plans/plan-c-m7-admin-portal-2026-05-16.md` — M7 详细实现计划
+5. `.dev/plans/plan-c-m7-admin-portal-2026-05-16.md` — M7 详细实现计划
 
 然后启动开发：
 ```bash

@@ -242,8 +242,7 @@ E:\myCode\RAG\
 ├── m7-admin-portal/      # Admin Web Portal (Next.js/Vue)
 ├── m8-api-gateway/       # API Gateway
 ├── deploy/               # Deployment configs (personal/enterprise/saas)
-├── .dev/                 # Development management (planning, tasks, test records)
-├── docs/                 # Documentation
+├── .dev/                 # All development artifacts (specs, plans, tasks, decisions, test records)
 ├── .claude/              # Claude Code project settings
 ├── pyproject.toml        # Python project metadata
 ├── requirements.txt      # Root-level shared dependencies

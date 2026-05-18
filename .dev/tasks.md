@@ -138,24 +138,179 @@
 
 ### 🔲 00050 — M2 存储抽象层
 
-> **详细设计**：`docs/superpowers/specs/2026-05-18-m2-storage-design.md`
-> **子任务列表**：`.dev/tasks-m2.md`（共 9 个子任务：00050-01 ~ 00050-09）
+> **详细设计**：`.dev/specs/m2-storage-design-2026-05-18.md`
+> **全局规范**：所有 Python 源程序必须有详细英文注释（WHAT + WHY）。
 
-**子任务概览**：
+---
 
-| 编号 | 子任务 | 类型 | 依赖 |
-|------|--------|------|------|
-| 00050-01 | 配置解析 (config.py) | 原子函数 | 无 |
-| 00050-02 | 工厂函数 (factory.py) | 原子函数 | 00050-01 |
-| 00050-03 | StorageManager (manager.py) | 原子函数 | 00050-02 |
-| 00050-04 | ChromaDB VectorStore | 模块/服务 | 00050-03 |
-| 00050-05 | Meilisearch DocumentIndex | 模块/服务 | 00050-03 |
-| 00050-06 | SQLite RelationalDB | 模块/服务 | 00050-03 |
-| 00050-07 | LocalFS FileStore | 模块/服务 | 00050-03 |
-| 00050-08 | 集成测试 + conftest | 集成 | 00050-04~07 |
-| 00050-09 | 打包与最终验证 | 集成 | 00050-08 |
+#### 🔲 00050-01 — 配置解析模块 (config.py)
 
-**并行机会**：00050-04 ~ 00050-07 四个后端互不依赖，可并行开发。
+**功能描述：**
+- 实现 `deploy.yaml` 解析器，将 YAML 转换为类型安全的 dataclass 对象
+- 包含：`StorageConfig`、`VectorStoreConfig`/`ChromaDBConfig`、`DocumentIndexConfig`/`MeilisearchConfig`、`RelationalDBConfig`/`SQLiteConfig`、`FileStoreConfig`/`LocalFSConfig`
+- 每个子配置类实现 `from_dict()` 工厂方法，提供合理默认值
+- `load_config(path)` 函数：读取 YAML → 解析为 `StorageConfig`
+- 无效 `backend` 值抛出 `ValueError`
+
+**验证方法：** 4 个测试用例（合法 YAML、缺失字段默认值、无效 backend、文件不存在）
+**自动化验证命令：** `python -m pytest m2-storage/tests/test_config.py -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 工具/原子函数类
+**依赖：** 无
+**关联文件：** `m2-storage/src/config.py`, `m2-storage/tests/test_config.py`, `m2-storage/deploy.yaml`
+
+---
+
+#### 🔲 00050-02 — 工厂函数 (factory.py)
+
+**功能描述：**
+- 实现 `create_storage_manager(config_path)` + 4 个 `_create_*` 内部函数
+- 每个 `_create_*` 根据 `backend` 字段用 if/else 选择具体实现类
+- 未实现的 backend 抛出 `ValueError`
+
+**验证方法：** 2 个测试用例（正确配置返回正确类型、无效 backend 抛异常）
+**自动化验证命令：** `python -m pytest m2-storage/tests/test_factory.py -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 工具/原子函数类
+**依赖：** 00050-01
+**关联文件：** `m2-storage/src/factory.py`, `m2-storage/tests/test_factory.py`
+
+---
+
+#### 🔲 00050-03 — StorageManager 生命周期管理 (manager.py)
+
+**功能描述：**
+- `StorageManager` 持有 4 个后端引用；不代理转发方法
+- `initialize()`: `asyncio.gather` 并发初始化 4 个后端
+- `health_check()`: 并发健康检查，返回 `dict[str, bool]`
+- `close()`: 并发关闭所有连接
+- 单个后端初始化失败不阻断其他后端
+
+**验证方法：** 4 个测试用例（并发初始化、健康检查汇总、并发关闭、部分失败场景）
+**自动化验证命令：** `python -m pytest m2-storage/tests/test_manager.py -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 工具/原子函数类
+**依赖：** 00050-02
+**关联文件：** `m2-storage/src/manager.py`, `m2-storage/tests/test_manager.py`
+
+---
+
+#### 🔲 00050-04 — VectorStore 基类 + ChromaDB 实现
+
+**功能描述：**
+- `vector_store/base.py`：`BaseVectorStore` 抽象类（继承 `VectorStoreProtocol`），补生命周期方法
+- `vector_store/chromadb_store.py`：`ChromaDBStore`，使用 `chromadb.PersistentClient`
+- 实现 `insert/search/delete/count/health_check/close`
+
+**验证方法：** 6 个测试用例（协议合规、insert+search、filter 过滤、delete、空搜索、健康检查）
+**自动化验证命令：** `python -m pytest m2-storage/tests/test_chromadb.py -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 模块/服务类
+**依赖：** 00050-03
+**关联文件：** `m2-storage/src/vector_store/base.py`, `m2-storage/src/vector_store/chromadb_store.py`, `m2-storage/tests/test_chromadb.py`
+
+---
+
+#### 🔲 00050-05 — DocumentIndex 基类 + Meilisearch 实现
+
+**功能描述：**
+- `document_index/base.py`：`BaseDocumentIndex` 抽象类（继承 `DocumentIndexProtocol`）
+- `document_index/meilisearch_index.py`：`MeilisearchIndex`，使用 `meilisearch.Client`
+- 实现 `index/search/delete/health_check/close`
+
+**验证方法：** 6 个测试用例（协议合规、index+search、filter、delete、空搜索、健康检查）
+**自动化验证命令：** `python -m pytest m2-storage/tests/test_meilisearch.py -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 模块/服务类
+**依赖：** 00050-03, Meilisearch 进程（conftest fixture 管理）
+**关联文件：** `m2-storage/src/document_index/base.py`, `m2-storage/src/document_index/meilisearch_index.py`, `m2-storage/tests/test_meilisearch.py`
+
+---
+
+#### 🔲 00050-06 — RelationalDB 基类 + SQLite 实现
+
+**功能描述：**
+- `relational_db/base.py`：`BaseRelationalDB` 抽象类（继承 `RelationalDBProtocol`）
+- `relational_db/sqlite_db.py`：`SQLiteDB`，使用 `sqlalchemy.ext.asyncio` + `aiosqlite`
+- M2 不定义 ORM 模型——只提供引擎和 session，模型由上层模块定义
+- 实现 `initialize/get_session/health_check/close`
+
+**验证方法：** 5 个测试用例（协议合规、建表、session 可用、健康检查、自动创建父目录）
+**自动化验证命令：** `python -m pytest m2-storage/tests/test_sqlite.py -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 模块/服务类
+**依赖：** 00050-03
+**关联文件：** `m2-storage/src/relational_db/base.py`, `m2-storage/src/relational_db/sqlite_db.py`, `m2-storage/tests/test_sqlite.py`
+
+---
+
+#### 🔲 00050-07 — FileStore 基类 + LocalFS 实现
+
+**功能描述：**
+- `file_store/base.py`：`BaseFileStore` 抽象类（继承 `FileStoreProtocol`）
+- `file_store/local_fs.py`：`LocalFSStore`，使用 `aiofiles`
+- 路径安全：拒绝 `../` 穿越，`os.path.realpath` 校验
+- 实现 `put/get/delete/list/get_url/health_check/close`
+
+**验证方法：** 8 个测试用例（协议合规、put+get 往返、metadata、delete、list、不存在 key、路径穿越拒绝、健康检查）
+**自动化验证命令：** `python -m pytest m2-storage/tests/test_local_fs.py -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 模块/服务类
+**依赖：** 00050-03
+**关联文件：** `m2-storage/src/file_store/base.py`, `m2-storage/src/file_store/local_fs.py`, `m2-storage/tests/test_local_fs.py`
+
+---
+
+#### 🔲 00050-08 — 测试基础设施 + 集成测试 (conftest.py + test_manager.py)
+
+**功能描述：**
+- `conftest.py`：共享 fixtures（tmp_config_path, tmp_data_dir, 4 个已初始化后端实例, storage_manager）
+- `test_manager.py`：StorageManager 端到端集成测试
+
+**验证方法：** 5 个测试用例（完整生命周期、4 后端健康检查、跨后端操作、关闭后不可用）
+**自动化验证命令：** `python -m pytest m2-storage/tests/test_manager.py -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 集成/跨模块类
+**依赖：** 00050-04, 00050-05, 00050-06, 00050-07
+**关联文件：** `m2-storage/tests/conftest.py`, `m2-storage/tests/test_manager.py`
+
+---
+
+#### 🔲 00050-09 — 模块打包与最终验证 (pyproject.toml + requirements.txt + __init__.py)
+
+**功能描述：**
+- `pyproject.toml`：包元数据，依赖按后端分组 `[project.optional-dependencies]`
+- `requirements.txt`：锁定开发依赖
+- `src/__init__.py`：导出 `StorageManager`, `create_storage_manager`
+- 全量测试套件运行验证
+
+**验证方法：** pip install -e . 成功、全量 pytest 通过
+**自动化验证命令：** `python -m pytest m2-storage/tests/ -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 集成/跨模块类
+**依赖：** 00050-08
+**关联文件：** `m2-storage/pyproject.toml`, `m2-storage/requirements.txt`, `m2-storage/src/__init__.py`
+
+---
+
+**依赖关系图：**
+
+```
+00050-01 (config.py)
+    ↓
+00050-02 (factory.py)
+    ↓
+00050-03 (manager.py)
+    ↓
+┌───────────────────────────────────────┐
+│  00050-04  00050-05  00050-06  00050-07 │  ← 4 个后端可并行
+│  (ChromaDB)(MeiliSrch)(SQLite) (LocalFS)│
+└───────────────────────────────────────┘
+    ↓
+00050-08 (集成测试 + conftest)
+    ↓
+00050-09 (打包 + 最终验证)
+```
 
 ### 🔲 00060 — M1 文档解析引擎
 

@@ -18,7 +18,7 @@
 
 ## 一、需求分析与系统规划（阶段 1 产出）
 
-> 详见设计文档：`docs/superpowers/specs/rag-system-design-2026-05-12.md`
+> 详见设计文档：`.dev/specs/rag-system-design-2026-05-12.md`
 
 ### 1.1 功能分层结构
 
@@ -52,7 +52,7 @@
 
 ## 二、系统设计（阶段 2 产出）
 
-> 详见设计文档：`docs/superpowers/specs/rag-system-design-2026-05-12.md`
+> 详见设计文档：`.dev/specs/rag-system-design-2026-05-12.md`
 
 ### 2.1 代码注释规范（所有模块强制遵守）
 
@@ -67,7 +67,7 @@
 
 ## 三、流程设计（阶段 3 产出）
 
-> 详见设计文档：`docs/superpowers/specs/rag-system-design-2026-05-12.md`
+> 详见设计文档：`.dev/specs/rag-system-design-2026-05-12.md`
 
 ### 3.1 开发阶段
 

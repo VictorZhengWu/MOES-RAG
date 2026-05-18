@@ -21,7 +21,7 @@ If you are starting a new session for this project, read the following files in 
 
 ### Step 1: Architecture Overview
 ```
-Read docs/superpowers/specs/rag-system-design-2026-05-12.md
+Read .dev/specs/rag-system-design-2026-05-12.md
 Focus on: Sections 1-3 (Project Summary, Key Decisions, Architecture)
 ```
 This gives you the complete system architecture, all 8 modules, their responsibilities, interfaces, and the 5-layer dependency model.
@@ -126,7 +126,7 @@ Before ending a session (context full, task complete, or user requests):
 
 | File | Purpose | When To Read |
 |------|---------|-------------|
-| `docs/superpowers/specs/rag-system-design-2026-05-12.md` | Architecture spec | Every new session |
+| `.dev/specs/rag-system-design-2026-05-12.md` | Architecture spec | Every new session |
 | `.dev/decisions.md` | Cross-module decisions | Every new session |
 | `.dev/module-memory/index.md` | Module status overview | Every new session |
 | `.dev/module-memory/m<X>-<name>.md` | Per-module memory | When working on that module |

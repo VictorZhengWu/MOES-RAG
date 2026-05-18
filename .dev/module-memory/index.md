@@ -35,7 +35,7 @@
 
 | If you need to... | Read |
 |-------------------|------|
-| Understand the overall architecture | `docs/superpowers/specs/rag-system-design-2026-05-12.md` |
+| Understand the overall architecture | `.dev/specs/rag-system-design-2026-05-12.md` |
 | Know cross-module decisions | `.dev/decisions.md` |
 | Work on a specific module | `.dev/module-memory/m<X>-<name>.md` |
 | See what tasks remain | `.dev/tasks.md` |
