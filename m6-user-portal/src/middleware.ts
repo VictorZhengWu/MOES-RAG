@@ -1,6 +1,6 @@
 /**
  * next-intl middleware: intercepts requests without locale prefix and
- * redirects to the appropriate locale (/en, /zh, /ko, /ja, /no).
+ * redirects to the appropriate locale (/en, /zh, /ko, /ja, /no, /ms).
  *
  * WHY: Path-based locale routing enables SEO-friendly URLs and makes
  * language switching a simple client-side navigation. The middleware
@@ -9,7 +9,7 @@
 import createMiddleware from 'next-intl/middleware';
 
 export default createMiddleware({
-  locales: ['en', 'zh', 'ko', 'ja', 'no'],
+  locales: ['en', 'zh', 'ko', 'ja', 'no', 'ms'],
   defaultLocale: 'en',
   localeDetection: true,
 });

@@ -1,0 +1,106 @@
+{
+  "app": {
+    "name": "Marine & Offshore Expert System",
+    "shortName": "MO Expert",
+    "tagline": "Sistem RAG Profesional untuk kejuruteraan kapal dan luar pesisir"
+  },
+  "sidebar": {
+    "newChat": "Perbualan Baru",
+    "searchChats": "Cari perbualan",
+    "deepResearch": "Penyelidikan Mendalam",
+    "settings": "Tetapan",
+    "help": "Bantuan",
+    "logIn": "Log masuk",
+    "logOut": "Log keluar",
+    "collapse": "Runtuhkan bar sisi",
+    "expand": "Kembangkan bar sisi",
+    "guestWarning": "Log masuk untuk menyimpan perbualan",
+    "projects": "Projek"
+  },
+  "chat": {
+    "input": {
+      "placeholder": "Tanya apa-apa tentang kejuruteraan kapal & luar pesisir...",
+      "send": "Hantar",
+      "stopGeneration": "Hentikan penjanaan",
+      "attachFile": "Lampirkan fail",
+      "webSearch": "Carian web",
+      "webSearchOn": "Carian web dihidupkan",
+      "webSearchOff": "Carian web dimatikan"
+    },
+    "empty": {
+      "title": "Marine & Offshore Expert System",
+      "subtitle": "Tanya tentang peraturan klasifikasi, piawaian kejuruteraan, spesifikasi peralatan, dan banyak lagi.",
+      "suggestions": {
+        "title": "Cuba tanya:",
+        "items": [
+          "Apakah keperluan DNV untuk struktur tangki kargo LNG?",
+          "Bandingkan peraturan ABS dan DNV untuk penutup palka kapal pukal",
+          "Apakah keperluan IMO untuk rawatan air balast?",
+          "Berapakah ketebalan plat minimum untuk dek utama kapal kontena mengikut CCS?",
+          "Terangkan prosedur penilaian kelesuan untuk kekaki kren luar pesisir"
+        ]
+      }
+    },
+    "citation": {
+      "title": "Rujukan",
+      "source": "Sumber",
+      "section": "Seksyen",
+      "clause": "Klausa",
+      "excerpt": "Petikan",
+      "viewSource": "Lihat sumber",
+      "noReferences": "Tiada rujukan untuk jawapan ini"
+    },
+    "jumpNav": { "title": "Soalan dalam perbualan ini", "empty": "Tiada soalan lagi" },
+    "streaming": "Menjana...",
+    "error": {
+      "send": "Gagal menghantar mesej. Sila cuba lagi.",
+      "stream": "Aliran terganggu. Sila cuba lagi.",
+      "network": "Ralat rangkaian. Periksa sambungan anda."
+    }
+  },
+  "conversation": {
+    "title": "Sejarah Perbualan",
+    "search": "Cari perbualan...",
+    "new": "Perbualan baru",
+    "delete": { "label": "Padam perbualan", "confirm": "Adakah anda pasti mahu memadamkan perbualan ini?", "cancel": "Batal", "confirmButton": "Padam" },
+    "rename": { "label": "Namakan semula", "placeholder": "Tajuk perbualan" },
+    "empty": "Tiada perbualan lagi. Mulakan perbualan baru.",
+    "guestEmpty": "Log masuk untuk melihat sejarah perbualan anda.",
+    "menu": {
+      "share": "Kongsi",
+      "rename": "Namakan semula",
+      "moveToProject": "Pindah ke projek",
+      "pin": "Semat",
+      "delete": "Padam",
+      "recentProjects": "Projek terkini"
+    }
+  },
+  "knowledge": {
+    "title": "Pangkalan Pengetahuan",
+    "subtitle": "Dokumen dan peraturan yang tersedia dalam sistem",
+    "search": "Cari dokumen...",
+    "filter": { "society": "Badan Klasifikasi", "domain": "Domain", "year": "Tahun Versi", "all": "Semua" },
+    "table": { "name": "Nama Dokumen", "society": "Badan", "domain": "Domain", "year": "Tahun", "chunks": "Seksyen", "status": "Status" },
+    "status": { "active": "Aktif", "deprecated": "Diganti", "error": "Ralat" },
+    "empty": "Tiada dokumen dijumpai."
+  },
+  "settings": {
+    "title": "Tetapan",
+    "tabs": { "general": "Umum", "profile": "Profil", "about": "Perihal" },
+    "language": { "label": "Bahasa Antara Muka", "description": "Tukar bahasa paparan antara muka pengguna.", "en": "English", "zh": "中文", "ko": "한국어", "ja": "日本語", "no": "Norsk", "ms": "Bahasa Melayu" },
+    "theme": { "label": "Tema", "light": "Cerah", "dark": "Gelap", "system": "Sistem" },
+    "apiKeys": { "title": "Kunci API", "create": "Cipta Kunci API", "empty": "Tiada kunci API lagi." }
+  },
+  "auth": {
+    "login": { "title": "Log Masuk", "subtitle": "Selamat kembali", "email": "E-mel", "password": "Kata Laluan", "submit": "Log Masuk", "noAccount": "Tiada akaun?", "register": "Daftar satu" },
+    "register": { "title": "Daftar Akaun", "subtitle": "Bermula", "username": "Nama Pengguna", "email": "E-mel", "password": "Kata Laluan", "confirmPassword": "Sahkan Kata Laluan", "submit": "Daftar", "hasAccount": "Sudah ada akaun?", "login": "Log Masuk" },
+    "errors": { "invalidEmail": "Sila masukkan alamat e-mel yang sah.", "passwordLength": "Kata laluan mestilah sekurang-kurangnya 8 aksara.", "passwordsMatch": "Kata laluan tidak sepadan.", "loginFailed": "E-mel atau kata laluan tidak sah.", "registerFailed": "Pendaftaran gagal. Sila cuba lagi." }
+  },
+  "share": {
+    "title": "Kongsi Perbualan",
+    "description": "Sesiapa yang mempunyai pautan boleh melihat perbualan ini.",
+    "copyLink": "Salin Pautan",
+    "copied": "Disalin!"
+  },
+  "common": { "loading": "Memuatkan...", "error": "Ralat", "retry": "Cuba lagi", "cancel": "Batal", "save": "Simpan", "delete": "Padam", "search": "Cari", "noResults": "Tiada hasil", "close": "Tutup", "back": "Kembali", "more": "Lagi" }
+}

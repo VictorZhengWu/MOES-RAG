@@ -1,0 +1,43 @@
+{
+  "app": { "name": "Marine & Offshore Expert System", "shortName": "MO Admin" },
+  "nav": {
+    "dashboard": "Papan Pemuka", "documents": "Dokumen", "knowledgeGraph": "Graf Pengetahuan",
+    "llmConfig": "Konfigurasi LLM", "users": "Pengguna", "monitoring": "Pemantauan",
+    "settings": "Tetapan", "help": "Bantuan", "backToChat": "Kembali ke Perbualan"
+  },
+  "admin": {
+    "dashboard": { "title": "Papan Pemuka", "subtitle": "Gambaran keseluruhan sistem dan metrik utama", "totalDocuments": "Jumlah Dokumen", "totalChunks": "Jumlah Chunks", "totalEntities": "Entiti", "totalRelations": "Hubungan", "totalUsers": "Pengguna", "totalConversations": "Perbualan", "storageUsed": "Storan Digunakan", "avgLatency": "Purata Latensi Carian" },
+    "documents": {
+      "title": "Dokumen", "subtitle": "Muat naik, parse, dan uruskan dokumen pengetahuan",
+      "upload": { "title": "Muat Naik Dokumen", "dragDrop": "Seret & lepas fail di sini, atau klik untuk melayari", "supportedFormats": "Disokong: PDF, DOCX, DOC, MD, HTML, TXT (maks 500MB)", "uploading": "Memuat naik...", "success": "Muat naik berjaya", "error": "Muat naik gagal" },
+      "metadata": { "classificationSociety": "Badan Klasifikasi", "regulationName": "Nama Peraturan", "versionYear": "Tahun Versi", "domain": "Domain", "vesselTypes": "Jenis Kapal", "systemType": "Jenis Sistem", "manufacturer": "Pengeluar", "language": "Bahasa Dokumen", "customTags": "Tag Tersuai" },
+      "status": { "queued": "Dalam giliran", "processing": "Memproses", "completed": "Selesai", "failed": "Gagal", "active": "Aktif", "deprecated": "Diganti", "error": "Ralat" },
+      "table": { "filename": "Nama Fail", "society": "Badan", "domain": "Domain", "version": "Versi", "chunks": "Chunks", "status": "Status", "ingested": "Tarikh Masuk", "actions": "Tindakan" },
+      "actions": { "view": "Lihat Butiran", "reparse": "Parse Semula", "deprecate": "Tanda Diganti", "delete": "Padam", "deleteConfirm": "Padamkan dokumen ini dan semua chunks secara kekal? Ini tidak boleh dibatalkan." }
+    },
+    "knowledgeGraph": {
+      "title": "Graf Pengetahuan", "subtitle": "Visualkan entiti dan hubungan yang diekstrak daripada dokumen",
+      "search": "Cari entiti...",
+      "entityTypes": { "regulation_clause": "Klausa Peraturan", "vessel_type": "Jenis Kapal", "system": "Sistem", "equipment": "Peralatan", "manufacturer": "Pengeluar" },
+      "relationTypes": { "regulates": "Mengawal", "references": "Merujuk", "applies_to": "Terpakai Kepada", "equivalent_to": "Setara Dengan", "replaces": "Menggantikan", "requires": "Memerlukan", "prohibits": "Melarang" },
+      "noData": "Tiada data graf pengetahuan lagi. Muat naik dan parse dokumen untuk membina graf."
+    },
+    "llmConfig": { "title": "Konfigurasi LLM", "subtitle": "Uruskan back-end model AI untuk ejen domain yang berbeza", "addBackend": "Tambah Back-end", "backendType": "Jenis Back-end", "modelName": "Nama Model", "baseUrl": "URL Asas", "apiKey": "Kunci API", "maxTokens": "Token Maks", "temperature": "Suhu", "isDefault": "Lalai", "assignedAgents": "Ejen Ditugaskan", "testConnection": "Uji Sambungan", "testing": "Menguji...", "connected": "Disambungkan", "failed": "Sambungan Gagal", "deleteConfirm": "Alih keluar konfigurasi back-end LLM ini?" },
+    "settings": { "title": "Tetapan", "language": { "label": "Bahasa Antara Muka", "description": "Tukar bahasa paparan antara muka pentadbir." }, "theme": { "label": "Tema", "light": "Cerah", "dark": "Gelap", "system": "Sistem" } },
+    "users": {
+      "title": "Pengguna", "subtitle": "Uruskan akaun pengguna, peranan, dan kuota", "addUser": "Tambah Pengguna",
+      "table": { "username": "Nama Pengguna", "email": "E-mel", "role": "Peranan", "status": "Status", "queries": "Pertanyaan", "apiKeys": "Kunci API", "created": "Dicipta", "actions": "Tindakan" },
+      "roles": { "free": "Percuma", "basic": "Asas", "pro": "Pro", "enterprise": "Perusahaan", "editor": "Editor", "admin": "Pentadbir", "viewer": "Pelihat" },
+      "status": { "active": "Aktif", "suspended": "Digantung" },
+      "form": { "createTitle": "Cipta Pengguna", "editTitle": "Edit Pengguna", "username": "Nama Pengguna", "email": "E-mel", "password": "Kata Laluan", "role": "Peranan", "quotaLimit": "Had Kuota Bulanan", "save": "Simpan" },
+      "deleteConfirm": "Padamkan akaun pengguna ini secara kekal? Semua data berkaitan akan dialih keluar."
+    },
+    "monitoring": {
+      "title": "Pemantauan", "subtitle": "Kesihatan sistem masa nyata dan metrik prestasi",
+      "health": { "title": "Status Modul", "ok": "OK", "degraded": "Terjejas", "down": "Tidak Aktif" },
+      "metrics": { "requestsPerMinute": "Permintaan/min", "avgResponseTime": "Purata Masa Tindak Balas", "errorRate": "Kadar Ralat", "uptime": "Masa Aktif" },
+      "logs": { "title": "Log Terkini", "level": "Tahap", "timestamp": "Masa", "message": "Mesej", "module": "Modul" }
+    }
+  },
+  "common": { "loading": "Memuatkan...", "error": "Ralat", "save": "Simpan", "cancel": "Batal", "delete": "Padam", "search": "Cari", "noResults": "Tiada hasil", "close": "Tutup", "back": "Kembali", "confirm": "Sahkan" }
+}

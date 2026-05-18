@@ -162,7 +162,12 @@ export interface UserSettings {
 
 // ── Supported Languages ─────────────────────────────────────────────
 
-export type SupportedLanguage = 'en' | 'zh' | 'ko' | 'ja' | 'no';
+/**
+ * Supported locales — single source of truth.
+ * To add a new language: add to this type, add to this array,
+ * create messages/{code}.json, and update middleware.ts + i18n/request.ts.
+ */
+export type SupportedLanguage = 'en' | 'zh' | 'ko' | 'ja' | 'no' | 'ms';
 
 export const SUPPORTED_LANGUAGES: { code: SupportedLanguage; label: string }[] = [
   { code: 'en', label: 'English' },
@@ -170,6 +175,7 @@ export const SUPPORTED_LANGUAGES: { code: SupportedLanguage; label: string }[] =
   { code: 'ko', label: '한국어' },
   { code: 'ja', label: '日本語' },
   { code: 'no', label: 'Norsk' },
+  { code: 'ms', label: 'Bahasa Melayu' },
 ];
 
 // ── Jump Navigation ─────────────────────────────────────────────────

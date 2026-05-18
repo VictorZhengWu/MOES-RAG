@@ -53,11 +53,12 @@ export interface ModuleHealth {
   m4_knowledge_graph: string; m5_qa_engine: string; m8_api_gateway: string;
 }
 
-export type SupportedLanguage = 'en' | 'zh' | 'ko' | 'ja' | 'no';
+export type SupportedLanguage = 'en' | 'zh' | 'ko' | 'ja' | 'no' | 'ms';
 export const SUPPORTED_LANGUAGES = [
   { code: 'en' as SupportedLanguage, label: 'English' },
   { code: 'zh' as SupportedLanguage, label: '中文' },
   { code: 'ko' as SupportedLanguage, label: '한국어' },
   { code: 'ja' as SupportedLanguage, label: '日本語' },
   { code: 'no' as SupportedLanguage, label: 'Norsk' },
+  { code: 'ms' as SupportedLanguage, label: 'Bahasa Melayu' },
 ];
