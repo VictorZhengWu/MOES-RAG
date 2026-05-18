@@ -28,7 +28,7 @@ export function LanguageSwitcher() {
     // usePathname() from next/navigation returns the FULL path including
     // locale prefix (e.g., /en/chat). We replace the first segment.
     const segments = pathname.split('/').filter(Boolean);     // ['en', 'chat']
-    if (['en', 'zh', 'ko', 'ja', 'no'].includes(segments[0])) {
+    if (['en', 'zh', 'ko', 'ja', 'no', 'ms'].includes(segments[0])) {
       segments[0] = newLocale;                                 // ['zh', 'chat']
     } else {
       segments.unshift(newLocale);                             // fallback

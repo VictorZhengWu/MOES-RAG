@@ -42,7 +42,7 @@ export default function AdminSettingsPage() {
 
   const switchLang = (lang: SupportedLanguage) => {
     const segments = pathname.split('/').filter(Boolean);
-    if (['en', 'zh', 'ko', 'ja', 'no'].includes(segments[0])) segments[0] = lang;
+    if (['en', 'zh', 'ko', 'ja', 'no', 'ms'].includes(segments[0])) segments[0] = lang;
     else segments.unshift(lang);
     router.push('/' + segments.join('/'));
   };

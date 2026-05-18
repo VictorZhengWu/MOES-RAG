@@ -16,7 +16,7 @@ export function LanguageSwitcher() {
 
   const switchTo = (newLocale: string) => {
     const segments = pathname.split('/').filter(Boolean);
-    if (['en', 'zh', 'ko', 'ja', 'no'].includes(segments[0])) {
+    if (['en', 'zh', 'ko', 'ja', 'no', 'ms'].includes(segments[0])) {
       segments[0] = newLocale;
     } else {
       segments.unshift(newLocale);

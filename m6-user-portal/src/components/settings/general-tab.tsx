@@ -66,7 +66,7 @@ export function GeneralTab({ theme, onThemeChange }: Props) {
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const lang = e.target.value as SupportedLanguage;
       const segments = pathname.split('/').filter(Boolean);
-      if (['en', 'zh', 'ko', 'ja', 'no'].includes(segments[0])) {
+      if (['en', 'zh', 'ko', 'ja', 'no', 'ms'].includes(segments[0])) {
         segments[0] = lang;
       } else {
         segments.unshift(lang);

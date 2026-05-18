@@ -74,8 +74,9 @@ export function useChatStream() {
               if (chunk.citations) {
                 setCitations(chunk.citations as Citation[]);
               }
-            } catch {
-              // Ignore malformed JSON chunks (edge case in streaming)
+            } catch (err) {
+              if ((err as Error).name === 'AbortError') throw err;
+              // Ignore malformed JSON chunks
             }
           }
         }
