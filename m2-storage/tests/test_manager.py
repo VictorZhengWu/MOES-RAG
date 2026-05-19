@@ -197,3 +197,78 @@ async def test_health_check_reflects_failure():
     assert result["doc_index"] is True
     assert result["relational_db"] is True
     assert result["file_store"] is True
+
+
+# ===========================================================================
+# Integration tests using real backends (from conftest.py storage_manager fixture)
+# ===========================================================================
+
+
+@pytest.mark.asyncio
+async def test_full_lifecycle_integration(storage_manager):
+    """
+    Complete lifecycle with real backends: init, health check, close.
+
+    WHY: Verifies that create_storage_manager() -> initialize() ->
+    health_check() works end-to-end with actual ChromaDB, SQLite, and
+    LocalFS backends. Meilisearch may be unavailable (requires external
+    process), so we only assert it returns a boolean.
+    """
+    result = await storage_manager.health_check()
+    # ChromaDB and SQLite should always be healthy (embedded, no external deps)
+    assert result["vector_store"] is True, "ChromaDB should be healthy"
+    assert result["relational_db"] is True, "SQLite should be healthy"
+    assert result["file_store"] is True, "LocalFS should be healthy"
+    # doc_index may be False if Meilisearch is not running locally
+    assert isinstance(result["doc_index"], bool)
+
+
+@pytest.mark.asyncio
+async def test_cross_backend_operations(storage_manager):
+    """
+    Operations across different backends must work independently.
+
+    WHY: Proves that the 4 backends don't interfere with each other.
+    A file write should not affect vector search, and a DB query
+    should not affect file reads. Each backend must remain fully
+    functional while other backends are in use.
+    """
+    # File operation -- write and read back a test file
+    await storage_manager.file_store.put(
+        "test/hello.txt", b"Hello, Marine RAG!"
+    )
+    content = await storage_manager.file_store.get("test/hello.txt")
+    assert content == b"Hello, Marine RAG!"
+
+    # Vector store operation -- count should work on empty collection
+    count = await storage_manager.vector_store.count()
+    assert count >= 0  # At minimum, doesn't crash on empty collection
+
+    # Relational DB operation -- SELECT 1 is the standard DB ping
+    from sqlalchemy import text
+    async with await storage_manager.relational_db.get_session() as session:
+        result = await session.execute(text("SELECT 1"))
+        assert result.scalar() == 1
+
+
+@pytest.mark.asyncio
+async def test_close_then_health_fails(storage_manager):
+    """
+    After close(), health checks must return False for all backends.
+
+    WHY: StorageManager consumers (M5 health endpoint) need accurate
+    post-shutdown status. False positives here would show "healthy"
+    after the system has shut down, causing monitoring systems to
+    miss that the storage layer is unavailable.
+    """
+    await storage_manager.close()
+    result = await storage_manager.health_check()
+    assert result["vector_store"] is False, (
+        "ChromaDB should report unhealthy after close"
+    )
+    assert result["relational_db"] is False, (
+        "SQLite should report unhealthy after close"
+    )
+    assert result["file_store"] is False, (
+        "LocalFS should report unhealthy after close"
+    )

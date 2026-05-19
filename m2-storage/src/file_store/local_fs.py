@@ -124,6 +124,11 @@ class LocalFSStore(BaseFileStore):
         """
         self._config = config
         self._root = Path(config.root_dir).resolve()
+        # Track closed state so health_check() can report accurately
+        # after shutdown. Other backends track this implicitly by
+        # setting internal handles to None; LocalFS has no handles
+        # so we need an explicit flag.
+        self._closed = False
 
     async def initialize(self) -> None:
         """
@@ -143,13 +148,20 @@ class LocalFSStore(BaseFileStore):
 
         WHAT: Writes a small probe file to the root directory and
         immediately deletes it. Returns True if both operations succeed.
+        Returns False if close() has been called (store is shut down).
+
         WHY: A real read-write test catches filesystem mount issues,
         permission problems, and disk-full conditions that a simple
-        os.access() check would miss.
+        os.access() check would miss. The closed-state check ensures
+        the lifecycle contract is honored -- a closed store must
+        report as unhealthy so that monitoring systems don't show
+        green after shutdown.
 
         Returns:
             True if the root directory is accessible and writable.
         """
+        if self._closed:
+            return False
         probe = self._root / ".health_check_probe"
         try:
             # Write a small probe to confirm the filesystem is writable
@@ -163,14 +175,19 @@ class LocalFSStore(BaseFileStore):
 
     async def close(self) -> None:
         """
-        Release any held resources.
+        Release any held resources and mark the store as closed.
 
-        WHAT: No-op for local filesystem. There are no connection pools
-        or file handles to release.
-        WHY: The method exists to satisfy the BaseFileStore lifecycle
-        contract. S3/MinIO backends use it to close HTTP pools.
+        WHAT: Sets the closed flag to True so that health_check()
+        returns False after shutdown. For local filesystem there are
+        no connection pools or file handles to release.
+
+        WHY: The _closed flag ensures the lifecycle contract is
+        honored -- a closed store must report as unhealthy. Other
+        backends (ChromaDB, SQLite, Meilisearch) achieve this by
+        setting internal handles to None; LocalFS has no handles
+        so we use an explicit flag.
         """
-        pass
+        self._closed = True
 
     # -------------------------------------------------------------------------
     # CRUD operations
