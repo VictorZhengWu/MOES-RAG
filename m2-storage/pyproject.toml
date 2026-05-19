@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "marine-rag-m2-storage"
+version = "0.1.0"
+description = "Storage abstraction layer for Marine & Offshore Expert System"
+requires-python = ">=3.12"
+dependencies = [
+    "pyyaml>=6.0",
+    "marine-rag-contracts>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[tool.setuptools.package-dir]
+"m2_storage" = "src"
