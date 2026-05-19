@@ -25,8 +25,19 @@ Public API:
 
 from __future__ import annotations
 
-from .config import StorageConfig, load_config
+from .config import (
+    DocumentIndexConfig,
+    FileStoreConfig,
+    RelationalDBConfig,
+    StorageConfig,
+    VectorStoreConfig,
+    load_config,
+)
+from .document_index.base import BaseDocumentIndex
+from .file_store.base import BaseFileStore
 from .manager import StorageManager
+from .relational_db.base import BaseRelationalDB
+from .vector_store.base import BaseVectorStore
 
 
 # ===========================================================================
@@ -83,7 +94,7 @@ def create_storage_manager(config_path: str = "deploy.yaml") -> StorageManager:
 # ===========================================================================
 
 
-def _create_vector_store(cfg):
+def _create_vector_store(cfg: VectorStoreConfig) -> BaseVectorStore:
     """
     Instantiate the configured vector store backend.
 
@@ -102,7 +113,7 @@ def _create_vector_store(cfg):
     )
 
 
-def _create_document_index(cfg):
+def _create_document_index(cfg: DocumentIndexConfig) -> BaseDocumentIndex:
     """
     Instantiate the configured document index backend.
 
@@ -120,7 +131,7 @@ def _create_document_index(cfg):
     )
 
 
-def _create_relational_db(cfg):
+def _create_relational_db(cfg: RelationalDBConfig) -> BaseRelationalDB:
     """
     Instantiate the configured relational database backend.
 
@@ -139,7 +150,7 @@ def _create_relational_db(cfg):
     )
 
 
-def _create_file_store(cfg):
+def _create_file_store(cfg: FileStoreConfig) -> BaseFileStore:
     """
     Instantiate the configured file store backend.
 

@@ -53,25 +53,50 @@ def test_create_backends_correct_types():
 
 
 # ---------------------------------------------------------------------------
-# Test 2: Invalid backend raises ValueError
+# Test 2: Invalid backend raises ValueError (parameterized across all 4)
 # ---------------------------------------------------------------------------
 
 
-def test_unsupported_vector_store_backend():
+@pytest.mark.parametrize("factory_fn, config_cls, bad_backend", [
+    (_create_vector_store, VectorStoreConfig, "qdrant"),
+    (_create_document_index, DocumentIndexConfig, "elasticsearch"),
+    (_create_relational_db, RelationalDBConfig, "postgresql"),
+    (_create_file_store, FileStoreConfig, "s3"),
+])
+def test_unsupported_backend(factory_fn, config_cls, bad_backend):
     """
-    Factory must reject unsupported backend names with a clear error.
+    All 4 _create_* functions must reject unsupported backends.
 
-    WHY: Silent fallback to a default would mask configuration errors.
-    The error message must include the unsupported backend name so the
-    operator can quickly identify the typo in deploy.yaml.
+    WHY parameterized: each backend type has its own dispatch function
+    and its own set of supported backends. A single test would only
+    cover one code path. Parameterization ensures every dispatch
+    function's error branch is exercised, catching copy-paste bugs
+    where a function fails to raise ValueError.
     """
-    cfg = VectorStoreConfig(backend="qdrant")
-    with pytest.raises(ValueError, match="qdrant"):
-        _create_vector_store(cfg)
+    cfg = config_cls(backend=bad_backend)
+    with pytest.raises(ValueError, match=bad_backend):
+        factory_fn(cfg)
 
 
 # ---------------------------------------------------------------------------
-# Test 3: create_storage_manager returns correct type
+# Test 3: Missing config file raises FileNotFoundError
+# ---------------------------------------------------------------------------
+
+
+def test_create_storage_manager_file_not_found():
+    """
+    create_storage_manager must propagate FileNotFoundError for missing config.
+
+    WHY: callers need a clearly typed exception (not a generic OSError
+    or NoneType AttributeError) so they can surface a meaningful error
+    to the operator and suggest checking the deploy.yaml path.
+    """
+    with pytest.raises(FileNotFoundError):
+        create_storage_manager("./nonexistent.yaml")
+
+
+# ---------------------------------------------------------------------------
+# Test 4: create_storage_manager returns correct type
 # ---------------------------------------------------------------------------
 
 

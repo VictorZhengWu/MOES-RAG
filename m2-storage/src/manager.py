@@ -116,11 +116,23 @@ class StorageManager:
         Each backend's close() is called even if others raise, ensuring
         we never leak connections. Exceptions are returned rather than
         raised so that all backends get a chance to close.
+
+        WHY logging individual failures: if a backend fails to close
+        cleanly, the operator needs to know which specific backend
+        leaked resources. Silent failures during shutdown are
+        indistinguishable from successful shutdowns and lead to
+        resource exhaustion over repeated deploy cycles.
         """
-        await asyncio.gather(
+        results = await asyncio.gather(
             self.vector_store.close(),
             self.doc_index.close(),
             self.relational_db.close(),
             self.file_store.close(),
             return_exceptions=True,
         )
+        names = ["vector_store", "doc_index", "relational_db", "file_store"]
+        for name, result in zip(names, results):
+            if isinstance(result, Exception):
+                logger.error(
+                    "Failed to close %s: %s", name, result
+                )
