@@ -48,7 +48,12 @@ class ChromaDBConfig:
 
 @dataclass
 class MeilisearchConfig:
-    """Configuration for the Meilisearch document index backend."""
+    """Configuration for the Meilisearch document index backend.
+
+    WHY separate from DocumentIndexConfig: when we add Elasticsearch in
+    Phase 3, each backend will have its own config dataclass with
+    different fields. This keeps backend-specific parameters namespaced.
+    """
 
     host: str = "http://127.0.0.1:7700"
     api_key: str = ""
@@ -67,7 +72,13 @@ class MeilisearchConfig:
 
 @dataclass
 class SQLiteConfig:
-    """Configuration for the SQLite relational database backend."""
+    """Configuration for the SQLite relational database backend.
+
+    WHY separate from RelationalDBConfig: when we add PostgreSQL in
+    Phase 3, each backend will have its own config dataclass with
+    different fields (e.g., connection URLs vs file paths). This keeps
+    backend-specific parameters namespaced.
+    """
 
     path: str = "./data/marine_rag.db"
 
@@ -80,7 +91,13 @@ class SQLiteConfig:
 
 @dataclass
 class LocalFSConfig:
-    """Configuration for the local filesystem storage backend."""
+    """Configuration for the local filesystem storage backend.
+
+    WHY separate from FileStoreConfig: when we add S3/MinIO in
+    Phase 3, each backend will have its own config dataclass with
+    different fields (e.g., bucket names vs local directories). This
+    keeps backend-specific parameters namespaced.
+    """
 
     root_dir: str = "./data/files"
 
@@ -98,7 +115,14 @@ class LocalFSConfig:
 
 @dataclass
 class VectorStoreConfig:
-    """Vector store configuration: which backend and its parameters."""
+    """Vector store configuration: which backend and its parameters.
+
+    WHY the wrapper pattern: decouples backend selection from backend-specific
+    parameters. The factory reads the ``backend`` field to pick the concrete
+    class, then passes the matching sub-config to its constructor. Adding a new
+    backend means adding one field here and one from_dict() branch -- nothing
+    else in the codebase changes.
+    """
 
     backend: str = "chromadb"
     chromadb: ChromaDBConfig = field(default_factory=ChromaDBConfig)
@@ -119,7 +143,14 @@ class VectorStoreConfig:
 
 @dataclass
 class DocumentIndexConfig:
-    """Document index configuration: which backend and its parameters."""
+    """Document index configuration: which backend and its parameters.
+
+    WHY the wrapper pattern: decouples backend selection from backend-specific
+    parameters. The factory reads the ``backend`` field to pick the concrete
+    class, then passes the matching sub-config to its constructor. Adding a new
+    backend means adding one field here and one from_dict() branch -- nothing
+    else in the codebase changes.
+    """
 
     backend: str = "meilisearch"
     meilisearch: MeilisearchConfig = field(default_factory=MeilisearchConfig)
@@ -140,7 +171,14 @@ class DocumentIndexConfig:
 
 @dataclass
 class RelationalDBConfig:
-    """Relational database configuration: which backend and its parameters."""
+    """Relational database configuration: which backend and its parameters.
+
+    WHY the wrapper pattern: decouples backend selection from backend-specific
+    parameters. The factory reads the ``backend`` field to pick the concrete
+    class, then passes the matching sub-config to its constructor. Adding a new
+    backend means adding one field here and one from_dict() branch -- nothing
+    else in the codebase changes.
+    """
 
     backend: str = "sqlite"
     sqlite: SQLiteConfig = field(default_factory=SQLiteConfig)
@@ -161,7 +199,14 @@ class RelationalDBConfig:
 
 @dataclass
 class FileStoreConfig:
-    """File store configuration: which backend and its parameters."""
+    """File store configuration: which backend and its parameters.
+
+    WHY the wrapper pattern: decouples backend selection from backend-specific
+    parameters. The factory reads the ``backend`` field to pick the concrete
+    class, then passes the matching sub-config to its constructor. Adding a new
+    backend means adding one field here and one from_dict() branch -- nothing
+    else in the codebase changes.
+    """
 
     backend: str = "local_fs"
     local_fs: LocalFSConfig = field(default_factory=LocalFSConfig)
@@ -190,6 +235,11 @@ class StorageConfig:
     """Root configuration object parsed from deploy.yaml.
 
     Holds the deployment mode and all four storage backend configs.
+
+    WHY a single root object: factory.py and manager.py receive exactly one
+    config argument rather than four separate objects. This guarantees they
+    always operate on a consistent snapshot from the same deploy.yaml parse --
+    no risk of mixing configs from different files or different points in time.
     """
 
     deployment_mode: str = "personal"
