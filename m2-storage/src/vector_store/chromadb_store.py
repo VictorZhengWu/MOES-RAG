@@ -18,7 +18,7 @@ from typing import Any
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 
-from contracts.document import Chunk, DocumentMetadata, Domain
+from contracts.document import Chunk, DocumentMetadata, Domain, VesselType
 
 from .base import BaseVectorStore
 
@@ -111,6 +111,8 @@ class ChromaDBStore(BaseVectorStore):
         """
         if not chunks:
             return []
+        if self._collection is None:
+            return []  # Safe no-op when not initialized
 
         ids = [c.chunk_id for c in chunks]
         texts = [c.text for c in chunks]
@@ -126,6 +128,9 @@ class ChromaDBStore(BaseVectorStore):
                 "chunk_type": c.chunk_type,
                 "language": c.metadata.language,
                 "position": c.position_in_document,
+                "vessel_types": ",".join(vt.value for vt in c.metadata.vessel_types)
+                if c.metadata.vessel_types
+                else "",
             }
             for c in chunks
         ]
@@ -249,6 +254,15 @@ def _reconstruct_metadata(meta: dict) -> DocumentMetadata:
     WHY: ChromaDB stores metadata as flat key-value pairs. We reconstruct
     the typed dataclass so upper modules get consistent DocumentMetadata
     objects regardless of which backend is in use.
+
+    Preserved fields (stored as flat scalars in ChromaDB):
+        source_filename, domain, language, vessel_types (comma-separated)
+
+    Intentionally discarded fields (complex types ChromaDB cannot store
+    as 'where'-filterable flat scalars):
+        classification_society, regulation_name, version_year,
+        chapter_section, system_type, manufacturer, equipment_model,
+        page_range, custom_tags
     """
     domain_str = meta.get("domain", "general")
     try:
@@ -256,8 +270,17 @@ def _reconstruct_metadata(meta: dict) -> DocumentMetadata:
     except ValueError:
         domain = Domain.GENERAL
 
+    # Parse vessel_types from comma-separated string back to VesselType list
+    vessel_types_str = meta.get("vessel_types", "")
+    vessel_types = (
+        [VesselType(vt) for vt in vessel_types_str.split(",") if vt]
+        if vessel_types_str
+        else []
+    )
+
     return DocumentMetadata(
         source_filename=meta.get("source_filename", "unknown"),
         domain=domain,
         language=meta.get("language", "en"),
+        vessel_types=vessel_types,
     )

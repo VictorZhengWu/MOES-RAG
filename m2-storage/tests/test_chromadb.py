@@ -168,3 +168,45 @@ async def test_search_empty(chroma_store):
 async def test_health_check(chroma_store):
     """Initialized store must report healthy."""
     assert await chroma_store.health_check() is True
+
+
+# ---------------------------------------------------------------------------
+# Test 7: count with filter
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_count_with_filter(chroma_store):
+    """count() with a domain filter must return only matching chunks."""
+    c1 = _make_chunk("steel", domain="structure", chunk_index=0)
+    c2 = _make_chunk("pump", domain="machinery", chunk_index=1)
+    emb = _make_embedding()
+    await chroma_store.insert([c1, c2], [emb, emb])
+    assert await chroma_store.count({"domain": "machinery"}) == 1
+
+
+# ---------------------------------------------------------------------------
+# Test 8: delete nonexistent doc_id
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_delete_nonexistent(chroma_store):
+    """Deleting a non-existent doc_id must return 0, not raise."""
+    result = await chroma_store.delete("nonexistent-doc")
+    assert result == 0
+
+
+# ---------------------------------------------------------------------------
+# Test 9: close before initialize
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_close_before_initialize():
+    """Calling close() before initialize() must not raise.
+
+    WHY: Upper modules may call close() in cleanup/finally blocks
+    regardless of whether initialize() succeeded.
+    """
+    config = ChromaDBConfig(persist_dir="/tmp/nonexistent", collection_name="test")
+    store = ChromaDBStore(config)
+    # close() must be safe even if initialize() was never called
+    await store.close()
