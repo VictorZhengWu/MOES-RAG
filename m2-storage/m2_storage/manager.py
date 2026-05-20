@@ -77,7 +77,7 @@ class StorageManager:
         names = ["vector_store", "doc_index", "relational_db", "file_store"]
         for name, result in zip(names, results):
             if isinstance(result, Exception):
-                logger.error(
+                logger.warning(
                     "Failed to initialize %s: %s", name, result
                 )
             else:
@@ -133,6 +133,6 @@ class StorageManager:
         names = ["vector_store", "doc_index", "relational_db", "file_store"]
         for name, result in zip(names, results):
             if isinstance(result, Exception):
-                logger.error(
+                logger.warning(
                     "Failed to close %s: %s", name, result
                 )

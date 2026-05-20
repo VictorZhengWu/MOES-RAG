@@ -111,7 +111,7 @@ class SQLiteDB(BaseRelationalDB):
                 await conn.execute(text("SELECT 1"))
             return True
         except Exception:
-            logger.exception("SQLite health check failed")
+            logger.warning("SQLite health check failed")
             return False
 
     async def close(self) -> None:

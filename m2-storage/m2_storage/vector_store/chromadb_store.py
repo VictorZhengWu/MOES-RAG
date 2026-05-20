@@ -80,7 +80,7 @@ class ChromaDBStore(BaseVectorStore):
             self._collection.count()
             return True
         except Exception:
-            logger.exception("ChromaDB health check failed")
+            logger.warning("ChromaDB health check failed")
             return False
 
     async def close(self) -> None:
