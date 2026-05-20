@@ -1,5 +1,6 @@
 # M2 Storage Abstraction Layer — dev dependencies
 # Install: pip install -r requirements.txt
+# Note: contracts/ must also be installed: pip install -e ../contracts/
 
 chromadb>=0.5.0,<1.0.0
 meilisearch>=0.31.0,<1.0.0

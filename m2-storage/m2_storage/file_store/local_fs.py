@@ -76,6 +76,10 @@ def _is_safe_key(key: str) -> bool:
     if normalized.endswith("/"):
         normalized = normalized.rstrip("/")
 
+    # Reject bare "." which would resolve to the storage root directory
+    if normalized == ".":
+        return False
+
     # Reject path traversal: split on forward slash, check for ".." segments
     segments = normalized.split("/")
     if ".." in segments:

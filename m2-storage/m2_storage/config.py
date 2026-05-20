@@ -255,8 +255,14 @@ class StorageConfig:
     @classmethod
     def from_dict(cls, d: dict) -> StorageConfig:
         storage = d.get("storage", {})
+        mode = d.get("deployment_mode", "personal")
+        if mode not in ("personal", "enterprise", "saas"):
+            raise ValueError(
+                f"Invalid deployment_mode: {mode!r}. "
+                f"Supported: personal, enterprise, saas"
+            )
         return cls(
-            deployment_mode=d.get("deployment_mode", "personal"),
+            deployment_mode=mode,
             vector_store=VectorStoreConfig.from_dict(
                 storage.get("vector_store", {})
             ),

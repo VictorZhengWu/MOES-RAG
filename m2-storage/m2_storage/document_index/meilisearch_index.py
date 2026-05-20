@@ -53,6 +53,7 @@ import meilisearch
 
 
 
+from pathlib import Path
 from contracts.document import Chunk, DocumentMetadata, Domain
 
 
@@ -313,7 +314,7 @@ class MeilisearchIndex(BaseDocumentIndex):
 
                 # the extension -- this matches how M1 names documents
 
-                "doc_id": c.metadata.source_filename.replace(".pdf", ""),
+                "doc_id": Path(c.metadata.source_filename).stem,
 
                 "source_filename": c.metadata.source_filename,
 
@@ -491,7 +492,7 @@ class MeilisearchIndex(BaseDocumentIndex):
 
         before = self._index.search(
 
-            "", {"limit": 0, "filter": f'doc_id = "{doc_id}"'}
+            "", {"limit": 0, "filter": _build_meili_filter({"doc_id": doc_id})}
 
         )
 
@@ -501,7 +502,7 @@ class MeilisearchIndex(BaseDocumentIndex):
 
         # Delete all documents matching the doc_id filter
 
-        self._index.delete_documents_by_filter(f'doc_id = "{doc_id}"')
+        self._index.delete_documents_by_filter(_build_meili_filter({"doc_id": doc_id}))
 
 
 

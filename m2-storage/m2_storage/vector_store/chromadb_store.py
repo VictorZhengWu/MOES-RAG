@@ -18,6 +18,7 @@ from typing import Any
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 
+from pathlib import Path
 from contracts.document import Chunk, DocumentMetadata, Domain, VesselType
 
 from .base import BaseVectorStore
@@ -122,7 +123,7 @@ class ChromaDBStore(BaseVectorStore):
         # string/number/boolean values, not nested objects.
         metadatas = [
             {
-                "doc_id": c.metadata.source_filename.replace(".pdf", ""),
+                "doc_id": Path(c.metadata.source_filename).stem,
                 "source_filename": c.metadata.source_filename,
                 "domain": c.metadata.domain.value,
                 "chunk_type": c.chunk_type,
