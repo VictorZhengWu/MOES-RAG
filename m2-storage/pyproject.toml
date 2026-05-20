@@ -1,22 +1,40 @@
 [build-system]
-requires = ["setuptools>=75.0"]
+requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "marine-rag-m2-storage"
+name = "m2-storage"
 version = "0.1.0"
-description = "Storage abstraction layer for Marine & Offshore Expert System"
+description = "Marine & Offshore Expert System — Storage Abstraction Layer (M2)"
 requires-python = ">=3.12"
 dependencies = [
     "pyyaml>=6.0",
+    "chromadb>=0.5.0,<1.0.0",
+    "meilisearch>=0.31.0,<1.0.0",
+    "sqlalchemy[asyncio]>=2.0.0,<3.0.0",
+    "aiosqlite>=0.20.0",
+    "aiofiles>=24.0.0",
     "marine-rag-contracts>=0.1.0",
 ]
 
 [project.optional-dependencies]
+vector-store = ["chromadb>=0.5.0,<1.0.0"]
+document-index = ["meilisearch>=0.31.0,<1.0.0"]
+relational-db = ["sqlalchemy[asyncio]>=2.0.0,<3.0.0", "aiosqlite>=0.20.0"]
+file-store = ["aiofiles>=24.0.0"]
 dev = [
     "pytest>=8.0",
-    "pytest-asyncio>=0.24",
+    "pytest-asyncio>=0.23.0",
+    "pyyaml>=6.0",
 ]
+all = ["m2-storage[vector-store,document-index,relational-db,file-store,dev]"]
 
 [tool.setuptools.package-dir]
 "m2_storage" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
