@@ -136,14 +136,14 @@
 
 ## Phase 2: 后端核心
 
-### 🔲 00050 — M2 存储抽象层
+### ✅ 00050 — M2 存储抽象层
 
 > **详细设计**：`.dev/specs/m2-storage-design-2026-05-18.md`
 > **全局规范**：所有 Python 源程序必须有详细英文注释（WHAT + WHY）。
 
 ---
 
-#### 🔲 00050-01 — 配置解析模块 (config.py)
+#### ✅ 00050-01 — 配置解析模块 (config.py)
 
 **功能描述：**
 - 实现 `deploy.yaml` 解析器，将 YAML 转换为类型安全的 dataclass 对象
@@ -161,7 +161,7 @@
 
 ---
 
-#### 🔲 00050-02 — 工厂函数 (factory.py)
+#### ✅ 00050-02 — 工厂函数 (factory.py)
 
 **功能描述：**
 - 实现 `create_storage_manager(config_path)` + 4 个 `_create_*` 内部函数
@@ -177,7 +177,7 @@
 
 ---
 
-#### 🔲 00050-03 — StorageManager 生命周期管理 (manager.py)
+#### ✅ 00050-03 — StorageManager 生命周期管理 (manager.py)
 
 **功能描述：**
 - `StorageManager` 持有 4 个后端引用；不代理转发方法
@@ -195,7 +195,7 @@
 
 ---
 
-#### 🔲 00050-04 — VectorStore 基类 + ChromaDB 实现
+#### ✅ 00050-04 — VectorStore 基类 + ChromaDB 实现
 
 **功能描述：**
 - `vector_store/base.py`：`BaseVectorStore` 抽象类（继承 `VectorStoreProtocol`），补生命周期方法
@@ -211,7 +211,7 @@
 
 ---
 
-#### 🔲 00050-05 — DocumentIndex 基类 + Meilisearch 实现
+#### ✅ 00050-05 — DocumentIndex 基类 + Meilisearch 实现
 
 **功能描述：**
 - `document_index/base.py`：`BaseDocumentIndex` 抽象类（继承 `DocumentIndexProtocol`）
@@ -227,7 +227,7 @@
 
 ---
 
-#### 🔲 00050-06 — RelationalDB 基类 + SQLite 实现
+#### ✅ 00050-06 — RelationalDB 基类 + SQLite 实现
 
 **功能描述：**
 - `relational_db/base.py`：`BaseRelationalDB` 抽象类（继承 `RelationalDBProtocol`）
@@ -244,7 +244,7 @@
 
 ---
 
-#### 🔲 00050-07 — FileStore 基类 + LocalFS 实现
+#### ✅ 00050-07 — FileStore 基类 + LocalFS 实现
 
 **功能描述：**
 - `file_store/base.py`：`BaseFileStore` 抽象类（继承 `FileStoreProtocol`）
@@ -261,7 +261,7 @@
 
 ---
 
-#### 🔲 00050-08 — 测试基础设施 + 集成测试 (conftest.py + test_manager.py)
+#### ✅ 00050-08 — 测试基础设施 + 集成测试 (conftest.py + test_manager.py)
 
 **功能描述：**
 - `conftest.py`：共享 fixtures（tmp_config_path, tmp_data_dir, 4 个已初始化后端实例, storage_manager）
@@ -276,7 +276,7 @@
 
 ---
 
-#### 🔲 00050-09 — 模块打包与最终验证 (pyproject.toml + requirements.txt + __init__.py)
+#### ✅ 00050-09 — 模块打包与最终验证 (pyproject.toml + requirements.txt + __init__.py)
 
 **功能描述：**
 - `pyproject.toml`：包元数据，依赖按后端分组 `[project.optional-dependencies]`
