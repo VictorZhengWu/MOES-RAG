@@ -8,11 +8,11 @@
 
 | Field | Value |
 |-------|-------|
-| Status | 🔄 Design Approved |
-| Active Tasks | — |
-| First Dev Date | — |
+| Status | 🔄 In Development |
+| Active Tasks | 00060-03 (Docling backend adapter) |
+| First Dev Date | 2026-05-21 |
 | Last Session Date | 2026-05-21 |
-| Total Sessions | 0 |
+| Total Sessions | 1 |
 
 ---
 
@@ -24,6 +24,18 @@
 
 **Spec file**: `.dev/specs/m1-doc-parsing-design-2026-05-21.md`
 **Reference**: `.dev/specs/docling-capabilities-reference-2026-05-21.md`
+
+### Session 1 — 2026-05-21: 00060-01 + 00060-02 Implementation
+
+**Outcome**: Project skeleton (config.py + pyproject.toml) and format router (router.py) implemented. 12 tests passing.
+
+**Tasks completed**: 00060-01 (config), 00060-02 (router)
+**Files created**:
+  - `m1_parser/core/config.py` — GPU detection and OCR backend selection
+  - `m1_parser/core/router.py` — Magic bytes detection and backend routing
+  - `tests/test_config.py` — 6 tests for config
+  - `tests/test_router.py` — 6 tests for router
+  - `pyproject.toml` — Package config with grouped dependencies
 
 ---
 
@@ -41,6 +53,7 @@
 | M1-D08 | 2026-05-21 | Per-document output directory with relative paths | Portable, self-contained, human-browsable |
 | M1-D09 | 2026-05-21 | 5 metadata fields auto-extracted, remainder manual | Regex works for predictable patterns; domain expertise needed for rest |
 | M1-D10 | 2026-05-21 | Accuracy-first: no complex content enters VectorStore until reviewed | Non-negotiable quality requirement |
+| M1-D11 | 2026-05-21 | FileFormat as str+Enum mixin, magic bytes priority over extension | F-string/JSON friendly; ZIP-based formats (DOCX/XLSX/PPTX) share PK magic and need extension fallback |
 
 ---
 
