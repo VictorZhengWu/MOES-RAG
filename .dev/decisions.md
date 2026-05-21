@@ -196,6 +196,66 @@ New sessions recover context by reading L1 → L2 → L3 files in order.
 
 ---
 
+### D014: M1 Document Parser — Docling as Primary Engine
+
+**Date**: 2026-05-21 | **Status**: ✅ Decided
+
+**Decision**: Docling v2.94 is the primary document parsing engine for all file formats (PDF/DOCX/XLSX/PPTX/HTML/Images). Marker and MinerU are PDF-only alternatives. Old Office formats (.doc/.xls/.ppt) are excluded.
+
+**Why**: Docling handles 10+ formats natively (including the Office formats that would otherwise need 4 separate tools), has built-in OCR (6 engines), VLM pipeline for complex documents, and a mature MIT-licensed codebase from IBM Research. One engine covers 90% of formats instead of installing 6 separate tools. Marker/MinerU remain as options when users prefer their specific PDF-to-Markdown quality.
+
+**Impact**: M1 has a simplified architecture — one primary backend + 2 PDF-specific alternatives. Only 3 backend adapters to maintain.
+
+---
+
+### D015: M1 Complex Table Handling — 4-Layer Pipeline + Quality Gate
+
+**Date**: 2026-05-21 | **Status**: ✅ Decided
+
+**Decision**: Complex tables are processed through a 4-layer pipeline (Structure Detection → Cell Text → Header-to-Cell Annotation → Optional LLM Semantic Understanding). A complexity scoring system (7 criteria) gates table content: score 0=auto-approve, 1-2=low confidence, 3+=block embedding and require human review via M7.
+
+**Why**: Classification society documents contain heavily nested tables with merged cells, footnotes, and cross-page spans. Single-pass parsing cannot reliably handle these. The quality gate ensures accuracy-first: no complex content enters the vector database until human-verified.
+
+**Impact**: M1 has three new components: table_annotator.py, table_merger.py, quality.py. M7 needs a review UI for flagged content. ParsedDocument gets new fields: confidence, review_required, review_reasons.
+
+---
+
+### D016: M1 GPU Auto-Detection Tiered Recommendation
+
+**Date**: 2026-05-21 | **Status**: ✅ Decided
+
+**Decision**: M1 auto-detects GPU hardware at startup and recommends configuration tiered by capability: (1) GPU ≥ 8GB + Linux → vLLM + PaddleOCR-VL-1.5, (2) GPU ≥ 8GB + Windows → Transformers + GraniteDocling-258M, (3) GPU < 8GB → INT8 quantization or Standard Pipeline, (4) No GPU → EasyOCR CPU mode. User can override any recommendation.
+
+**Why**: vLLM is Linux-only. PaddleOCR-VL-1.5 needs ~4.2GB VRAM (or 230MB INT8). Different deployment environments require different optimization strategies. Auto-detection eliminates setup guesswork while preserving user choice.
+
+**Impact**: config.py has hardware detection logic. M7 admin UI shows detected hardware + recommendation.
+
+---
+
+### D017: M1 Image Storage — Per-Document Directory with Relative Paths
+
+**Date**: 2026-05-21 | **Status**: ✅ Decided
+
+**Decision**: Each parsed document gets its own output directory with sub-directories for pages/, figures/, and tables/. Markdown files use relative paths (`pages/page_001.png`). Images from the original document are preserved in their original format; rendered images use PNG at 144 DPI. Metadata sidecar files (.meta.json) accompany each figure.
+
+**Why**: Self-contained directories make documents portable and human-browsable. Relative paths ensure the Markdown renders correctly when the directory is moved or shared. Original format preservation avoids quality loss from re-encoding.
+
+**Impact**: image_manager.py handles extraction, storage, and metadata generation. M2 FileStore stores the output directory tree.
+
+---
+
+### D018: M1 Metadata Extraction — Auto-Detect 5 Fields + Manual Verification
+
+**Date**: 2026-05-21 | **Status**: ✅ Decided
+
+**Decision**: M1 auto-extracts 5 metadata fields (classification_society, regulation_name, version_year, chapter_section, language) using regex rules and language detection. Remaining fields (domain, vessel_types, system_type, manufacturer, equipment_model) require manual annotation. All auto-extracted values can be corrected by the admin via M7.
+
+**Why**: The 5 fields have predictable text patterns in marine documents. The other 6 fields require domain expertise to classify correctly. Auto-detection saves time; manual verification ensures accuracy.
+
+**Impact**: marine_metadata.py implements regex-based extraction. M7 document detail page shows extracted metadata with edit capability.
+
+---
+
 ## Pending Decisions
 
 > *No pending cross-module decisions at this time.*

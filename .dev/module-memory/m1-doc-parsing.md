@@ -8,44 +8,75 @@
 
 | Field | Value |
 |-------|-------|
-| Status | 🔲 Not Started |
+| Status | 🔄 Design Approved |
 | Active Tasks | — |
 | First Dev Date | — |
-| Last Session Date | — |
+| Last Session Date | 2026-05-21 |
 | Total Sessions | 0 |
 
 ---
 
 ## 2. Session History
 
-> *No sessions recorded yet. Entries will be added as development proceeds.*
+### Session 0 — 2026-05-21: Design & Brainstorming
+
+**Outcome**: Design spec approved. 12 sub-tasks defined. Key decisions documented.
+
+**Spec file**: `.dev/specs/m1-doc-parsing-design-2026-05-21.md`
+**Reference**: `.dev/specs/docling-capabilities-reference-2026-05-21.md`
 
 ---
 
 ## 3. Key Design Decisions (Module-Internal)
 
-> *No decisions recorded yet.*
+| ID | Date | Decision | Why |
+|----|------|----------|-----|
+| M1-D01 | 2026-05-21 | Docling v2.94 as primary engine | Handles 10+ formats, MIT license, VLM pipeline |
+| M1-D02 | 2026-05-21 | Exclude old Office formats (.doc/.xls/.ppt) | No reliable pure-Python parser; LibreOffice would add 300MB dep |
+| M1-D03 | 2026-05-21 | PDF 3-engine choice: Docling/Marker/MinerU | User preference for PDF quality; Docling + VLM covers rest |
+| M1-D04 | 2026-05-21 | OCR: PaddleOCR default > SuryaOCR > EasyOCR > Tesseract | Chinese text is primary; PaddleOCR leads Chinese benchmarks |
+| M1-D05 | 2026-05-21 | GPU tiered recommendation (4 levels) | vLLM Linux-only; Windows needs Transformers path |
+| M1-D06 | 2026-05-21 | Standalone Web UI = single-file HTML + FastAPI | No React build step; zero-dependency deployment |
+| M1-D07 | 2026-05-21 | Table quality gate: 3-level complexity scoring | Accuracy-first principle; complex tables must be human-reviewed |
+| M1-D08 | 2026-05-21 | Per-document output directory with relative paths | Portable, self-contained, human-browsable |
+| M1-D09 | 2026-05-21 | 5 metadata fields auto-extracted, remainder manual | Regex works for predictable patterns; domain expertise needed for rest |
+| M1-D10 | 2026-05-21 | Accuracy-first: no complex content enters VectorStore until reviewed | Non-negotiable quality requirement |
 
 ---
 
 ## 4. Known Pitfalls & Gotchas
 
-> *No pitfalls recorded yet. Add warnings here for future developers (or your future self).*
+1. **Docling editable install on Windows**: Same `src/` → `m1_parser/` layout issue as M2. Use conventional `m1_parser/` directory name.
+2. **GBK encoding on Chinese Windows**: Need `# -*- coding: utf-8 -*-` on files with non-ASCII chars.
+3. **PaddleOCR-VL-1.5 needs 4.2GB VRAM (native) or 230MB (INT8)**: Must check VRAM before recommending native mode.
+4. **vLLM Linux-only**: Cannot test full GPU pipeline on Windows dev machine. Use Transformers engine for local dev, vLLM for production.
+5. **TableFormer accuracy drops on borderless tables**: Chinese classification society documents often use borderless layouts.
+6. **Meilisearch filter syntax vs ChromaDB where clause**: Metadata filter conversion needed when storing chunks in both backends.
 
 ---
 
 ## 5. Interface Contract Deviations
 
-> *Record any cases where the actual implementation differs from contracts/document.py or contracts/storage.py specifications, and why.*
+> *No deviations yet. Will follow contracts/document.py ParsedDocument format.*
 
 ---
 
 ## 6. Performance Notes
 
-> *Benchmarks, profiling results, known bottlenecks.*
+| Operation | Expected Performance (RTX 2060) | Notes |
+|-----------|-------------------------------|-------|
+| PDF text-only page | ~5 pages/sec | Standard Pipeline, no OCR |
+| PDF scanned page | ~1-2 pages/sec | With EasyOCR GPU |
+| PDF VLM (GraniteDocling-258M) | ~0.5 pages/sec | Transformers engine, Windows |
+| DOCX conversion | ~10 pages/sec | SimplePipeline, no OCR |
+
+> Production benchmarks TBD when run on target Linux + large GPU machine.
 
 ---
 
 ## 7. Open Issues
 
-> *Unresolved problems that need attention but aren't blocking current tasks.*
+1. **VLM models on Windows**: Need to test which VLM presets work with Transformers engine on Windows. GraniteDocling-258M is the safest bet (small, cross-platform).
+2. **SuryaOCR GPL license**: If used as default, imposes GPL obligations on the project. Currently only a backup option.
+3. **Table LLM semantic layer**: Which model to use for the optional Layer 4 (footnote expansion, cross-table context)? Local vs API decision pending.
+4. **Marker/MinerU installation complexity**: Both require additional Python packages (PyTorch, PDF-Extract-Kit). Need to document install steps clearly.

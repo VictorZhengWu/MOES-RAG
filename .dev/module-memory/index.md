@@ -10,7 +10,7 @@
 
 | Module | Name | Status | Sessions | Last Session | Active Task |
 |--------|------|--------|----------|-------------|-------------|
-| M1 | Document Parsing Engine | 🔲 Not Started | 0 | — | — |
+| M1 | Document Parsing Engine | 🔄 Design Approved | 0 | 2026-05-21 | 00060 (12 sub-tasks) |
 | M2 | Storage Abstraction Layer | ✅ Complete | 1 | 2026-05-19 | — |
 | M3 | Retrieval Engine | 🔲 Not Started | 0 | — | — |
 | M4 | Knowledge Graph Engine | 🔲 Not Started | 0 | — | — |
@@ -37,6 +37,7 @@
 |-------------------|------|
 | Understand the overall architecture | `.dev/specs/rag-system-design-2026-05-12.md` |
 | Know cross-module decisions | `.dev/decisions.md` |
+| Walk through Docling examples | `.dev/specs/docling-capabilities-reference-2026-05-21.md` |
 | Work on a specific module | `.dev/module-memory/m<X>-<name>.md` |
 | See what tasks remain | `.dev/tasks.md` |
 | Understand a task's test history | `.dev/test_records/<NNNNN>.md` |

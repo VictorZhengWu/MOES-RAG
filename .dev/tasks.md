@@ -314,7 +314,245 @@
 
 ### 🔲 00060 — M1 文档解析引擎
 
-（详细设计将在开发本模块时制定）
+> **详细设计**：`.dev/specs/m1-doc-parsing-design-2026-05-21.md`
+> **Docling 参考**：`.dev/specs/docling-capabilities-reference-2026-05-21.md`
+
+**核心原则**：准确性第一——复杂内容未通过质量门禁不得进入向量数据库。
+
+---
+
+#### 🔲 00060-01 — 项目骨架与配置系统 (config.py + pyproject.toml)
+
+**功能描述：**
+- 创建 m1-doc-parsing 项目结构（目录、pyproject.toml、requirements.txt）
+- 实现 config.py：GPU 检测 + 后端/OCR 引擎选择 + 推荐逻辑
+- 硬件检测：`nvidia-smi` + `torch.cuda.is_available()` + VRAM 查询
+- 分层推荐：
+  - GPU ≥ 8GB + Linux → vLLM + PaddleOCR-VL-1.5
+  - GPU ≥ 8GB + Windows → Transformers + GraniteDocling-258M
+  - GPU < 8GB → INT8 量化或 Standard Pipeline
+  - 无 GPU → EasyOCR + CPU 模式
+- 解析 deploy.yaml 中的 M1 专属配置段
+
+**验证方法：** 4 个测试用例（有 GPU 场景 mock、无 GPU 场景、配置加载、无效配置报错）
+**Task 类型：** 工具/原子函数类
+**依赖：** 无
+**关联文件：** `m1-doc-parsing/m1_parser/core/config.py`, `m1-doc-parsing/tests/test_config.py`
+
+---
+
+#### 🔲 00060-02 — 格式路由 (router.py)
+
+**功能描述：**
+- 文件类型嗅探（magic bytes + 扩展名）
+- 格式分类：
+  - PDF/IMAGE → 用户可选择 Docling/Marker/MinerU
+  - DOCX/XLSX/PPTX/HTML → 强制 Docling
+- 不支持格式 → 抛出明确错误信息
+
+**验证方法：** 5 个测试用例（PDF 识别、DOCX 识别、图片识别、不支持的 zip 文件、无扩展名文件）
+**Task 类型：** 工具/原子函数类
+**依赖：** 无
+**关联文件：** `m1-doc-parsing/m1_parser/core/router.py`, `m1-doc-parsing/tests/test_router.py`
+
+---
+
+#### 🔲 00060-03 — Docling 后端适配器 (docling_backend.py)
+
+**功能描述：**
+- 封装 Docling DocumentConverter 为标准接口
+- 支持 Standard Pipeline 和 VLM Pipeline 切换
+- 按格式配置 Pipeline（PDF→PdfFormatOption, DOCX→WordFormatOption, PPTX→PptxFormatOption, IMAGE→ImageFormatOption）
+- 启用 `generate_page_images`, `generate_picture_images`, `images_scale=2.0`
+- 批量转换：`convert_all()` with `raises_on_error=False`
+- OCR 引擎可配置：`ocr_options = EasyOcrOptions/SuryaOcrOptions/TesseractCliOcrOptions/RapidOcrOptions`
+- VLM 模式：通过 Preset 切换模型（`granite_docling`, `deepseek_ocr`, `paddleocr_vl` 等）
+- 本地 VLM 用 Transformers 引擎；远程用 `ApiVlmEngineOptions`
+
+**验证方法：** 4 个测试用例（PDF 转 MD、DOCX 转 MD、图片 OCR 转 MD、批量转换）
+**Task 类型：** 模块/服务类
+**依赖：** 00060-01, 00060-02
+**关联文件：** `m1-doc-parsing/m1_parser/backends/docling_backend.py`, `m1-doc-parsing/tests/test_docling_backend.py`
+
+---
+
+#### 🔲 00060-04 — Marker 与 MinerU 后端适配器 (marker_backend.py + mineru_backend.py)
+
+**功能描述：**
+- Marker 后端：调用 Marker CLI/API，PDF → Markdown。封装为 Docling 兼容的 adapter 接口
+- MinerU 后端：调用 MinerU CLI/API（`magic-pdf`），PDF → Markdown. 封装为同一 adapter 接口
+- 两个适配器遵循相同的 `BackendInterface`（输入路径 → 输出 DoclingDocument 或 Markdown）
+- 两后端仅处理 PDF + IMAGE 格式
+
+**验证方法：** 2 个测试用例（Marker PDF→MD、MinerU PDF→MD；skip if 工具未安装）
+**Task 类型：** 模块/服务类
+**依赖：** 00060-03
+**关联文件：** `m1-doc-parsing/m1_parser/backends/marker_backend.py`, `m1-doc-parsing/m1_parser/backends/mineru_backend.py`
+
+---
+
+#### 🔲 00060-05 — 主转换器 (converter.py)
+
+**功能描述：**
+- `convert(input_path, options) → ParsedDocument`：单文件转换入口
+- `convert_batch(input_paths, options) → list[ParsedDocument]`：批量转换
+- 集成 router → backend 选择 → Docling 解析 → 元数据提取 → 表格增强 → 质量门禁
+- 完整的 6 阶段管线编排
+- 进度回调机制（`on_progress` callback，大文件长时间运行需要）
+
+**验证方法：** 3 个测试用例（单文件转换全流程、批量转换、失败文件不中断批量）
+**Task 类型：** 集成/跨模块类
+**依赖：** 00060-03, 00060-04
+**关联文件：** `m1-doc-parsing/m1_parser/core/converter.py`, `m1-doc-parsing/tests/test_converter.py`
+
+---
+
+#### 🔲 00060-06 — 海洋工程元数据提取 (marine_metadata.py)
+
+**功能描述：**
+- 自动提取 5 个字段：
+  1. `classification_society`：正则 `DNV|ABS|CCS|LR|BV|NK|RINA|KR|IACS|IMO`
+  2. `regulation_name`：文件名模式 + 文档标题首行匹配
+  3. `version_year`：正则 `(20\d{2}|19\d{2})`，取第一个匹配
+  4. `chapter_section`：正则 `Pt\.?\s*\d+|Ch\.?\s*\d+|§\s*[\d.]+`
+  5. `language`：langdetect 或 Docling 内部语言检测
+- 作为 Docling Enrichment Model 实现（`BaseItemAndImageEnrichmentModel` 子类）
+- 提取结果写入 `ParsedDocument.metadata`
+- 用户可在 M7 核查并修改
+
+**验证方法：** 5 个测试用例（每个字段一个，用预设文本片段验证正则提取）
+**Task 类型：** 模块/服务类
+**依赖：** 00060-05
+**关联文件：** `m1-doc-parsing/m1_parser/enrichments/marine_metadata.py`, `m1-doc-parsing/tests/test_marine_metadata.py`
+
+---
+
+#### 🔲 00060-07 — 复杂表格处理 (table_annotator.py + table_merger.py + quality.py)
+
+**功能描述：**
+- `table_merger.py`：跨页表格检测与合并（检测缺少表头行 → 向前回溯 → 复用表头）
+- `table_annotator.py`：Header-to-Cell 关联（规则引擎：每个数据单元格关联到其行表头和列表头）
+- `quality.py`：复杂度评分引擎（7项评分标准，3级门禁）
+- 低置信度 Chunk：`confidence < 1.0`, `review_required = True`
+- 复杂 Chunk：阻止写入 VectorStore，通知 M7 审核
+
+**验证方法：** 5 个测试用例（跨页合并、header-cell 关联、得分0自动通过、得分3+阻止、得分1-2低置信度）
+**Task 类型：** 模块/服务类
+**依赖：** 00060-05
+**关联文件：** `m1-doc-parsing/m1_parser/enrichments/table_annotator.py`, `m1-doc-parsing/m1_parser/enrichments/table_merger.py`, `m1-doc-parsing/m1_parser/core/quality.py`, `m1-doc-parsing/tests/test_table_annotator.py`, `m1-doc-parsing/tests/test_table_merger.py`, `m1-doc-parsing/tests/test_quality.py`
+
+---
+
+#### 🔲 00060-08 — 输出序列化与图片管理 (serializer.py + image_manager.py)
+
+**功能描述：**
+- `serializer.py`：ParsedDocument → Markdown / JSON / HTML 三格式输出
+- `image_manager.py`：
+  - 提取内嵌图片（原格式保存到 `figures/`）
+  - 生成页面截图（PNG, 144 DPI, `pages/`）
+  - 生成表格截图（PNG, `tables/`）
+  - 图片元数据侧车写入（`.meta.json`）
+  - 路径穿越校验（复用 M2 已验证的 `_is_safe_key()` 逻辑）
+- 输出目录结构：`{output_dir}/{doc_id}/full.md` + 子目录
+- Markdown 内部使用相对路径引用图片
+
+**验证方法：** 4 个测试用例（MD 输出含图片引用、JSON 输出完整、HTML 输出正确、图片侧车内容正确）
+**Task 类型：** 模块/服务类
+**依赖：** 00060-05
+**关联文件：** `m1-doc-parsing/m1_parser/output/serializer.py`, `m1-doc-parsing/m1_parser/output/image_manager.py`, `m1-doc-parsing/tests/test_serializer.py`, `m1-doc-parsing/tests/test_image_manager.py`
+
+---
+
+#### 🔲 00060-09 — Chunking 封装 (chunker.py)
+
+**功能描述：**
+- 封装 Docling Hybrid Chunker + HuggingFace Tokenizer
+- Tokenizer 与 M5 嵌入模型对齐（BGE-M3 / GTE-Qwen2）
+- 配置：`max_tokens`, `merge_peers=True`, `repeat_table_header=True`
+- 输出 `list[Chunk]` 符合 `contracts/document.py`
+- 每个 Chunk 附带 `confidence` 和 `review_required` 字段
+- 支持 `contextualize()` 添加标题路径前缀
+
+**验证方法：** 3 个测试用例（分块数正确、token 不超限、表格跨块表头重复）
+**Task 类型：** 模块/服务类
+**依赖：** 00060-08
+**关联文件：** `m1-doc-parsing/m1_parser/output/chunker.py`, `m1-doc-parsing/tests/test_chunker.py`
+
+---
+
+#### 🔲 00060-10 — M2 存储桥接 (m2_bridge.py)
+
+**功能描述：**
+- `write_document_record(doc) → doc_id`：写入 `m1_documents` 表
+- `create_parsing_task(doc_id, config) → task_id`：写入 `m1_parsing_tasks` 表
+- `store_file(manager, key, data) → key`：写入 FileStore
+- `store_chunks(manager, chunks)`：写入 VectorStore（仅 `review_required=False` 的）
+- `store_fulltext(manager, chunks)`：写入 DocumentIndex
+- 自动检查 `chunk.review_required`，阻止未审核内容写入 VectorStore
+
+**验证方法：** 3 个测试用例（文档记录写入、文件存储往返、复杂 chunk 被阻止写入 VectorStore）
+**Task 类型：** 集成/跨模块类
+**依赖：** 00060-09, M2 (00050)
+**关联文件：** `m1-doc-parsing/m1_parser/integration/m2_bridge.py`, `m1-doc-parsing/tests/test_m2_bridge.py`
+
+---
+
+#### 🔲 00060-11 — Standalone CLI 与 Web UI (cli.py + web_server.py + web_ui.html)
+
+**功能描述：**
+- CLI：`m1-parser input.pdf --backend docling --ocr paddleocr --output ./out/ --format md`
+- Web Server：FastAPI 单进程，`/upload` 上传端点，`/parse` 解析端点，`/download/{doc_id}` 下载端点
+- Web UI：单文件 HTML + CSS + JS，拖放上传 + 下拉配置 + Markdown 实时预览 + 下载按钮
+- 独立模式不依赖 M6/M7
+
+**验证方法：** 3 个测试用例（CLI 单文件、CLI 批量、Web upload API 返回成功）
+**Task 类型：** 模块/服务类
+**依赖：** 00060-05
+**关联文件：** `m1-doc-parsing/m1_parser/standalone/cli.py`, `m1-doc-parsing/m1_parser/standalone/web_server.py`, `m1-doc-parsing/m1_parser/standalone/web_ui.html`, `m1-doc-parsing/tests/test_cli.py`
+
+---
+
+#### 🔲 00060-12 — 打包与最终验证 (pyproject.toml + requirements.txt + 全量测试)
+
+**功能描述：**
+- pyproject.toml：依赖分组（`[core]`, `[vlm]`, `[ocr]`, `[all]`, `[dev]`）
+- requirements.txt：锁定开发依赖
+- `__init__.py` 公开 API 导出（`convert`, `convert_batch`, `detect_hardware`）
+- 全量测试套件通过
+
+**验证方法：** pip install 成功、全量 pytest 通过、CLI 可执行
+**Task 类型：** 集成/跨模块类
+**依赖：** 00060-01 ~ 00060-11
+**关联文件：** `m1-doc-parsing/pyproject.toml`, `m1-doc-parsing/requirements.txt`, `m1-doc-parsing/m1_parser/__init__.py`
+
+---
+
+**依赖关系图：**
+
+```
+00060-01 (config) ──→ 00060-02 (router) ──→ 00060-03 (Docling backend)
+                                                │
+                           00060-04 (Marker/MinerU)
+                                                │
+                           00060-05 (converter) ←┘
+                                │
+          ┌─────────────────────┼─────────────────────┐
+          │                     │                     │
+    00060-06              00060-07              00060-08
+  (marine_metadata)   (表格处理+质量门禁)    (序列化+图片管理)
+          │                     │                     │
+          └─────────────────────┼─────────────────────┘
+                                │
+                          00060-09 (chunker)
+                                │
+                          00060-10 (M2 bridge)
+                                │
+                          00060-11 (CLI + Web UI)
+                                │
+                          00060-12 (打包验证)
+```
+
+**并行机会**：00060-06, 00060-07, 00060-08 互不依赖，可并行开发。
 
 ### 🔲 00070 — M3 检索引擎
 
