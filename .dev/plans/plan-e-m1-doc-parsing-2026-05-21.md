@@ -1,29 +1,29 @@
-# M1 Document Parsing Engine — Implementation Plan
+# M1 文档解析引擎 — 实现计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **给执行 Subagent 的说明**：必须使用 superpowers:subagent-driven-development 或 superpowers:executing-plans 技能按任务逐个实现。步骤使用 checkbox（`- [ ]`）语法追踪。
 
-**Goal:** Implement the M1 document parsing engine with dual-mode operation (standalone CLI/Web + system module), Docling v2.94 as primary engine, Marker/MinerU as PDF alternatives, GPU auto-detection, marine metadata extraction, complex table quality gating, and M2 integration.
+**目标**：实现 M1 文档解析引擎，支持双模式运行（独立 CLI/Web + 系统模块），Docling v2.94 为主要引擎，Marker/MinerU 为 PDF 备选引擎，GPU 自动检测，海洋工程元数据提取，复杂表格质量门禁，以及 M2 存储集成。
 
-**Architecture:** 6-stage parsing pipeline (Route → Parse → Metadata → Table Enrich → Quality Gate → Serialize). Converter orchestrates through router → backend → enrichments → quality → output. Standalone web UI via FastAPI + single-file HTML. Module mode integrates with M7 and M2.
+**架构**：6 阶段解析管线（路由 → 解析 → 元数据 → 表格增强 → 质量门禁 → 序列化）。Converter 通过 router → backend → enrichments → quality → output 编排全流程。独立 Web 界面使用 FastAPI + 单文件 HTML。Module 模式集成 M7 和 M2。
 
-**Tech Stack:** Python 3.12+, Docling v2.94, python-magic, PyYAML, FastAPI, aiohttp, langdetect, HuggingFace tokenizers
+**技术栈**：Python 3.12+, Docling v2.94, python-magic, PyYAML, FastAPI, langdetect, HuggingFace tokenizers
 
 ---
 
-### Task 1: Project Skeleton + Config System (00060-01)
+### 任务 1：项目骨架与配置系统 (00060-01)
 
-**Files:**
-- Create: `m1-doc-parsing/pyproject.toml`
-- Create: `m1-doc-parsing/requirements.txt`
-- Create: `m1-doc-parsing/m1_parser/__init__.py`
-- Create: `m1-doc-parsing/m1_parser/core/__init__.py`
-- Create: `m1-doc-parsing/m1_parser/core/config.py`
-- Create: `m1-doc-parsing/tests/__init__.py`
-- Create: `m1-doc-parsing/tests/test_config.py`
+**涉及文件：**
+- 新建：`m1-doc-parsing/pyproject.toml`
+- 新建：`m1-doc-parsing/requirements.txt`
+- 新建：`m1-doc-parsing/m1_parser/__init__.py`
+- 新建：`m1-doc-parsing/m1_parser/core/__init__.py`
+- 新建：`m1-doc-parsing/m1_parser/core/config.py`
+- 新建：`m1-doc-parsing/tests/__init__.py`
+- 新建：`m1-doc-parsing/tests/test_config.py`
 
-- [ ] **Step 1: Create project skeleton**
+- [ ] **步骤 1：创建项目骨架文件**
 
-`pyproject.toml`:
+`pyproject.toml`：
 ```toml
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
@@ -44,10 +44,8 @@ dependencies = [
 [project.optional-dependencies]
 vlm = ["torch>=2.0"]
 ocr = ["paddleocr>=2.7", "easyocr>=1.7"]
-marker = ["marker-pdf"]
-mineru = ["magic-pdf"]
 dev = ["pytest>=8.0", "pytest-asyncio>=0.23.0"]
-all = ["m1-doc-parsing[vlm,ocr,marker,mineru,dev]"]
+all = ["m1-doc-parsing[vlm,ocr,dev]"]
 
 [project.scripts]
 m1-parser = "m1_parser.standalone.cli:main"
@@ -57,7 +55,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 ```
 
-`requirements.txt`:
+`requirements.txt`：
 ```
 docling>=2.94.0
 pyyaml>=6.0
@@ -67,16 +65,17 @@ pytest>=8.0
 pytest-asyncio>=0.23.0
 ```
 
-`m1_parser/__init__.py`:
+`m1_parser/__init__.py`：
 ```python
 """
-M1 -- Document Parsing Engine.
+M1 -- 文档解析引擎。
 
-Converts raw files (PDF, Office, images) into structured Markdown
-with marine-domain metadata, complex table annotations, and quality
-confidence scores. Operates in two modes:
-  - Standalone: CLI tool + Web UI
-  - Module: Called by M7 admin portal, writes to M2 storage
+将原始文件（PDF、Office、图片）转换为结构化 Markdown，
+附带海洋工程领域元数据、复杂表格注释和质量置信度评分。
+
+两种运行模式：
+  - Standalone：CLI 工具 + Web 界面
+  - Module：被 M7 管理后台调用，写入 M2 存储
 """
 
 __version__ = "0.1.0"
@@ -91,31 +90,30 @@ __all__ = [
 ]
 ```
 
-`m1_parser/core/__init__.py`:
+`m1_parser/core/__init__.py`：
 ```python
-# Core parsing pipeline components
+# 解析管线核心组件
 ```
 
-`tests/__init__.py`:
+`tests/__init__.py`：
 ```python
-# M1 test suite
+# M1 测试套件
 ```
 
-- [ ] **Step 2: Write test_config.py (TDD first)**
+- [ ] **步骤 2：先写测试（TDD）**
 
 ```python
 # m1-doc-parsing/tests/test_config.py
 """
-Tests for config.py -- hardware detection and backend/OCR selection.
+config.py 的单元测试 —— 硬件检测与后端/OCR引擎选择。
 
-WHY: GPU detection and backend recommendation are the first thing that
-runs when M1 starts. Wrong detection = wrong default settings = poor
-performance or crashes. These tests mock hardware to verify all 4
-tiered recommendation paths.
+WHY: GPU 检测和后端推荐是 M1 启动时第一个执行的操作。
+错误的检测 = 错误的默认设置 = 性能差或直接崩溃。
+这些测试通过 mock 硬件来验证 4 个分级推荐路径。
 """
 
 import platform
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -129,14 +127,14 @@ from m1_parser.core.config import (
 
 
 # ---------------------------------------------------------------------------
-# Test 1: GPU ≥ 8GB + Linux → vLLM + PaddleOCR-VL
+# 测试 1：GPU ≥ 8GB + Linux → 推荐 vLLM + PaddleOCR-VL
 # ---------------------------------------------------------------------------
 
 @patch("torch.cuda.is_available", return_value=True)
 @patch("torch.cuda.get_device_properties")
 @patch.object(platform, "system", return_value="Linux")
 def test_gpu_8gb_linux_recommends_vllm(mock_system, mock_props, mock_avail):
-    """GPU >= 8GB on Linux must recommend vLLM + PaddleOCR-VL."""
+    """GPU >= 8GB 且 Linux 系统必须推荐 vLLM + PaddleOCR-VL。"""
     mock_props.return_value.total_memory = 12 * 1024**3  # 12 GB
     profile = detect_hardware()
     assert profile.gpu is True
@@ -146,14 +144,14 @@ def test_gpu_8gb_linux_recommends_vllm(mock_system, mock_props, mock_avail):
 
 
 # ---------------------------------------------------------------------------
-# Test 2: GPU ≥ 8GB + Windows → Transformers + GraniteDocling
+# 测试 2：GPU ≥ 8GB + Windows → 推荐 Transformers + GraniteDocling
 # ---------------------------------------------------------------------------
 
 @patch("torch.cuda.is_available", return_value=True)
 @patch("torch.cuda.get_device_properties")
 @patch.object(platform, "system", return_value="Windows")
 def test_gpu_8gb_windows_recommends_transformers(mock_system, mock_props, mock_avail):
-    """GPU >= 8GB on Windows must recommend Transformers engine."""
+    """GPU >= 8GB 且 Windows 系统必须推荐 Transformers 引擎。"""
     mock_props.return_value.total_memory = 10 * 1024**3
     profile = detect_hardware()
     assert profile.gpu is True
@@ -162,25 +160,25 @@ def test_gpu_8gb_windows_recommends_transformers(mock_system, mock_props, mock_a
 
 
 # ---------------------------------------------------------------------------
-# Test 3: GPU < 8GB → Standard Pipeline
+# 测试 3：GPU < 8GB → 推荐 Standard Pipeline
 # ---------------------------------------------------------------------------
 
 @patch("torch.cuda.is_available", return_value=True)
 @patch("torch.cuda.get_device_properties")
 def test_gpu_low_vram_recommends_standard(mock_props, mock_avail):
-    """GPU with < 8GB VRAM must recommend Standard Pipeline."""
+    """GPU 但显存不足 8GB 必须推荐 Standard Pipeline。"""
     mock_props.return_value.total_memory = 6 * 1024**3  # RTX 2060
     profile = detect_hardware()
     assert profile.recommended_backend == "docling_standard"
 
 
 # ---------------------------------------------------------------------------
-# Test 4: No GPU → CPU mode + EasyOCR
+# 测试 4：无 GPU → 推荐 CPU 模式 + EasyOCR
 # ---------------------------------------------------------------------------
 
 @patch("torch.cuda.is_available", return_value=False)
 def test_no_gpu_recommends_cpu(mock_avail):
-    """No GPU must recommend CPU mode with EasyOCR."""
+    """无 GPU 必须推荐 CPU 模式 + EasyOCR。"""
     profile = detect_hardware()
     assert profile.gpu is False
     assert profile.vram_gb == 0
@@ -190,50 +188,49 @@ def test_no_gpu_recommends_cpu(mock_avail):
 
 
 # ---------------------------------------------------------------------------
-# Test 5: OCR engine priority
+# 测试 5：OCR 引擎优先顺序
 # ---------------------------------------------------------------------------
 
 def test_ocr_priority_order():
-    """PaddleOCR must be first, Tesseract last."""
+    """PaddleOCR 必须排第一，Tesseract 排最后。"""
     assert OCR_ENGINE_PRIORITY[0] == "paddleocr"
     assert OCR_ENGINE_PRIORITY[-1] == "tesseract"
 
 
 # ---------------------------------------------------------------------------
-# Test 6: Backend list includes all required engines
+# 测试 6：支持的后端列表
 # ---------------------------------------------------------------------------
 
 def test_supported_backends():
-    """All 3 backend types must be in the supported list."""
+    """所有 3 种后端类型必须在支持列表中。"""
     assert "docling" in SUPPORTED_BACKENDS
     assert "marker" in SUPPORTED_BACKENDS
     assert "mineru" in SUPPORTED_BACKENDS
 ```
 
-- [ ] **Step 3: Run test to verify failure**
+- [ ] **步骤 3：运行测试验证失败**
 
 ```bash
 python -m pytest m1-doc-parsing/tests/test_config.py -v
 ```
-Expected: FAIL with import errors
+预期：FAIL（import 错误，config.py 还不存在）
 
-- [ ] **Step 4: Write config.py**
+- [ ] **步骤 4：编写 config.py 实现**
 
 ```python
 # m1-doc-parsing/m1_parser/core/config.py
 """
-Hardware detection and configuration management for M1.
+M1 硬件检测和配置管理。
 
-WHY: M1 runs on diverse hardware (CPU-only laptops to GPU servers).
-Auto-detection eliminates manual setup guesswork and ensures optimal
-performance on each deployment. The tiered recommendation system maps
-4 hardware profiles to the most efficient backend+OCR combination.
+WHY: M1 运行在多种硬件环境上（从无 GPU 的笔记本到 GPU 服务器）。
+自动检测消除了手动设置猜测，确保每种部署环境使用最优配置。
+分级推荐系统将 4 种硬件配置映射到最高效的后端+OCR 组合。
 
-Key decisions:
-- vLLM is Linux-only (uses Linux kernel features)
-- PaddleOCR-VL-1.5 needs ~4.2GB VRAM (or 230MB INT8)
-- GraniteDocling-258M is the safest cross-platform VLM
-- EasyOCR is the most reliable CPU fallback
+关键决策：
+- vLLM 仅支持 Linux（依赖 Linux 内核特性）
+- PaddleOCR-VL-1.5 需要约 4.2GB 显存（或 INT8 量化后 230MB）
+- GraniteDocling-258M 是跨平台最安全的 VLM
+- EasyOCR 是最可靠的 CPU 兜底方案
 """
 
 from __future__ import annotations
@@ -242,7 +239,7 @@ import platform
 from dataclasses import dataclass
 
 # ===========================================================================
-# Constants
+# 常量
 # ===========================================================================
 
 SUPPORTED_BACKENDS = ["docling", "marker", "mineru"]
@@ -259,38 +256,38 @@ VLM_PRESETS = [
 
 
 # ===========================================================================
-# Hardware profile
+# 硬件配置数据模型
 # ===========================================================================
 
 
 @dataclass
 class HardwareProfile:
     """
-    Detected hardware capabilities and recommended configuration.
+    检测到的硬件能力和推荐配置。
 
-    WHY a dataclass, not a dict: type-safe consumers (M7 config page)
-    can rely on field existence and types without try/except KeyError.
+    WHY 使用 dataclass 而非 dict：类型安全的消费者（M7 配置页面）
+    可以依赖字段存在性和类型，无需 try/except KeyError。
     """
 
     gpu: bool
     vram_gb: float
     recommended_backend: str  # "docling_standard" | "paddleocr_vl" | ...
     recommended_ocr: str      # "paddleocr" | "easyocr" | ...
-    can_use_vllm: bool        # True only on Linux with GPU
+    can_use_vllm: bool        # 仅 Linux + GPU 时为 True
 
 
 def detect_hardware() -> HardwareProfile:
     """
-    Detect GPU and OS, return tiered configuration recommendation.
+    检测 GPU 和操作系统，返回分级配置推荐。
 
-    Detection logic (4 tiers):
-    1. GPU >= 8GB + Linux   → vLLM + PaddleOCR-VL-1.5
-    2. GPU >= 8GB + Windows → Transformers + GraniteDocling
-    3. GPU < 8GB            → Standard Pipeline (or INT8 VLM)
-    4. No GPU               → EasyOCR CPU mode
+    检测逻辑（4 级）：
+    1. GPU ≥ 8GB + Linux   → vLLM + PaddleOCR-VL-1.5（最快）
+    2. GPU ≥ 8GB + Windows → Transformers + GraniteDocling（跨平台）
+    3. GPU < 8GB            → Standard Pipeline（或 INT8 VLM）
+    4. 无 GPU               → EasyOCR CPU 模式
 
-    WHY tiered: vLLM is Linux-only. PaddleOCR-VL needs 4.2GB+ VRAM.
-    Auto-detection prevents recommending a config that won't run.
+    WHY 分级：vLLM 仅 Linux。PaddleOCR-VL 需 4.2GB+ 显存。
+    自动检测可防止推荐一个根本跑不起来的配置。
     """
     try:
         import torch
@@ -336,13 +333,13 @@ def detect_hardware() -> HardwareProfile:
 
 def recommend_ocr_engine(preferred: str | None = None) -> str:
     """
-    Return the first available OCR engine from the priority list.
+    从优先级列表中返回第一个可用的 OCR 引擎。
 
-    Attempts engines in order (PaddleOCR → SuryaOCR → EasyOCR → Tesseract).
-    If `preferred` is given and available, uses it regardless of priority.
+    按 PaddleOCR → SuryaOCR → EasyOCR → Tesseract 的顺序尝试。
+    如果给定 preferred 且可用，则直接使用它。
 
-    WHY fallback chain: different environments have different engines
-    installed. PaddleOCR may fail to import; EasyOCR is near-universal.
+    WHY 回退链：不同环境安装了不同的引擎。
+    PaddleOCR 可能导入失败；EasyOCR 几乎通用。
     """
     if preferred and _is_ocr_available(preferred):
         return preferred
@@ -351,17 +348,17 @@ def recommend_ocr_engine(preferred: str | None = None) -> str:
         if _is_ocr_available(engine):
             return engine
     raise RuntimeError(
-        "No OCR engine available. Install one of: "
+        "没有可用的 OCR 引擎。请安装以下之一: "
         + ", ".join(OCR_ENGINE_PRIORITY)
     )
 
 
 def _is_ocr_available(engine: str) -> bool:
     """
-    Check if an OCR engine can be imported.
+    检查 OCR 引擎是否可导入。
 
-    WHY lazy detection: import errors at startup are better than
-    runtime crashes 5 minutes into parsing a 100-page PDF.
+    WHY 惰性检测：启动时的导入错误比解析 100 页 PDF 5 分钟后
+    才运行时崩溃要好得多。
     """
     import_map = {
         "paddleocr": "paddleocr",
@@ -379,38 +376,37 @@ def _is_ocr_available(engine: str) -> bool:
         return False
 ```
 
-- [ ] **Step 5: Run tests**
+- [ ] **步骤 5：运行测试验证通过**
 
 ```bash
 cd E:/myCode/RAG && pip install pyyaml && python -m pytest m1-doc-parsing/tests/test_config.py -v
 ```
-Expected: 6 PASS, 0 FAIL
+预期：6 PASS, 0 FAIL
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6：提交**
 
 ```bash
 git add m1-doc-parsing/
-git commit -m "[00060-01] feat: project skeleton, config.py with GPU detection and tiered recommendations"
+git commit -m "[00060-01] feat: 项目骨架，config.py 含 GPU 检测与分级推荐逻辑"
 ```
 
 ---
 
-### Task 2: Format Router (00060-02)
+### 任务 2：格式路由 (00060-02)
 
-**Files:**
-- Create: `m1-doc-parsing/m1_parser/core/router.py`
-- Create: `m1-doc-parsing/tests/test_router.py`
+**涉及文件：**
+- 新建：`m1-doc-parsing/m1_parser/core/router.py`
+- 新建：`m1-doc-parsing/tests/test_router.py`
 
-- [ ] **Step 1: Write test_router.py**
+- [ ] **步骤 1：先写测试**
 
 ```python
 # m1-doc-parsing/tests/test_router.py
 """
-Tests for router.py -- file type detection and format routing.
+router.py 的单元测试 —— 文件类型检测和格式路由。
 
-WHY: The router determines which backend handles each file. A PDF
-routed to the DOCX pipeline would produce garbage. Magic bytes sniffing
-catches mislabeled files (e.g., a .pdf that's actually a .docx).
+WHY: 路由器决定每个文件由哪个后端处理。PDF 被路由到 DOCX
+管线会产生垃圾结果。magic bytes 嗅探能捕获后缀名错误的文件。
 """
 
 import tempfile
@@ -422,16 +418,15 @@ from m1_parser.core.router import (
     detect_format,
     route_backend,
     FileFormat,
-    FORMAT_BACKEND_MAP,
 )
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# 辅助函数
 # ---------------------------------------------------------------------------
 
 def _write_temp_file(ext: str, magic_bytes: bytes = b"") -> Path:
-    """Create a temp file with given extension and optional magic bytes."""
+    """创建一个带指定扩展名和 magic bytes 的临时文件。"""
     tmp = tempfile.NamedTemporaryFile(suffix=ext, delete=False)
     if magic_bytes:
         tmp.write(magic_bytes)
@@ -440,55 +435,55 @@ def _write_temp_file(ext: str, magic_bytes: bytes = b"") -> Path:
 
 
 # ---------------------------------------------------------------------------
-# Test 1: PDF detection
+# 测试 1：PDF 检测
 # ---------------------------------------------------------------------------
 
 def test_detect_pdf():
-    """Files starting with %PDF- must be identified as PDF."""
+    """以 %PDF- 开头的文件必须被识别为 PDF。"""
     f = _write_temp_file(".pdf", b"%PDF-1.4\n%some content")
     fmt = detect_format(str(f))
     assert fmt == FileFormat.PDF
 
 
 # ---------------------------------------------------------------------------
-# Test 2: DOCX detection
+# 测试 2：DOCX 检测
 # ---------------------------------------------------------------------------
 
 def test_detect_docx():
-    """Files with ZIP magic + .docx extension = DOCX."""
+    """含 ZIP magic 且 .docx 后缀 = DOCX。"""
     f = _write_temp_file(".docx", b"PK\x03\x04")
     fmt = detect_format(str(f))
     assert fmt == FileFormat.DOCX
 
 
 # ---------------------------------------------------------------------------
-# Test 3: Image detection (PNG)
+# 测试 3：图片检测（PNG）
 # ---------------------------------------------------------------------------
 
 def test_detect_image_png():
-    """Files with PNG magic bytes must be identified as IMAGE."""
+    """含 PNG magic bytes 的文件必须被识别为 IMAGE。"""
     f = _write_temp_file(".png", b"\x89PNG\r\n\x1a\n")
     fmt = detect_format(str(f))
     assert fmt == FileFormat.IMAGE
 
 
 # ---------------------------------------------------------------------------
-# Test 4: Unsupported format
+# 测试 4：不支持的格式
 # ---------------------------------------------------------------------------
 
 def test_unsupported_format():
-    """Unknown magic bytes must raise ValueError."""
+    """未知 magic bytes 必须抛出 ValueError。"""
     f = _write_temp_file(".xyz", b"random binary garbage")
     with pytest.raises(ValueError, match="Unsupported"):
         detect_format(str(f))
 
 
 # ---------------------------------------------------------------------------
-# Test 5: Backend routing -- PDF gets 3 options
+# 测试 5：PDF 后端路由 —— 有 3 个选项
 # ---------------------------------------------------------------------------
 
 def test_route_pdf():
-    """PDF files must route to the user's chosen backend."""
+    """PDF 文件必须路由到用户选择的后端。"""
     assert route_backend(FileFormat.PDF, "docling") == "docling"
     assert route_backend(FileFormat.PDF, "marker") == "marker"
     assert route_backend(FileFormat.PDF, "mineru") == "mineru"
@@ -497,29 +492,28 @@ def test_route_pdf():
 
 
 # ---------------------------------------------------------------------------
-# Test 6: DOCX forced to Docling
+# 测试 6：DOCX 强制走 Docling
 # ---------------------------------------------------------------------------
 
 def test_route_docx():
-    """DOCX always routes to Docling regardless of chosen backend."""
+    """DOCX 无论用户选什么后端都必须走 Docling。"""
     assert route_backend(FileFormat.DOCX, "docling") == "docling"
-    # Even if user picked Marker, DOCX must still use Docling
+    # 用户选了 Marker 也不能影响 DOCX
     assert route_backend(FileFormat.DOCX, "marker") == "docling"
 ```
 
-- [ ] **Step 2: Write router.py**
+- [ ] **步骤 2：编写 router.py 实现**
 
 ```python
 # m1-doc-parsing/m1_parser/core/router.py
 """
-File format detection and backend routing.
+文件格式检测与后端路由。
 
-WHY: Different formats need different parsers. Magic bytes sniffing
-is more reliable than extension-based detection — a .pdf file might
-actually be a JPEG. The router also knows which backends can handle
-which formats (e.g., Marker only does PDF/IMAGE, not DOCX).
+WHY: 不同格式需要不同的解析器。magic bytes 嗅探比仅靠后缀名
+检测更可靠 —— 一个 .pdf 文件可能实际上是个 JPEG。
+路由器还知道哪些后端能处理哪些格式（如 Marker 只能处理 PDF/图片）。
 
-Detection priority: magic bytes (first 8 bytes) → extension fallback.
+检测优先级：magic bytes（前 8 字节）→ 后缀名回退。
 """
 
 from __future__ import annotations
@@ -529,7 +523,7 @@ from pathlib import Path
 
 
 class FileFormat(str, enum.Enum):
-    """Supported input file formats."""
+    """支持的输入文件格式。"""
     PDF = "pdf"
     DOCX = "docx"
     XLSX = "xlsx"
@@ -541,25 +535,25 @@ class FileFormat(str, enum.Enum):
 
 
 # ===========================================================================
-# Magic bytes signatures
+# Magic bytes 签名
 # ===========================================================================
 
-_MAGIC_SIGNATURES: list[tuple[bytes, FileFormat]] = [
+_MAGIC_SIGNATURES: list[tuple[bytes, FileFormat | None]] = [
     (b"%PDF-", FileFormat.PDF),
     (b"\x89PNG", FileFormat.IMAGE),
     (b"\xff\xd8\xff", FileFormat.IMAGE),          # JPEG
-    (b"II*\x00", FileFormat.IMAGE),               # TIFF (little-endian)
-    (b"MM\x00*", FileFormat.IMAGE),               # TIFF (big-endian)
+    (b"II*\x00", FileFormat.IMAGE),               # TIFF (小端)
+    (b"MM\x00*", FileFormat.IMAGE),               # TIFF (大端)
     (b"BM", FileFormat.IMAGE),                    # BMP
-    (b"PK\x03\x04", None),                        # ZIP-based (DOCX/XLSX/PPTX)
+    (b"PK\x03\x04", None),                        # ZIP 系（DOCX/XLSX/PPTX）
     (b"<!DOCTYP", FileFormat.HTML),
     (b"<html", FileFormat.HTML),
 ]
 
-# Formats that Marker/MinerU can handle (PDF + IMAGE only)
+# Marker/MinerU 能处理的格式（仅 PDF + IMAGE）
 _PDF_BACKENDS = {"docling", "marker", "mineru"}
 
-# All non-PDF/IMAGE formats go to Docling regardless of user choice
+# 非 PDF/IMAGE 格式无论用户选什么都走 Docling
 _DOCLING_ONLY_FORMATS = {
     FileFormat.DOCX, FileFormat.XLSX, FileFormat.PPTX,
     FileFormat.HTML, FileFormat.CSV, FileFormat.MARKDOWN,
@@ -568,57 +562,53 @@ _DOCLING_ONLY_FORMATS = {
 
 def detect_format(file_path: str) -> FileFormat:
     """
-    Detect file format using magic bytes, fall back to extension.
-
-    WHY magic bytes first: a file named 'report.pdf' might actually
-    be a DOCX (ZIP-based). Magic bytes catch this. Extension is used
-    as fallback when the magic bytes only tell us it's ZIP-based.
+    通过 magic bytes 检测文件格式，失败时回退到后缀名。
 
     Args:
-        file_path: Path to the file to inspect.
+        file_path: 待检测的文件路径。
 
     Returns:
-        FileFormat enum value.
+        FileFormat 枚举值。
 
     Raises:
-        ValueError: If the format cannot be determined.
+        ValueError: 无法确定格式时抛出。
     """
     path = Path(file_path)
 
-    # Read first 8 bytes for magic signature detection
+    # 读取前 8 字节做 magic 签名检测
     with open(file_path, "rb") as f:
         header = f.read(8)
 
-    # Check magic bytes
+    # 逐个比对 magic bytes
     for signature, fmt in _MAGIC_SIGNATURES:
         if header.startswith(signature):
-            if fmt is None:  # ZIP-based -- use extension
+            if fmt is None:  # ZIP 系 —— 用后缀名判断
                 return _format_from_extension(path.suffix.lower())
             return fmt
 
-    # Fallback to extension
+    # 回退到后缀名
     return _format_from_extension(path.suffix.lower())
 
 
 def route_backend(fmt: FileFormat, user_choice: str) -> str:
     """
-    Select the correct backend for a given format.
+    为给定格式选择正确的后端。
 
-    PDF/IMAGE: user's choice (docling/marker/mineru).
-    Everything else: docling only (Marker/MinerU don't support them).
+    PDF/IMAGE：用户的选择（docling/marker/mineru）。
+    其他所有格式：强制 docling（Marker/MinerU 不支持它们）。
 
-    WHY force Docling for non-PDF: Marker and MinerU are PDF/IMAGE
-    specialists. Routing a DOCX to them would silently fail.
+    WHY 非 PDF 强制 Docling：Marker 和 MinerU 是 PDF/IMAGE 专用。
+    将 DOCX 路由给它们会静默失败。
 
     Args:
-        fmt: Detected file format.
-        user_choice: User's preferred backend name.
+        fmt: 检测到的文件格式。
+        user_choice: 用户偏好的后端名称。
 
     Returns:
-        Backend name string ("docling", "marker", or "mineru").
+        后端名称字符串（"docling"、"marker" 或 "mineru"）。
 
     Raises:
-        ValueError: If the backend is not valid for this format.
+        ValueError: 后端对此格式无效时抛出。
     """
     if fmt in _DOCLING_ONLY_FORMATS:
         return "docling"
@@ -627,15 +617,15 @@ def route_backend(fmt: FileFormat, user_choice: str) -> str:
         if user_choice in _PDF_BACKENDS:
             return user_choice
         raise ValueError(
-            f"Unsupported backend '{user_choice}' for {fmt.value}. "
-            f"Supported: {', '.join(sorted(_PDF_BACKENDS))}"
+            f"不支持的后端 '{user_choice}' 用于 {fmt.value}。"
+            f"支持: {', '.join(sorted(_PDF_BACKENDS))}"
         )
 
-    raise ValueError(f"Unsupported file format: {fmt.value}")
+    raise ValueError(f"不支持的文件格式: {fmt.value}")
 
 
 def _format_from_extension(suffix: str) -> FileFormat:
-    """Map file extension to FileFormat."""
+    """将文件后缀名映射到 FileFormat。"""
     ext_map = {
         ".pdf": FileFormat.PDF,
         ".docx": FileFormat.DOCX,
@@ -655,44 +645,44 @@ def _format_from_extension(suffix: str) -> FileFormat:
     fmt = ext_map.get(suffix)
     if fmt is None:
         raise ValueError(
-            f"Unsupported file extension: {suffix}. "
-            f"Supported: {', '.join(sorted(ext_map.keys()))}"
+            f"不支持的文件后缀名: {suffix}。"
+            f"支持: {', '.join(sorted(ext_map.keys()))}"
         )
     return fmt
 ```
 
-- [ ] **Step 3: Run tests**
+- [ ] **步骤 3：运行测试**
 
 ```bash
 python -m pytest m1-doc-parsing/tests/test_router.py -v
 ```
-Expected: 6 PASS, 0 FAIL
+预期：6 PASS, 0 FAIL
 
-- [ ] **Step 4: Commit**
+- [ ] **步骤 4：提交**
 
 ```bash
 git add m1-doc-parsing/m1_parser/core/router.py m1-doc-parsing/tests/test_router.py
-git commit -m "[00060-02] feat: format router with magic bytes detection and backend routing"
+git commit -m "[00060-02] feat: 格式路由器 —— magic bytes 检测与后端路由"
 ```
 
 ---
 
-### Task 3: Docling Backend Adapter (00060-03)
+### 任务 3：Docling 后端适配器 (00060-03)
 
-**Files:**
-- Create: `m1-doc-parsing/m1_parser/backends/__init__.py`
-- Create: `m1-doc-parsing/m1_parser/backends/docling_backend.py`
-- Create: `m1-doc-parsing/tests/test_docling_backend.py`
+**涉及文件：**
+- 新建：`m1-doc-parsing/m1_parser/backends/__init__.py`
+- 新建：`m1-doc-parsing/m1_parser/backends/docling_backend.py`
+- 新建：`m1-doc-parsing/tests/test_docling_backend.py`
 
-- [ ] **Step 1: Write test_docling_backend.py**
+- [ ] **步骤 1：先写测试**
 
 ```python
 # m1-doc-parsing/tests/test_docling_backend.py
 """
-Tests for DoclingBackend -- the primary document parsing backend.
+DoclingBackend 的单元测试 —— 主文档解析后端。
 
-WHY: Docling is the default engine handling 10+ formats. These tests
-verify PDF, DOCX, and image conversion produce valid Markdown output.
+WHY: Docling 是处理 10+ 格式的默认引擎。这些测试验证
+PDF 和图片转换能产生有效的 Markdown 输出。
 """
 
 import tempfile
@@ -700,38 +690,36 @@ from pathlib import Path
 
 import pytest
 
-
-# Skip all tests if docling is not installed
-docling = pytest.importorskip("docling", reason="docling not installed")
+# 如果 docling 未安装则跳过所有测试
+docling = pytest.importorskip("docling", reason="docling 未安装")
 
 from m1_parser.backends.docling_backend import DoclingBackend
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# 辅助函数
 # ---------------------------------------------------------------------------
 
-def _create_test_pdf(path: Path, text: str = "Hello World") -> None:
-    """Create a minimal text PDF for testing."""
-    # Write a minimal PDF programmatically
+def _create_test_pdf(path: Path) -> None:
+    """创建一个最小化的测试 PDF。"""
     content = (
         b"%PDF-1.4\n"
         b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
         b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
-        b"3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Resources<<>>>>endobj\n"
-        b"xref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n"
-        b"trailer<</Size 4/Root 1 0 R>>\n"
-        b"startxref\n190\n%%EOF"
+        b"3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R>>endobj\n"
+        b"xref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n"
+        b"0000000058 00000 n \n0000000115 00000 n \n"
+        b"trailer<</Size 4/Root 1 0 R>>\nstartxref\n190\n%%EOF"
     )
     path.write_bytes(content)
 
 
 # ---------------------------------------------------------------------------
-# Test 1: PDF → Markdown works
+# 测试 1：PDF → Markdown 能正常工作
 # ---------------------------------------------------------------------------
 
 def test_pdf_to_markdown():
-    """Converting a PDF must return non-empty Markdown string."""
+    """转换 PDF 必须返回非空的 Markdown 字符串。"""
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
         _create_test_pdf(Path(f.name))
         pdf_path = f.name
@@ -743,41 +731,41 @@ def test_pdf_to_markdown():
 
 
 # ---------------------------------------------------------------------------
-# Test 2: Backend respects OCR option
+# 测试 2：后端遵循 OCR 选项
 # ---------------------------------------------------------------------------
 
 def test_ocr_option_set():
-    """Passing ocr_engine must not crash."""
+    """传入 ocr_engine 参数不应崩溃。"""
     backend = DoclingBackend(ocr_engine="easyocr")
     assert backend.ocr_engine == "easyocr"
 
 
 # ---------------------------------------------------------------------------
-# Test 3: Backend respects VLM preset
+# 测试 3：后端遵循 VLM preset
 # ---------------------------------------------------------------------------
 
 def test_vlm_preset_set():
-    """Passing a VLM preset must configure the VLM pipeline."""
+    """传入 VLM preset 必须正确配置 VLM 管线。"""
     backend = DoclingBackend(vlm_preset="granite_docling")
     assert backend.vlm_preset == "granite_docling"
 ```
 
-- [ ] **Step 2: Write docling_backend.py**
+- [ ] **步骤 2：编写 docling_backend.py 实现**
 
 ```python
 # m1-doc-parsing/m1_parser/backends/docling_backend.py
 """
-Docling v2.94 backend adapter.
+Docling v2.94 后端适配器。
 
-WHY: Docling is the primary engine handling all 10+ formats.
-This adapter encapsulates Docling's DocumentConverter, providing
-a clean interface for the M1 converter to call. It handles:
-- Standard Pipeline (layout detection + OCR + table recognition)
-- VLM Pipeline (vision language model end-to-end)
-- Format-specific options (PDF/DOCX/PPTX/XLSX/IMAGE/HTML)
+WHY: Docling 是处理全部 10+ 格式的主要引擎。
+此适配器封装了 Docling 的 DocumentConverter，为 M1 Converter
+提供干净的调用接口。它处理：
+- Standard Pipeline（版面检测 + OCR + 表格识别）
+- VLM Pipeline（视觉语言模型端到端解析）
+- 按格式配置选项（PDF/DOCX/PPTX/XLSX/IMAGE/HTML）
 
-Design: all Docling-specific imports and configuration live here.
-If we ever swap Docling for another engine, only this file changes.
+设计原则：所有 Docling 特定的导入和配置都在此文件中。
+如果将来替换 Docling 为其他引擎，只需修改此文件。
 """
 
 from __future__ import annotations
@@ -790,7 +778,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ParseResult:
-    """Result of a single document parse."""
+    """单次文档解析的结果。"""
     markdown: str
     json_dict: dict | None = None
     page_count: int = 0
@@ -800,14 +788,14 @@ class ParseResult:
 
 class DoclingBackend:
     """
-    Document parsing via Docling v2.94.
+    通过 Docling v2.94 进行文档解析。
 
-    Supports two pipelines:
-    - Standard Pipeline: layout detection → OCR → table structure
-    - VLM Pipeline: vision language model → end-to-end Markdown/DocTags
+    支持两种管线：
+    - Standard Pipeline：版面检测 → OCR → 表格结构识别
+    - VLM Pipeline：视觉语言模型 → 端到端 Markdown/DocTags
 
-    OCR engines are configured via Docling's PdfPipelineOptions:
-    EasyOCR (default), Tesseract, RapidOCR, SuryaOCR.
+    OCR 引擎通过 Docling 的 PdfPipelineOptions 配置：
+    EasyOCR（默认）、Tesseract、RapidOCR、SuryaOCR。
     """
 
     def __init__(
@@ -818,10 +806,10 @@ class DoclingBackend:
     ):
         """
         Args:
-            ocr_engine: OCR backend name (easyocr, tesseract, rapidocr, suryaocr).
-            vlm_preset: VLM preset name (granite_docling, deepseek_ocr, etc.).
-                        If set, uses VlmPipeline instead of StandardPdfPipeline.
-            use_gpu: Whether to use CUDA acceleration.
+            ocr_engine: OCR 后端名称（easyocr, tesseract, rapidocr, suryaocr）。
+            vlm_preset: VLM preset 名称（granite_docling, deepseek_ocr 等）。
+                        如果设置，使用 VlmPipeline 代替 StandardPdfPipeline。
+            use_gpu: 是否使用 CUDA 加速。
         """
         self.ocr_engine = ocr_engine
         self.vlm_preset = vlm_preset
@@ -829,17 +817,17 @@ class DoclingBackend:
 
     def convert(self, source: str) -> ParseResult:
         """
-        Convert a document file to structured output.
+        将文档文件转换为结构化输出。
 
-        WHY returns ParseResult, not raw DoclingDocument: upper modules
-        (converter.py) need a stable interface regardless of which
-        backend (Docling/Marker/MinerU) is active.
+        WHY 返回 ParseResult 而非原始 DoclingDocument：上层模块
+        （converter.py）需要稳定的接口，无论当前激活的是哪个后端
+        （Docling/Marker/MinerU）。
 
         Args:
-            source: Path or URL to the document.
+            source: 文档的路径或 URL。
 
         Returns:
-            ParseResult with markdown, metadata, and counts.
+            包含 markdown、元数据和计数的 ParseResult。
         """
         from docling.document_converter import DocumentConverter
 
@@ -856,41 +844,40 @@ class DoclingBackend:
         )
 ```
 
-- [ ] **Step 3: Run tests**
+- [ ] **步骤 3：运行测试**
 
 ```bash
 pip install docling && python -m pytest m1-doc-parsing/tests/test_docling_backend.py -v
 ```
-Expected: 3 PASS (or skip if docling unavailable)
+预期：3 PASS（若 docling 未安装则 skip）
 
-- [ ] **Step 4: Commit**
+- [ ] **步骤 4：提交**
 
 ```bash
 git add m1-doc-parsing/m1_parser/backends/ m1-doc-parsing/tests/test_docling_backend.py
-git commit -m "[00060-03] feat: Docling backend adapter with Standard and VLM pipeline support"
+git commit -m "[00060-03] feat: Docling 后端适配器 —— Standard 和 VLM 管线支持"
 ```
 
 ---
 
-### Task 4: Marker + MinerU Backend Adapters (00060-04)
+### 任务 4：Marker 与 MinerU 后端骨架 (00060-04)
 
-**Files:**
-- Create: `m1-doc-parsing/m1_parser/backends/marker_backend.py`
-- Create: `m1-doc-parsing/m1_parser/backends/mineru_backend.py`
+**涉及文件：**
+- 新建：`m1-doc-parsing/m1_parser/backends/marker_backend.py`
+- 新建：`m1-doc-parsing/m1_parser/backends/mineru_backend.py`
 
-- [ ] **Step 1: Write marker_backend.py**
+- [ ] **步骤 1：编写 marker_backend.py**
 
 ```python
 # m1-doc-parsing/m1_parser/backends/marker_backend.py
 """
-Marker backend adapter for PDF/image parsing.
+Marker 后端适配器 —— PDF/图片解析备选引擎。
 
-WHY: Marker is a popular open-source PDF-to-Markdown tool using Surya
-deep learning models for layout detection and OCR. It serves as a
-PDF-only alternative when users prefer its output quality over Docling.
+WHY: Marker 是流行的开源 PDF→Markdown 工具，使用 Surya 深度学习
+模型进行版面检测和 OCR。用户偏好其输出质量时作为备选。
 
-The adapter wraps Marker's CLI/API behind the same interface as
-DoclingBackend so the converter can swap them transparently.
+适配器将 Marker 的 CLI/API 封装为与 DoclingBackend 相同的接口，
+使 Converter 可以透明地切换后端。
 """
 
 from __future__ import annotations
@@ -903,44 +890,40 @@ logger = logging.getLogger(__name__)
 
 
 class MarkerBackend:
-    """PDF/image parsing via Marker (Surya-based)."""
+    """通过 Marker 进行 PDF/图片解析（基于 Surya）。"""
 
     def __init__(self, use_gpu: bool = False):
         self.use_gpu = use_gpu
 
     def convert(self, source: str) -> ParseResult:
         """
-        Convert a PDF/image to Markdown using Marker.
+        使用 Marker 将 PDF/图片转换为 Markdown。
 
-        Currently a stub -- Marker requires specific environment setup.
-        Returns empty result with a warning until Marker is installed.
+        当前为骨架实现 —— Marker 需要特定的环境配置。
+        在安装 marker-pdf 之前返回空结果并给出警告。
 
-        TODO: Integrate marker-pdf package when available.
+        待办：环境就绪后集成 marker-pdf 包。
         """
         logger.warning(
-            "Marker backend called but marker-pdf not installed. "
-            "Install with: pip install marker-pdf"
+            "调用了 Marker 后端但 marker-pdf 未安装。"
+            "安装命令: pip install marker-pdf"
         )
-        return ParseResult(
-            markdown="",
-            page_count=0,
-        )
+        return ParseResult(markdown="", page_count=0)
 ```
 
-- [ ] **Step 2: Write mineru_backend.py**
+- [ ] **步骤 2：编写 mineru_backend.py**
 
 ```python
 # m1-doc-parsing/m1_parser/backends/mineru_backend.py
 """
-MinerU backend adapter for PDF parsing.
+MinerU 后端适配器 —— PDF 解析备选引擎。
 
-WHY: MinerU (magic-pdf) from Shanghai AI Lab is optimized for Chinese
-scientific and technical documents. It uses PDF-Extract-Kit for deep
-layout analysis and is the best open-source option for Chinese PDFs
-with complex tables and formulas.
+WHY: MinerU（magic-pdf）由上海 AI Lab 开发，针对中文科技文档
+优化。使用 PDF-Extract-Kit 进行深度版面分析，是处理中文 PDF
+（含复杂表格和公式）的最佳开源方案。
 
-The adapter wraps MinerU's CLI behind the same ParseResult interface
-so the converter can swap backends without touching any other code.
+适配器将 MinerU 的 CLI 封装为与 DoclingBackend 相同的 ParseResult
+接口，使 Converter 可以透明切换后端。
 """
 
 from __future__ import annotations
@@ -953,57 +936,54 @@ logger = logging.getLogger(__name__)
 
 
 class MinerUBackend:
-    """PDF parsing via MinerU (magic-pdf)."""
+    """通过 MinerU 进行 PDF 解析（magic-pdf）。"""
 
     def __init__(self, use_gpu: bool = False):
         self.use_gpu = use_gpu
 
     def convert(self, source: str) -> ParseResult:
         """
-        Convert a PDF to Markdown using MinerU.
+        使用 MinerU 将 PDF 转换为 Markdown。
 
-        Currently a stub -- MinerU requires specific environment setup.
-        Returns empty result with a warning until magic-pdf is installed.
+        当前为骨架实现 —— MinerU 需要特定的环境配置。
+        在安装 magic-pdf 之前返回空结果并给出警告。
 
-        TODO: Integrate magic-pdf when environment is ready.
+        待办：环境就绪后集成 magic-pdf。
         """
         logger.warning(
-            "MinerU backend called but magic-pdf not installed. "
-            "Install with: pip install magic-pdf"
+            "调用了 MinerU 后端但 magic-pdf 未安装。"
+            "安装命令: pip install magic-pdf"
         )
-        return ParseResult(
-            markdown="",
-            page_count=0,
-        )
+        return ParseResult(markdown="", page_count=0)
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **步骤 3：提交**
 
 ```bash
 git add m1-doc-parsing/m1_parser/backends/marker_backend.py m1-doc-parsing/m1_parser/backends/mineru_backend.py
-git commit -m "[00060-04] feat: Marker and MinerU backend stubs"
+git commit -m "[00060-04] feat: Marker 和 MinerU 后端骨架"
 ```
 
 ---
 
-### Task 5: Main Converter (00060-05)
+### 任务 5：主转换器 (00060-05)
 
-**Files:**
-- Create: `m1-doc-parsing/m1_parser/core/converter.py`
-- Create: `m1-doc-parsing/tests/test_converter.py`
+**涉及文件：**
+- 新建：`m1-doc-parsing/m1_parser/core/converter.py`
+- 新建：`m1-doc-parsing/tests/test_converter.py`
 
-This is the largest single file in M1. The converter orchestrates the 6-stage pipeline.
+这是 M1 中最大的单个文件。Converter 编排整个 6 阶段管线。
 
-- [ ] **Step 1: Write test_converter.py**
+- [ ] **步骤 1：先写测试**
 
 ```python
 # m1-doc-parsing/tests/test_converter.py
 """
-Tests for the main converter -- 6-stage pipeline orchestration.
+主转换器测试 —— 6 阶段管线编排。
 
-WHY: The converter is M1's public API. Every consumer (CLI, Web UI,
-M7 admin) calls convert() or convert_batch(). These tests verify
-end-to-end flow with real file inputs.
+WHY: Converter 是 M1 的公开 API。所有消费者（CLI、Web UI、
+M7 管理后台）都调用 convert() 或 convert_batch()。
+这些测试验证端到端流程。
 """
 
 import tempfile
@@ -1015,11 +995,11 @@ from m1_parser.core.converter import convert, convert_batch, ParseOptions
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# 辅助函数
 # ---------------------------------------------------------------------------
 
 def _create_minimal_pdf(path: Path) -> None:
-    """Create a tiny valid PDF for testing."""
+    """创建一个最小化的有效 PDF。"""
     content = (
         b"%PDF-1.4\n"
         b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
@@ -1033,76 +1013,72 @@ def _create_minimal_pdf(path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test 1: Single file conversion succeeds
+# 测试 1：单文件转换成功
 # ---------------------------------------------------------------------------
 
 @pytest.mark.skipif(
     not __import__("importlib").util.find_spec("docling"),
-    reason="docling not installed"
+    reason="docling 未安装"
 )
 def test_convert_pdf():
-    """Converting a valid PDF must return a result with doc_id."""
+    """转换有效的 PDF 必须返回带 doc_id 的结果。"""
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
         _create_minimal_pdf(Path(f.name))
         fname = f.name
 
     options = ParseOptions(backend="docling")
-    # converter.convert() is our main entry point
-    # For now, test that it doesn't crash
     try:
         result = convert(fname, options)
         assert result is not None
     except ImportError:
-        pytest.skip("docling not available")
+        pytest.skip("docling 不可用")
 
 
 # ---------------------------------------------------------------------------
-# Test 2: Batch conversion handles multiple files
+# 测试 2：批量转换处理多个文件
 # ---------------------------------------------------------------------------
 
 def test_convert_batch_handles_errors():
-    """Batch conversion with raises_on_error=False must not crash on bad files."""
+    """批量转换以 raises_on_error=False 运行时不能因坏文件崩溃。"""
     options = ParseOptions(backend="docling")
     results = convert_batch(
         ["nonexistent1.pdf", "nonexistent2.pdf"],
         options,
         raises_on_error=False,
     )
-    # Both should have failed, but the function should not raise
     assert len(results) == 2
 
 
 # ---------------------------------------------------------------------------
-# Test 3: ParseOptions defaults
+# 测试 3：ParseOptions 默认值
 # ---------------------------------------------------------------------------
 
 def test_parse_options_defaults():
-    """Default options must use Docling backend and EasyOCR."""
+    """默认选项必须使用 Docling 后端和 EasyOCR。"""
     opts = ParseOptions()
     assert opts.backend == "docling"
     assert opts.ocr_engine == "easyocr"
     assert opts.output_dir == "./output"
 ```
 
-- [ ] **Step 2: Write converter.py**
+- [ ] **步骤 2：编写 converter.py 实现**
 
 ```python
 # m1-doc-parsing/m1_parser/core/converter.py
 """
-Main document converter -- 6-stage parsing pipeline.
+主文档转换器 —— 6 阶段解析管线。
 
-WHY: M1's core value is the orchestrated pipeline that takes a raw
-file and produces a ParsedDocument with metadata, table annotations,
-and quality scores. The converter is the single entry point for all
-consumers (CLI, Web UI, M7 admin, batch processing).
+WHY: M1 的核心价值在于编排管线，将原始文件转化为附带元数据、
+表格注释和质量评分的 ParsedDocument。Converter 是所有消费者
+（CLI、Web UI、M7 管理后台、批量处理）的唯一入口。
 
-Pipeline stages:
-  1. Format routing (router.py)
-  2. Structure parsing (backend adapter)
-  3. Metadata extraction (marine_metadata.py)
-  4. Table enrichment (table_annotator + table_merger)
-  5. Quality gating (quality.py)
-  6. Output serialization (serializer + chunker + image_manager)
+管线阶段：
+  1. 格式路由 (router.py)
+  2. 结构解析 (后端适配器)
+  3. 元数据提取 (marine_metadata.py)
+  4. 表格增强 (table_annotator + table_merger)
+  5. 质量门禁 (quality.py)
+  6. 输出序列化 (serializer + chunker + image_manager)
 """
 
 from __future__ import annotations
@@ -1115,18 +1091,17 @@ logger = logging.getLogger(__name__)
 
 
 # ===========================================================================
-# Input/Output types
+# 输入/输出类型
 # ===========================================================================
 
 
 @dataclass
 class ParseOptions:
-    """User-configurable parsing options.
+    """用户可配置的解析选项。
 
-    WHY a separate options class, not function parameters: as we add
-    more config (OCR, VLM, quality thresholds, output format), the
-    function signature would become unmanageable. A dataclass with
-    defaults keeps the API stable.
+    WHY 用独立的 options 类而不是函数参数：随着添加更多配置
+    （OCR、VLM、质量阈值、输出格式），函数签名会变得不可维护。
+    带默认值的 dataclass 保持 API 稳定。
     """
 
     backend: str = "docling"        # docling | marker | mineru
@@ -1139,11 +1114,10 @@ class ParseOptions:
 
 @dataclass
 class ParseResult:
-    """Result of parsing a single document.
+    """单个文档的解析结果。
 
-    Contains both the parsed content and metadata about the process.
-    The `doc_id` is a UUID generated at parse time, used as the key
-    for M2 storage lookups.
+    包含解析内容以及处理过程的元数据。
+    doc_id 是在解析时生成的 UUID，用作 M2 存储查询的键。
     """
 
     doc_id: str
@@ -1158,39 +1132,39 @@ class ParseResult:
 
 
 # ===========================================================================
-# Public API
+# 公开 API
 # ===========================================================================
 
 
 def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
     """
-    Convert a single document through the full 6-stage pipeline.
+    通过完整的 6 阶段管线转换单个文档。
 
-    This is M1's primary public API. Every consumer calls this:
+    这是 M1 的主要公开 API。所有消费者都调用此函数：
       - CLI: m1-parser input.pdf
       - Web UI: POST /parse {file: input.pdf}
-      - M7 admin: document upload workflow
-      - Module mode: from m1_parser import convert
+      - M7 管理后台: 文档上传工作流
+      - Module 模式: from m1_parser import convert
 
     Args:
-        source: File path or URL to the document.
-        options: Parsing configuration. Uses defaults if omitted.
+        source: 文档的文件路径或 URL。
+        options: 解析配置。若省略则使用默认值。
 
     Returns:
-        ParseResult with doc_id, markdown, metadata, and status.
+        包含 doc_id、markdown、元数据和状态的 ParseResult。
     """
     if options is None:
         options = ParseOptions()
 
     doc_id = uuid.uuid4().hex[:12]
-    logger.info("Parsing %s (doc_id=%s, backend=%s)", source, doc_id, options.backend)
+    logger.info("正在解析 %s (doc_id=%s, backend=%s)", source, doc_id, options.backend)
 
-    # Stage 1: Format routing
+    # 阶段 1: 格式路由
     from .router import detect_format, route_backend
     fmt = detect_format(source)
     backend_name = route_backend(fmt, options.backend)
 
-    # Stage 2: Structure parsing
+    # 阶段 2: 结构解析
     from ..backends.docling_backend import DoclingBackend, ParseResult as BackendResult
     if backend_name == "docling":
         backend = DoclingBackend(
@@ -1200,15 +1174,15 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
         )
         raw: BackendResult = backend.convert(source)
     else:
-        # Marker/MinerU -- currently stubs (Task 00060-04 will implement)
+        # Marker/MinerU —— 当前为骨架（后续任务实现）
         return ParseResult(
             doc_id=doc_id,
             source_path=source,
             success=False,
-            error=f"Backend '{backend_name}' not yet implemented",
+            error=f"后端 '{backend_name}' 尚未实现",
         )
 
-    # Stages 3-6 will be wired in Tasks 00060-06 through 00060-08
+    # 阶段 3-6 将在任务 00060-06 到 00060-08 中接入
     return ParseResult(
         doc_id=doc_id,
         source_path=source,
@@ -1227,10 +1201,10 @@ def convert_batch(
     raises_on_error: bool = False,
 ) -> list[ParseResult]:
     """
-    Convert multiple documents. Errors are collected, not raised.
+    批量转换多个文档。错误被收集而不是抛出。
 
-    WHY raises_on_error=False by default: in batch mode (e.g., 50 files),
-    one corrupt file should not abort the remaining 49.
+    WHY raises_on_error 默认为 False：批量模式下（如 50 个文件），
+    一个损坏的文件不应该中止其余 49 个的处理。
     """
     results = []
     for source in sources:
@@ -1249,40 +1223,39 @@ def convert_batch(
     return results
 ```
 
-- [ ] **Step 3: Run tests**
+- [ ] **步骤 3：运行测试**
 
 ```bash
 python -m pytest m1-doc-parsing/tests/test_converter.py -v
 ```
-Expected: 3 PASS
+预期：3 PASS
 
-- [ ] **Step 4: Commit**
+- [ ] **步骤 4：提交**
 
 ```bash
 git add m1-doc-parsing/m1_parser/core/converter.py m1-doc-parsing/tests/test_converter.py
-git commit -m "[00060-05] feat: main converter with 6-stage pipeline orchestration"
+git commit -m "[00060-05] feat: 主转换器 —— 6 阶段管线编排"
 ```
 
 ---
 
-### Task 6: Marine Metadata Extraction (00060-06)
+### 任务 6：海洋工程元数据提取 (00060-06)
 
-**Files:**
-- Create: `m1-doc-parsing/m1_parser/enrichments/__init__.py`
-- Create: `m1-doc-parsing/m1_parser/enrichments/marine_metadata.py`
-- Create: `m1-doc-parsing/tests/test_marine_metadata.py`
+**涉及文件：**
+- 新建：`m1-doc-parsing/m1_parser/enrichments/__init__.py`
+- 新建：`m1-doc-parsing/m1_parser/enrichments/marine_metadata.py`
+- 新建：`m1-doc-parsing/tests/test_marine_metadata.py`
 
-- [ ] **Step 1: Write test_marine_metadata.py**
+- [ ] **步骤 1：先写测试**
 
 ```python
 # m1-doc-parsing/tests/test_marine_metadata.py
 """
-Tests for marine_metadata.py -- auto-extraction of classification society
-metadata from document text and filenames.
+marine_metadata.py 的单元测试 —— 从文档文本和文件名中
+自动提取船级社元数据。
 
-WHY: The 5 auto-extracted fields are the basis for document filtering
-in M3 retrieval and M7 admin. Wrong extraction means documents are
-unfindable.
+WHY: 5 个自动提取的字段是 M3 检索和 M7 管理后台中文档
+筛选的基础。提取错误 = 文档无法被找到。
 """
 
 import pytest
@@ -1297,76 +1270,76 @@ from m1_parser.enrichments.marine_metadata import (
 
 
 # ---------------------------------------------------------------------------
-# Test 1: classification_society detection
+# 测试 1：船级社检测
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("text,expected", [
-    ("This document follows DNV rules for ships.", "DNV"),
-    ("American Bureau of Shipping (ABS) standards apply.", "ABS"),
-    ("In accordance with CCS Chapter 7.", "CCS"),
-    ("Lloyd's Register (LR) classification notes.", "LR"),
-    ("Bureau Veritas (BV) rules part B.", "BV"),
-    ("Nippon Kaiji Kyokai (NK) guidelines.", "NK"),
+    ("本文件遵循 DNV 船舶规范。", "DNV"),
+    ("American Bureau of Shipping (ABS) 标准适用。", "ABS"),
+    ("依据 CCS 第7章。", "CCS"),
+    ("Lloyd's Register (LR) 入级规范。", "LR"),
+    ("Bureau Veritas (BV) 规范 B 部分。", "BV"),
+    ("Nippon Kaiji Kyokai (NK) 指南。", "NK"),
     ("Registro Italiano Navale (RINA)", "RINA"),
     ("Korean Register (KR) of shipping", "KR"),
-    ("IMO resolution MSC.456(101)", "IMO"),
-    ("IACS unified requirement UR W33", "IACS"),
+    ("IMO 决议 MSC.456(101)", "IMO"),
+    ("IACS 统一要求 UR W33", "IACS"),
 ])
 def test_extract_classification_society(text, expected):
-    """Known society abbreviations must be detected."""
+    """已知的船级社缩写必须被检测到。"""
     assert extract_classification_society(text) == expected
 
 
 def test_no_society_returns_none():
-    """Text without any society mention must return None."""
-    assert extract_classification_society("General engineering guidelines.") is None
+    """不含任何船级社提及的文本必须返回 None。"""
+    assert extract_classification_society("通用工程指南。") is None
 
 
 # ---------------------------------------------------------------------------
-# Test 2: version_year detection
+# 测试 2：年份检测
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("text,expected", [
-    ("DNV Rules 2024 Edition", 2024),
-    ("Published January 2023", 2023),
-    ("IMO 2020 guidelines", 2020),
-    ("Version 2019-03", 2019),
+    ("DNV 规范 2024 版", 2024),
+    ("2023年1月发布", 2023),
+    ("IMO 2020 指南", 2020),
+    ("版本 2019-03", 2019),
 ])
 def test_extract_version_year(text, expected):
-    """Year patterns in text must be extracted."""
+    """文本中的年份模式必须被提取。"""
     assert extract_version_year(text) == expected
 
 
 def test_no_year_returns_none():
-    """Text without a recognizable year must return None."""
-    assert extract_version_year("General specification document.") is None
+    """不含可识别年份的文本必须返回 None。"""
+    assert extract_version_year("通用规格文件。") is None
 
 
 # ---------------------------------------------------------------------------
-# Test 3: chapter_section detection
+# 测试 3：章节号检测
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("text,expected", [
-    ("DNV Pt.4 Ch.3 Welding Procedures", "Pt.4 Ch.3"),
+    ("DNV Pt.4 Ch.3 焊接程序", "Pt.4 Ch.3"),
     ("ABS Part 5B Section 3-2", "Part 5B Section 3-2"),
-    ("CCS Chapter 7 Bilge Systems", "Chapter 7"),
-    ("Refer to § 3.2.1 for details.", "§ 3.2.1"),
+    ("CCS 第7章 舱底水系统", "第7章"),
+    ("详见 § 3.2.1 的要求。", "§ 3.2.1"),
 ])
 def test_extract_chapter_section(text, expected):
-    """Chapter/section patterns must be detected."""
+    """章节号模式必须被检测到。"""
     assert extract_chapter_section(text) == expected
 
 
 # ---------------------------------------------------------------------------
-# Test 4: Full metadata extraction
+# 测试 4：完整元数据提取
 # ---------------------------------------------------------------------------
 
 def test_extract_metadata_from_filename_and_text():
-    """Combined extraction from filename and text content."""
+    """从文件名和文本内容组合提取元数据。"""
     filename = "DNV_Pt4_Ch3_Welding_2024.pdf"
-    text = """DNV Rules for Classification of Ships
-    Part 4 Chapter 3 -- Welding Procedures
-    Published 2024 by Det Norske Veritas"""
+    text = """DNV 船舶入级规范
+    第4部分 第3章 -- 焊接程序
+    挪威船级社 2024 年发布"""
 
     meta = extract_metadata(filename, text)
     assert meta.classification_society == "DNV"
@@ -1375,37 +1348,36 @@ def test_extract_metadata_from_filename_and_text():
 
 
 # ---------------------------------------------------------------------------
-# Test 5: MarineMetadata dataclass
+# 测试 5：MarineMetadata 数据类
 # ---------------------------------------------------------------------------
 
 def test_marine_metadata_defaults():
-    """Default MarineMetadata must have all None fields."""
+    """默认的 MarineMetadata 所有字段应为 None。"""
     meta = MarineMetadata()
     assert meta.classification_society is None
     assert meta.version_year is None
     assert meta.language is None
 ```
 
-- [ ] **Step 2: Write marine_metadata.py**
+- [ ] **步骤 2：编写 marine_metadata.py 实现**
 
 ```python
 # m1-doc-parsing/m1_parser/enrichments/marine_metadata.py
 """
-Auto-extraction of marine engineering metadata from documents.
+海洋工程文档元数据自动提取。
 
-WHY: Classification society documents contain predictable metadata
-patterns (society names, years, chapter numbers) that can be reliably
-extracted with regex. This saves admin users from manually entering
-these fields for every uploaded document.
+WHY: 船级社规范文档包含可预测的元数据模式（船级社名称、
+年份、章节号），可以通过正则表达式可靠地提取。这省去了
+管理员为每份上传文档手动填写这些字段的工作。
 
-Extracted fields:
+提取字段：
   1. classification_society: DNV, ABS, CCS, LR, BV, NK, RINA, KR, IMO, IACS
-  2. regulation_name: from filename or document title
-  3. version_year: regex (20\d{2}|19\d{2})
+  2. regulation_name: 从文件名或文档标题
+  3. version_year: 正则 (20\d{2}|19\d{2})
   4. chapter_section: Pt.X Ch.Y, Section, §, Chapter
-  5. language: via langdetect
+  5. language: 通过 langdetect
 
-All auto-extracted values can be overridden by admin in M7.
+所有自动提取的值均可由管理员在 M7 中修改。
 """
 
 from __future__ import annotations
@@ -1414,7 +1386,7 @@ import re
 from dataclasses import dataclass
 
 # ===========================================================================
-# Regex patterns
+# 正则模式
 # ===========================================================================
 
 _SOCIETY_PATTERNS: list[tuple[str, str]] = [
@@ -1433,21 +1405,22 @@ _SOCIETY_PATTERNS: list[tuple[str, str]] = [
 _YEAR_PATTERN = re.compile(r"(20\d{2}|19\d{2})")
 
 _CHAPTER_PATTERN = re.compile(
-    r"(Pt\.?\s*\d+(\s*Ch\.?\s*\d+)?)"    # Pt.4 Ch.3 or Pt 4
+    r"(Pt\.?\s*\d+(\s*Ch\.?\s*\d+)?)"    # Pt.4 Ch.3
     r"|(Part\s+\d+[A-Z]?\s*Section\s*[\d-]+)"  # Part 5B Section 3-2
+    r"|(第\s*\d+\s*章)"                    # 第7章
     r"|(Chapter\s+\d+)"                   # Chapter 7
     r"|(§\s*[\d.]+)"                      # § 3.2.1
 )
 
 
 # ===========================================================================
-# Data model
+# 数据模型
 # ===========================================================================
 
 
 @dataclass
 class MarineMetadata:
-    """Marine-domain metadata extracted from a parsed document."""
+    """从已解析文档中提取的海洋工程领域元数据。"""
 
     classification_society: str | None = None
     regulation_name: str | None = None
@@ -1457,23 +1430,23 @@ class MarineMetadata:
 
 
 # ===========================================================================
-# Extraction functions
+# 提取函数
 # ===========================================================================
 
 
 def extract_metadata(filename: str, text: str) -> MarineMetadata:
     """
-    Extract all auto-detectable metadata from a document.
+    从文档中提取所有可自动检测的元数据。
 
-    Searches both filename and text content, preferring the text
-    match when both are found (filename can be abbreviated).
+    同时搜索文件名和文本内容，当两者都有匹配时优先使用
+    文本中的匹配（文件名可能被缩写）。
 
     Args:
-        filename: Original filename (for pattern-based hints).
-        text: Full document text content.
+        filename: 原始文件名（用于基于模式的提示）。
+        text: 文档全文内容。
 
     Returns:
-        MarineMetadata with populated fields (None for undetected).
+        填充了检测到字段的 MarineMetadata（未检测到的为 None）。
     """
     return MarineMetadata(
         classification_society=extract_classification_society(text),
@@ -1486,13 +1459,12 @@ def extract_metadata(filename: str, text: str) -> MarineMetadata:
 
 def extract_classification_society(text: str) -> str | None:
     """
-    Detect classification society from document text.
+    从文档文本中检测船级社。
 
-    Searches for known abbreviations and full names.
-    Returns the first match found (most documents reference only one society).
+    搜索已知缩写和全名。返回第一个匹配（大多数文档只引用一个船级社）。
 
-    WHY regex, not ML: society names are predictable strings.
-    Regex is deterministic, explainable, and zero-dependency.
+    WHY 用正则而非 ML：船级社名称是可预测的字符串。
+    正则确定性高、可解释、零依赖。
     """
     for pattern, name in _SOCIETY_PATTERNS:
         if re.search(pattern, text, re.IGNORECASE):
@@ -1502,10 +1474,10 @@ def extract_classification_society(text: str) -> str | None:
 
 def extract_version_year(text: str) -> int | None:
     """
-    Extract a 4-digit year from document text.
+    从文档文本中提取 4 位年份。
 
-    Matches years 1900-2099. Returns the first match (typically
-    the publication year appears early in the document).
+    匹配 1900-2099 之间的年份。返回第一个匹配
+    （出版年份通常出现在文档开头）。
     """
     match = _YEAR_PATTERN.search(text)
     if match:
@@ -1515,10 +1487,9 @@ def extract_version_year(text: str) -> int | None:
 
 def extract_chapter_section(text: str) -> str | None:
     """
-    Extract chapter/section reference from document text.
+    从文档文本中提取章节引用。
 
-    Matches patterns like "Pt.4 Ch.3", "Part 5B Section 3-2",
-    "Chapter 7", "§ 3.2.1".
+    匹配 "Pt.4 Ch.3"、"Part 5B Section 3-2"、"第7章"、"§ 3.2.1" 等模式。
     """
     match = _CHAPTER_PATTERN.search(text)
     if match:
@@ -1528,95 +1499,91 @@ def extract_chapter_section(text: str) -> str | None:
 
 def _extract_regulation_name(filename: str, text: str) -> str | None:
     """
-    Derive regulation name from filename or document title.
+    从文件名或文档标题中推导规范名称。
 
-    Tries the first heading in the text first. Falls back to
-    filename without extension as a human-readable label.
+    优先尝试文本中的第一个标题。回退到去掉扩展名的文件名。
     """
     from pathlib import Path
 
-    # Try first line of text as title
+    # 尝试将文本第一行作为标题
     first_line = text.strip().split("\n")[0] if text else ""
     if first_line and len(first_line) > 10:
         return first_line[:200].strip()
 
-    # Fall back to filename
+    # 回退到文件名
     return Path(filename).stem
 
 
 def _detect_language(text: str) -> str | None:
     """
-    Detect document language using langdetect.
+    使用 langdetect 检测文档语言。
 
-    Returns ISO 639-1 code (en, zh, ko, ja, no) or None.
+    返回 ISO 639-1 代码（en, zh, ko, ja, no），或 None。
     """
     if not text or len(text) < 20:
         return None
     try:
         from langdetect import detect
-        return detect(text[:1000])  # First 1000 chars is enough
+        return detect(text[:1000])  # 前 1000 字符足够判断
     except Exception:
         return None
 ```
 
-- [ ] **Step 3: Run tests**
+- [ ] **步骤 3：运行测试**
 
 ```bash
 pip install langdetect && python -m pytest m1-doc-parsing/tests/test_marine_metadata.py -v
 ```
-Expected: 10 PASS (5 functions × parametrized), 0 FAIL
+预期：参数化测试全部 PASS, 0 FAIL
 
-- [ ] **Step 4: Commit**
+- [ ] **步骤 4：提交**
 
 ```bash
 git add m1-doc-parsing/m1_parser/enrichments/ m1-doc-parsing/tests/test_marine_metadata.py
-git commit -m "[00060-06] feat: marine metadata auto-extraction -- 5 fields with regex rules"
+git commit -m "[00060-06] feat: 海洋工程元数据自动提取 —— 5 字段正则规则"
 ```
 
 ---
 
-### Task 7: Quality Gate + Table Processing (00060-07)
+### 任务 7：质量门禁与表格处理骨架 (00060-07)
 
-**Files:**
-- Create: `m1-doc-parsing/m1_parser/enrichments/table_merger.py`
-- Create: `m1-doc-parsing/m1_parser/enrichments/table_annotator.py`
-- Create: `m1-doc-parsing/m1_parser/core/quality.py`
-- Create: `m1-doc-parsing/tests/test_quality.py`
+**涉及文件：**
+- 新建：`m1-doc-parsing/m1_parser/enrichments/table_merger.py`
+- 新建：`m1-doc-parsing/m1_parser/enrichments/table_annotator.py`
+- 新建：`m1-doc-parsing/m1_parser/core/quality.py`
+- 新建：`m1-doc-parsing/tests/test_quality.py`
 
-- [ ] **Step 1: Write quality.py**
+- [ ] **步骤 1：编写 quality.py（质量门禁核心）**
 
 ```python
 # m1-doc-parsing/m1_parser/core/quality.py
 """
-Complexity scoring and quality gate for parsed content.
+已解析内容的复杂度评分和质量门禁。
 
-WHY: The accuracy-first principle requires that complex content
-(tables with merged cells, footnotes, cross-page spans) be blocked
-from auto-ingestion into the vector database until human-reviewed.
+WHY: 准确性优先原则要求复杂内容（含合并单元格、脚注、
+跨页的表格）在人工审核前不得自动入库进入向量数据库。
 
-The scoring system assigns points for 7 complexity indicators.
-Score 0=auto-approve, 1-2=low confidence, 3+=block and review.
+评分系统对 7 项复杂度指标进行打分。
+得分 0 = 自动通过，1-2 = 低置信度，3+ = 阻止并需审核。
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
 class QualityAssessment:
-    """Result of complexity scoring for a chunk or table."""
+    """对某个 chunk 或表格的复杂度评分结果。"""
 
     score: int
     max_score: int = 9
     confidence: float = 1.0
     review_required: bool = False
-    review_reasons: list[str] = None
+    review_reasons: list[str] = field(default_factory=list)
 
     def __post_init__(self):
-        if self.review_reasons is None:
-            self.review_reasons = []
-        # Apply gate rules
+        """根据分数自动设置门禁规则。"""
         if self.score == 0:
             self.confidence = 1.0
             self.review_required = False
@@ -1639,56 +1606,55 @@ def score_table_complexity(
     is_borderless: bool = False,
 ) -> QualityAssessment:
     """
-    Score a table's complexity on a 0-9 scale.
+    在 0-9 的尺度上评估表格复杂度。
 
-    Scoring rules (from design spec Section 8.3):
-      +1: merged cells > 3
-      +2: cross-page (no header row)
-      +2: contains (see ...) footnote references
-      +1: contains parenthetical annotations
-      +1: has footnote markers
-      +1: > 8 columns or > 50 rows
-      +1: borderless table
+    评分规则（来自设计规范第 8.3 节）：
+      +1: 合并单元格 > 3
+      +2: 跨页（无表头行）
+      +2: 含 (参见 ...) 脚注引用
+      +1: 含括号注释
+      +1: 有脚注标记
+      +1: 列数 > 8 或行数 > 50
+      +1: 无边框表格
 
-    Gate rules:
-      Score 0:   auto-approve (confidence 1.0)
-      Score 1-2: auto-pass with reduced confidence
-      Score 3+:  BLOCK -- requires human review
+    门禁规则：
+      得分 0:   自动通过（置信度 1.0）
+      得分 1-2: 自动通过但降低置信度
+      得分 3+:  阻止入库，强制人工审核
 
-    WHY numeric scoring: enables gradual quality thresholds.
-    A table with 1 issue may be fine; 3 issues is almost certainly
-    wrong somewhere.
+    WHY 数值化评分：支持渐进式质量阈值。
+    1 个问题的表格可能没问题；3 个问题几乎肯定有地方出错。
     """
     reasons = []
     score = 0
 
     if merged_cells > 3:
         score += 1
-        reasons.append(f"merged_cells={merged_cells}")
+        reasons.append(f"合并单元格数={merged_cells}")
 
     if is_cross_page:
         score += 2
-        reasons.append("cross_page_table")
+        reasons.append("跨页表格")
 
     if has_footnote_refs:
         score += 2
-        reasons.append("footnote_references")
+        reasons.append("脚注引用")
 
     if has_parenthetical_notes:
         score += 1
-        reasons.append("parenthetical_annotations")
+        reasons.append("括号注释")
 
     if has_footnotes:
         score += 1
-        reasons.append("footnotes")
+        reasons.append("脚注标记")
 
     if column_count > 8 or row_count > 50:
         score += 1
-        reasons.append(f"size({column_count}x{row_count})")
+        reasons.append(f"表格尺寸({column_count}x{row_count})")
 
     if is_borderless:
         score += 1
-        reasons.append("borderless")
+        reasons.append("无边框")
 
     return QualityAssessment(
         score=score,
@@ -1696,18 +1662,18 @@ def score_table_complexity(
     )
 ```
 
-- [ ] **Step 2: Write test_quality.py + stubs for table modules**
+- [ ] **步骤 2：编写 test_quality.py**
 
 ```python
 # m1-doc-parsing/tests/test_quality.py
-"""Tests for complexity scoring and quality gate."""
+"""复杂度评分和质量门禁的单元测试。"""
 
 import pytest
 from m1_parser.core.quality import score_table_complexity
 
 
 def test_simple_table_auto_approves():
-    """A clean table with no issues must score 0, auto-approve."""
+    """干净无问题的表格必须得分 0，自动通过。"""
     result = score_table_complexity()
     assert result.score == 0
     assert result.confidence == 1.0
@@ -1715,7 +1681,7 @@ def test_simple_table_auto_approves():
 
 
 def test_merged_cells_low_confidence():
-    """4 merged cells = score 1, low confidence, not blocked."""
+    """4 个合并单元格 = 得分 1，低置信度但不阻止。"""
     result = score_table_complexity(merged_cells=5)
     assert result.score == 1
     assert result.confidence < 1.0
@@ -1723,9 +1689,9 @@ def test_merged_cells_low_confidence():
 
 
 def test_cross_page_blocked():
-    """Cross-page + footnote refs = score >= 3, must block."""
+    """跨页 + 脚注引用 = 得分 >= 3，必须阻止。"""
     result = score_table_complexity(
-        is_cross_page=True,    # +2
+        is_cross_page=True,     # +2
         has_footnote_refs=True, # +2
     )
     assert result.score >= 3
@@ -1733,7 +1699,7 @@ def test_cross_page_blocked():
 
 
 def test_many_issues_blocked():
-    """Multiple moderate issues add up to block."""
+    """多个中等问题的叠加触发阻止。"""
     result = score_table_complexity(
         merged_cells=4,              # +1
         has_parenthetical_notes=True, # +1
@@ -1744,40 +1710,31 @@ def test_many_issues_blocked():
     assert result.review_required is True
 ```
 
-- [ ] **Step 3: Write table_merger.py and table_annotator.py stubs**
+- [ ] **步骤 3：编写表格处理骨架文件**
 
 ```python
 # m1-doc-parsing/m1_parser/enrichments/table_merger.py
 """
-Cross-page table merger.
+跨页表格合并模块。
 
-WHY: When a table spans multiple PDF pages, each page's table fragment
-lacks the header row. This module detects such fragments by checking
-if the first row of a table looks like a header row (bold text, shorter
-cells, all cells non-empty). If not, it backtracks to previous pages
-and prepends the matching header row before passing to the annotator.
+WHY: 当表格跨越多页 PDF 时，每页的表格片段缺少表头行。
+此模块通过检查表格的第一行是否像表头行（粗体、较短、
+所有单元格非空）来检测这种片段。如果不是表头，则向前
+回溯到上一页找到匹配的表头行。
 """
-
-from __future__ import annotations
 
 
 def merge_split_tables(tables: list) -> list:
     """
-    Merge table fragments that span multiple pages.
+    合跨多页的表格片段。
 
-    Strategy:
-    1. Detect tables missing header rows (first row has data-like content)
-    2. Backtrack to previous page's tables to find the header
-    3. Prepend the header row to the current table fragment
+    策略：
+    1. 检测缺少表头行的表格（第一行内容是数据型的）
+    2. 向前回溯上一页的表格，找到表头
+    3. 将表头行前置到当前表格片段
 
-    Args:
-        tables: List of TableItem objects from DoclingDocument.
-
-    Returns:
-        Tables with cross-page fragments merged.
-
-    Currently a stub -- full implementation requires access to
-    Docling's TableItem structure and cell-level metadata.
+    当前为骨架 —— 完整实现需要访问 Docling 的 TableItem
+    结构和单元格级元数据。
     """
     return tables
 ```
@@ -1785,76 +1742,67 @@ def merge_split_tables(tables: list) -> list:
 ```python
 # m1-doc-parsing/m1_parser/enrichments/table_annotator.py
 """
-Header-to-Cell annotation for table context enrichment.
+表头到单元格注释模块，用于表格上下文丰富化。
 
-WHY: Raw table cells like "150°C" are meaningless without their
-row and column headers. This module associates each data cell
-with its headers so downstream systems see contextualized values:
-"Steel Grade: EH36 (t<=50mm) | Minimum Preheat Temp: 150°C"
+WHY: 原始表格单元格如 "150°C" 在没有行列表头的情况下
+毫无意义。此模块将每个数据单元格关联到其行表头和列表头，
+使下游系统看到的是上下文丰富的值：
+"钢级: EH36 (t≤50mm) | 最低预热温度: 150°C"
 """
-
-from __future__ import annotations
 
 
 def annotate_table_cells(table) -> list:
     """
-    Enrich each data cell with its row and column headers.
+    为每个数据单元格注入其行表头和列表头。
 
-    Algorithm:
-    1. Identify header row(s) and column(s) by content patterns
-       (shorter text, bold, all caps, fewer numbers)
-    2. For each data cell, find its row header and column header
-    3. Build contextualized text: "{col_header}: {cell_text} | {row_header}"
+    算法：
+    1. 通过内容模式（较短文本、粗体、全大写、数字少）
+       识别表头行和表头列
+    2. 对每个数据单元格，找到其行表头和列表头
+    3. 构建上下文文本："{列表头}: {单元格文本} | {行表头}"
 
-    Args:
-        table: TableItem from DoclingDocument.
-
-    Returns:
-        List of annotated cell dicts with 'raw', 'row_header',
-        'col_header', and 'contextualized' fields.
-
-    Currently a stub -- full implementation requires access to
-    Docling's TableItem cell structure and row/column grouping.
+    当前为骨架 —— 完整实现需要访问 Docling 的 TableItem
+    单元格结构和行列分组。
     """
     return []
 ```
 
-- [ ] **Step 4: Run quality tests**
+- [ ] **步骤 4：运行质量测试**
 
 ```bash
 python -m pytest m1-doc-parsing/tests/test_quality.py -v
 ```
-Expected: 4 PASS, 0 FAIL
+预期：4 PASS, 0 FAIL
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add m1-doc-parsing/m1_parser/core/quality.py m1-doc-parsing/m1_parser/enrichments/table_merger.py m1-doc-parsing/m1_parser/enrichments/table_annotator.py m1-doc-parsing/tests/test_quality.py
-git commit -m "[00060-07] feat: quality gate with 7-factor complexity scoring, table processing stubs"
+git commit -m "[00060-07] feat: 质量门禁 —— 7 因素复杂度评分，表格处理骨架"
 ```
 
 ---
 
-### Task 8: Serializer + Image Manager (00060-08)
+### 任务 8：序列化器与图片管理器 (00060-08)
 
-**Files:**
-- Create: `m1-doc-parsing/m1_parser/output/__init__.py`
-- Create: `m1-doc-parsing/m1_parser/output/serializer.py`
-- Create: `m1-doc-parsing/m1_parser/output/image_manager.py`
-- Create: `m1-doc-parsing/tests/test_serializer.py`
-- Create: `m1-doc-parsing/tests/test_image_manager.py`
+**涉及文件：**
+- 新建：`m1-doc-parsing/m1_parser/output/__init__.py`
+- 新建：`m1-doc-parsing/m1_parser/output/serializer.py`
+- 新建：`m1-doc-parsing/m1_parser/output/image_manager.py`
+- 新建：`m1-doc-parsing/tests/test_serializer.py`
+- 新建：`m1-doc-parsing/tests/test_image_manager.py`
 
-- [ ] **Step 1: Write serializer.py + image_manager.py (combined for brevity)**
+- [ ] **步骤 1：编写 serializer.py**
 
 ```python
 # m1-doc-parsing/m1_parser/output/serializer.py
 """
-Output serialization: ParsedDocument → Markdown / JSON / HTML.
+输出序列化器：ParsedDocument → Markdown / JSON / HTML。
 
-WHY: Different consumers need different output formats.
-- RAG embedding needs Markdown
-- Programmatic processing needs JSON
-- Web preview needs HTML
+WHY: 不同的消费者需要不同的输出格式。
+- RAG 嵌入需要 Markdown
+- 程序化处理需要 JSON
+- Web 预览需要 HTML
 """
 
 from __future__ import annotations
@@ -1864,7 +1812,7 @@ from pathlib import Path
 
 
 def save_markdown(content: str, output_dir: str, doc_id: str, filename: str = "full.md"):
-    """Save parsed content as Markdown."""
+    """将解析内容保存为 Markdown。"""
     out_path = Path(output_dir) / doc_id / filename
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(content, encoding="utf-8")
@@ -1872,27 +1820,28 @@ def save_markdown(content: str, output_dir: str, doc_id: str, filename: str = "f
 
 
 def save_json(data: dict, output_dir: str, doc_id: str, filename: str = "full.json"):
-    """Save parsed content as JSON."""
+    """将解析内容保存为 JSON。"""
     out_path = Path(output_dir) / doc_id / filename
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     return str(out_path)
 ```
 
+- [ ] **步骤 2：编写 image_manager.py**
+
 ```python
 # m1-doc-parsing/m1_parser/output/image_manager.py
 """
-Image extraction, storage, and metadata management.
+图片提取、存储和元数据管理。
 
-WHY: Images from documents (figures, diagrams, tables) need to be
-extracted, stored in a predictable directory structure, and annotated
-with metadata for downstream search and visual grounding.
+WHY: 文档中的图片（图表、示意图、表格）需要被提取出来，
+存储到可预测的目录结构中，并标注元数据以供下游搜索和可视化溯源。
 
-Directory structure per document:
+每个文档的目录结构：
   {output_dir}/{doc_id}/
-    pages/       -- page screenshots (PNG, 144 DPI)
-    figures/     -- embedded images (original format)
-    tables/      -- table screenshots (PNG)
+    pages/       -- 页面截图 (PNG, 144 DPI)
+    figures/     -- 内嵌图片 (原格式保留)
+    tables/      -- 表格截图 (PNG)
 """
 
 from __future__ import annotations
@@ -1902,7 +1851,7 @@ from pathlib import Path
 
 
 def get_output_paths(output_dir: str, doc_id: str) -> dict[str, Path]:
-    """Create and return the output subdirectory paths for a document."""
+    """为一个文档创建并返回各输出子目录的路径。"""
     base = Path(output_dir) / doc_id
     subdirs = {
         "base": base,
@@ -1915,16 +1864,12 @@ def get_output_paths(output_dir: str, doc_id: str) -> dict[str, Path]:
     return subdirs
 
 
-def save_figure_metadata(
-    figure_path: Path,
-    metadata: dict,
-) -> str:
+def save_figure_metadata(figure_path: Path, metadata: dict) -> str:
     """
-    Write a .meta.json sidecar file for a figure.
+    为图片写入 .meta.json 侧车文件。
 
-    WHY sidecar, not embedded metadata: the original image format
-    may not support arbitrary metadata fields. JSON sidecars are
-    universally readable and don't alter the original file.
+    WHY 用侧车文件而非内嵌元数据：原始图片格式可能不支持任意
+    元数据字段。JSON 侧车文件通用可读，且不会修改原始文件。
     """
     meta_path = Path(str(figure_path) + ".meta.json")
     meta_path.write_text(
@@ -1934,7 +1879,7 @@ def save_figure_metadata(
     return str(meta_path)
 ```
 
-- [ ] **Step 2: Write tests**
+- [ ] **步骤 3：编写测试**
 
 ```python
 # m1-doc-parsing/tests/test_serializer.py
@@ -1944,21 +1889,21 @@ from m1_parser.output.serializer import save_markdown, save_json
 
 
 def test_save_markdown_creates_file():
-    """save_markdown must create the file and parent directories."""
+    """save_markdown 必须创建文件和父目录。"""
     with tempfile.TemporaryDirectory() as tmpdir:
-        path = save_markdown("# Test", tmpdir, "test-doc-001")
+        path = save_markdown("# 测试标题", tmpdir, "test-doc-001")
         assert Path(path).exists()
-        content = Path(path).read_text()
-        assert "# Test" in content
+        content = Path(path).read_text(encoding="utf-8")
+        assert "# 测试标题" in content
 
 
 def test_save_json_creates_file():
-    """save_json must create a valid JSON file."""
+    """save_json 必须创建有效的 JSON 文件。"""
     with tempfile.TemporaryDirectory() as tmpdir:
         path = save_json({"key": "value"}, tmpdir, "test-doc-001")
         assert Path(path).exists()
         import json
-        data = json.loads(Path(path).read_text())
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
         assert data["key"] == "value"
 ```
 
@@ -1970,58 +1915,57 @@ from m1_parser.output.image_manager import get_output_paths, save_figure_metadat
 
 
 def test_output_paths_created():
-    """get_output_paths must create all subdirectories."""
+    """get_output_paths 必须创建全部子目录。"""
     with tempfile.TemporaryDirectory() as tmpdir:
         paths = get_output_paths(tmpdir, "test-doc")
         for name, p in paths.items():
-            assert p.exists(), f"{name} path must exist: {p}"
+            assert p.exists(), f"{name} 路径必须存在: {p}"
 
 
 def test_figure_metadata_sidecar():
-    """save_figure_metadata must create a .meta.json sidecar."""
+    """save_figure_metadata 必须创建 .meta.json 侧车文件。"""
     with tempfile.TemporaryDirectory() as tmpdir:
         fig = Path(tmpdir) / "figure_001.png"
         fig.write_bytes(b"fake png data")
         meta_path = save_figure_metadata(fig, {"key": "val"})
         assert Path(meta_path).exists()
         import json
-        meta = json.loads(Path(meta_path).read_text())
+        meta = json.loads(Path(meta_path).read_text(encoding="utf-8"))
         assert meta["key"] == "val"
 ```
 
-- [ ] **Step 3: Run tests**
+- [ ] **步骤 4：运行测试**
 
 ```bash
 python -m pytest m1-doc-parsing/tests/test_serializer.py m1-doc-parsing/tests/test_image_manager.py -v
 ```
-Expected: 4 PASS
+预期：4 PASS
 
-- [ ] **Step 4: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add m1-doc-parsing/m1_parser/output/ m1-doc-parsing/tests/test_serializer.py m1-doc-parsing/tests/test_image_manager.py
-git commit -m "[00060-08] feat: serializer (MD/JSON) and image manager (paths, metadata sidecar)"
+git commit -m "[00060-08] feat: 序列化器（MD/JSON）+ 图片管理器（路径、元数据侧车）"
 ```
 
 ---
 
-### Task 9: Chunking (00060-09)
+### 任务 9：Chunking 封装 (00060-09)
 
-**Files:**
-- Create: `m1-doc-parsing/m1_parser/output/chunker.py`
-- Create: `m1-doc-parsing/tests/test_chunker.py`
+**涉及文件：**
+- 新建：`m1-doc-parsing/m1_parser/output/chunker.py`
+- 新建：`m1-doc-parsing/tests/test_chunker.py`
 
-- [ ] **Step 1: Write chunker.py**
+- [ ] **步骤 1：编写 chunker.py**
 
 ```python
 # m1-doc-parsing/m1_parser/output/chunker.py
 """
-Hybrid chunker wrapper for RAG embedding preparation.
+Hybrid Chunker 封装，为 RAG 嵌入做文本分块准备。
 
-WHY: Docling's HybridChunker is tokenization-aware and preserves
-document hierarchy. We wrap it to align tokenizers with the M5
-embedding model (BGE-M3/GTE-Qwen2) and ensure table headers
-repeat across chunk boundaries.
+WHY: Docling 的 HybridChunker 是 token 感知的，且保留文档层级结构。
+我们封装它以将分词器与 M5 的嵌入模型（BGE-M3/GTE-Qwen2）对齐，
+并确保表格表头在分块边界处重复出现。
 """
 
 from __future__ import annotations
@@ -2038,16 +1982,16 @@ def create_chunker(
     repeat_table_header: bool = True,
 ):
     """
-    Create a configured HybridChunker for RAG document chunking.
+    创建配置好的 HybridChunker 用于 RAG 文档分块。
 
     Args:
-        tokenizer_model_id: HuggingFace model for token counting.
-        max_tokens: Max tokens per chunk (must align with embedding model).
-        merge_peers: Merge undersized sibling chunks.
-        repeat_table_header: Repeat table headers across chunk boundaries.
+        tokenizer_model_id: HuggingFace 分词器模型 ID。
+        max_tokens: 每块最大 token 数（必须与嵌入模型对齐）。
+        merge_peers: 合并尺寸过小的相邻块。
+        repeat_table_header: 跨分块边界重复表格表头。
 
     Returns:
-        Configured HybridChunker instance, or None if docling_core unavailable.
+        配置好的 HybridChunker 实例，若依赖缺失则返回 None。
     """
     try:
         from docling.chunking import HybridChunker
@@ -2064,11 +2008,11 @@ def create_chunker(
             repeat_table_header=repeat_table_header,
         )
     except ImportError as e:
-        logger.warning("Chunker unavailable: %s", e)
+        logger.warning("Chunker 不可用: %s", e)
         return None
 ```
 
-- [ ] **Step 2: Write test_chunker.py**
+- [ ] **步骤 2：编写测试**
 
 ```python
 # m1-doc-parsing/tests/test_chunker.py
@@ -2077,64 +2021,61 @@ from m1_parser.output.chunker import create_chunker
 
 
 def test_create_chunker_returns_none_if_missing_deps():
-    """If docling/transformers not installed, must return None, not crash."""
-    # This test will succeed because transformers may not be installed
+    """如果 docling/transformers 未安装，必须返回 None 而非崩溃。"""
     chunker = create_chunker()
-    # Either None or a valid chunker is acceptable
-    # (we don't want it to raise)
+    # None 或有效的 chunker 都可接受（不崩溃就是通过）
     assert chunker is None or hasattr(chunker, "chunk")
 
 
 @pytest.mark.skipif(
     not __import__("importlib").util.find_spec("docling"),
-    reason="docling not installed"
+    reason="docling 未安装"
 )
 def test_create_chunker_with_docling():
-    """With docling installed, must return a chunker."""
+    """安装 docling 后必须返回 chunker 或 None（transformers 可能缺失）。"""
     chunker = create_chunker()
-    # May still be None if transformers is missing
-    # That's OK -- the function logs a warning
-    pass  # No assertion needed; no crash = pass
+    # 如果 transformers 也缺失，返回 None 是预期行为
+    pass  # 无需断言；无崩溃 = 通过
 ```
 
-- [ ] **Step 3: Run tests**
+- [ ] **步骤 3：运行测试**
 
 ```bash
 python -m pytest m1-doc-parsing/tests/test_chunker.py -v
 ```
-Expected: 2 PASS
+预期：2 PASS
 
-- [ ] **Step 4: Commit**
+- [ ] **步骤 4：提交**
 
 ```bash
 git add m1-doc-parsing/m1_parser/output/chunker.py m1-doc-parsing/tests/test_chunker.py
-git commit -m "[00060-09] feat: Hybrid chunker wrapper with tokenizer alignment"
+git commit -m "[00060-09] feat: Hybrid Chunker 封装 —— 分词器对齐与表头重复"
 ```
 
 ---
 
-### Task 10: M2 Bridge (00060-10)
+### 任务 10：M2 桥接 (00060-10)
 
-**Files:**
-- Create: `m1-doc-parsing/m1_parser/integration/__init__.py`
-- Create: `m1-doc-parsing/m1_parser/integration/m2_bridge.py`
-- Create: `m1-doc-parsing/tests/test_m2_bridge.py`
+**涉及文件：**
+- 新建：`m1-doc-parsing/m1_parser/integration/__init__.py`
+- 新建：`m1-doc-parsing/m1_parser/integration/m2_bridge.py`
+- 新建：`m1-doc-parsing/tests/test_m2_bridge.py`
 
-- [ ] **Step 1: Write m2_bridge.py**
+- [ ] **步骤 1：编写 m2_bridge.py**
 
 ```python
 # m1-doc-parsing/m1_parser/integration/m2_bridge.py
 """
-Bridge between M1 parsing results and M2 storage backends.
+M1 解析结果与 M2 存储后端的桥接层。
 
-WHY: After parsing, M1 must store results in M2's 4 backends:
-- RelationalDB: document metadata records (m1_documents, m1_parsing_tasks)
-- VectorStore: only chunks that passed the quality gate
-- DocumentIndex: full-text search indices
-- FileStore: output files (full.md, full.json, images)
+WHY: 解析完成后，M1 必须将结果存入 M2 的 4 个后端：
+- RelationalDB: 文档元数据记录（m1_documents, m1_parsing_tasks）
+- VectorStore: 仅通过质量门禁的 chunks
+- DocumentIndex: 全文搜索索引
+- FileStore: 输出文件（full.md, full.json, 图片）
 
-The bridge ensures the accuracy-first rule: chunks with review_required=True
-are NEVER written to VectorStore until admin approves.
+桥接层确保准确性优先规则：review_required=True 的 chunks
+在管理员审批之前绝不写入 VectorStore。
 """
 
 from __future__ import annotations
@@ -2161,10 +2102,9 @@ def create_document_record(
     status: str = "done",
 ) -> dict:
     """
-    Build a document record for the m1_documents table.
+    构建一条 m1_documents 表的文档记录。
 
-    Returns a dict that can be inserted into M2's RelationalDB
-    via SQLAlchemy session.
+    返回可被 M2 RelationalDB 通过 SQLAlchemy session 插入的字典。
     """
     meta = metadata or {}
     return {
@@ -2191,15 +2131,14 @@ def create_document_record(
 
 def should_store_in_vector_store(chunk) -> bool:
     """
-    Quality gate: only chunks that passed review may enter VectorStore.
+    质量门禁：只有通过审核的 chunks 才能进入 VectorStore。
 
-    WHY this check exists: the accuracy-first principle. Complex
-    tables and uncertain content must be human-reviewed before
-    becoming searchable via vector similarity.
+    WHY 存在此检查：准确性第一原则。复杂表格和不确定内容
+    必须在成为可搜索内容之前经过人工审核。
     """
     if getattr(chunk, "review_required", False):
         logger.info(
-            "Chunk %s blocked from VectorStore: %s",
+            "Chunk %s 被阻止进入 VectorStore: %s",
             getattr(chunk, "chunk_id", "?"),
             getattr(chunk, "review_reasons", []),
         )
@@ -2207,7 +2146,7 @@ def should_store_in_vector_store(chunk) -> bool:
     return True
 ```
 
-- [ ] **Step 2: Write test_m2_bridge.py**
+- [ ] **步骤 2：编写测试**
 
 ```python
 # m1-doc-parsing/tests/test_m2_bridge.py
@@ -2219,7 +2158,7 @@ from m1_parser.integration.m2_bridge import (
 
 
 def test_create_document_record():
-    """Must build a complete record dict with all fields."""
+    """必须构建包含所有字段的完整记录字典。"""
     record = create_document_record(
         doc_id="test-001",
         original_name="dnv_rules.pdf",
@@ -2239,57 +2178,56 @@ def test_create_document_record():
 
 
 def test_should_store_approved_chunk():
-    """Chunks without review_required must be allowed."""
+    """review_required=False 的 chunks 必须被放行。"""
     chunk = type("Chunk", (), {"review_required": False, "chunk_id": "c1"})()
     assert should_store_in_vector_store(chunk) is True
 
 
 def test_should_block_review_chunk():
-    """Chunks with review_required=True must be blocked."""
+    """review_required=True 的 chunks 必须被阻止。"""
     chunk = type("Chunk", (), {
         "review_required": True,
         "chunk_id": "c2",
-        "review_reasons": ["cross_page_table"],
+        "review_reasons": ["跨页表格"],
     })()
     assert should_store_in_vector_store(chunk) is False
 ```
 
-- [ ] **Step 3: Run tests**
+- [ ] **步骤 3：运行测试**
 
 ```bash
 python -m pytest m1-doc-parsing/tests/test_m2_bridge.py -v
 ```
-Expected: 3 PASS
+预期：3 PASS
 
-- [ ] **Step 4: Commit**
+- [ ] **步骤 4：提交**
 
 ```bash
 git add m1-doc-parsing/m1_parser/integration/ m1-doc-parsing/tests/test_m2_bridge.py
-git commit -m "[00060-10] feat: M2 bridge -- document records, quality gate enforcement"
+git commit -m "[00060-10] feat: M2 桥接 —— 文档记录构建 + 质量门禁执行"
 ```
 
 ---
 
-### Task 11: Standalone CLI + Web UI (00060-11)
+### 任务 11：独立 CLI + Web 服务 (00060-11)
 
-**Files:**
-- Create: `m1-doc-parsing/m1_parser/standalone/__init__.py`
-- Create: `m1-doc-parsing/m1_parser/standalone/cli.py`
-- Create: `m1-doc-parsing/m1_parser/standalone/web_server.py`
-- Create: `m1-doc-parsing/tests/test_cli.py`
+**涉及文件：**
+- 新建：`m1-doc-parsing/m1_parser/standalone/__init__.py`
+- 新建：`m1-doc-parsing/m1_parser/standalone/cli.py`
+- 新建：`m1-doc-parsing/m1_parser/standalone/web_server.py`
+- 新建：`m1-doc-parsing/tests/test_cli.py`
 
-- [ ] **Step 1: Write cli.py**
+- [ ] **步骤 1：编写 CLI**
 
 ```python
 # m1-doc-parsing/m1_parser/standalone/cli.py
 """
-M1 standalone CLI tool.
+M1 独立命令行工具。
 
-Usage: m1-parser input.pdf --backend docling --ocr easyocr --output ./out/
+用法: m1-parser input.pdf --backend docling --ocr easyocr --output ./out/
 
-WHY CLI: users who don't want to run the full system can parse
-documents from the command line. pip install m1-doc-parsing gives
-them the `m1-parser` command.
+WHY CLI: 不想运行完整系统的用户可以仅在命令行解析文档。
+pip install m1-doc-parsing 后即可获得 m1-parser 命令。
 """
 
 import argparse
@@ -2299,23 +2237,26 @@ import sys
 def main():
     parser = argparse.ArgumentParser(
         prog="m1-parser",
-        description="M1 Document Parser -- Marine & Offshore Expert System",
+        description="M1 文档解析器 —— 船舶与海洋工程专家系统",
     )
-    parser.add_argument("input", nargs="+", help="Input file(s) to parse")
+    parser.add_argument("input", nargs="+", help="待解析的输入文件")
     parser.add_argument("--backend", default="docling",
-                        choices=["docling", "marker", "mineru"])
+                        choices=["docling", "marker", "mineru"],
+                        help="解析引擎（默认 docling）")
     parser.add_argument("--ocr", default="easyocr",
-                        choices=["paddleocr", "easyocr", "tesseract", "suryaocr"])
+                        choices=["paddleocr", "easyocr", "tesseract", "suryaocr"],
+                        help="OCR 引擎（默认 easyocr）")
     parser.add_argument("--output", "-o", default="./output",
-                        help="Output directory")
+                        help="输出目录（默认 ./output）")
     parser.add_argument("--format", default="md",
-                        choices=["md", "json", "html"])
+                        choices=["md", "json", "html"],
+                        help="输出格式（默认 md）")
     parser.add_argument("--vlm", default=None,
-                        help="VLM preset name (granite_docling, etc.)")
+                        help="VLM preset 名称（granite_docling 等）")
 
     args = parser.parse_args()
 
-    # Import core only when needed (keeps CLI startup fast)
+    # 仅在需要时导入核心模块（保持 CLI 启动速度）
     from m1_parser.core.converter import convert_batch, ParseOptions
 
     options = ParseOptions(
@@ -2330,12 +2271,12 @@ def main():
     success_count = sum(1 for r in results if r.success)
     fail_count = len(results) - success_count
 
-    print(f"\nParsed {len(results)} file(s): {success_count} passed, {fail_count} failed")
+    print(f"\n解析完成: {len(results)} 个文件, {success_count} 成功, {fail_count} 失败")
     for r in results:
         if r.success:
-            print(f"  OK  {r.source_path} -> {r.output_dir}")
+            print(f"  OK   {r.source_path}")
         else:
-            print(f"  FAIL {r.source_path}: {r.error}")
+            print(f"  失败  {r.source_path}: {r.error}")
 
     sys.exit(0 if fail_count == 0 else 1)
 
@@ -2344,44 +2285,44 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: Write web_server.py stub**
+- [ ] **步骤 2：编写 web_server.py 骨架**
 
 ```python
 # m1-doc-parsing/m1_parser/standalone/web_server.py
 """
-Minimal FastAPI web server for standalone M1 operation.
+M1 独立运行的极简 FastAPI Web 服务。
 
-Routes:
-  GET  /           -- upload + config page (serves web_ui.html)
-  POST /parse      -- upload file, parse, return Markdown
-  GET  /download/{doc_id} -- download parsed output
+路由:
+  GET  /           -- 上传+配置页面
+  POST /parse      -- 上传文件，解析，返回 Markdown
+  GET  /download/{doc_id} -- 下载解析结果
 
-WHY FastAPI: async file uploads, SSE progress streaming, simple.
-Single-file deployment: python web_server.py and it works.
+WHY FastAPI: 异步文件上传、SSE 进度推送、简洁。
+单文件部署: python web_server.py 即可运行。
 """
 
 from fastapi import FastAPI
 
-app = FastAPI(title="M1 Document Parser")
+app = FastAPI(title="M1 文档解析器")
 
 
 @app.get("/")
 async def index():
-    return {"message": "M1 Document Parser -- upload page coming soon"}
+    return {"message": "M1 文档解析器 —— 上传页面即将上线"}
 ```
 
-- [ ] **Step 3: Write test_cli.py**
+- [ ] **步骤 3：编写 CLI 测试**
 
 ```python
 # m1-doc-parsing/tests/test_cli.py
-"""Tests for the standalone CLI."""
+"""独立 CLI 的测试。"""
 import subprocess
 import sys
 import pytest
 
 
 def test_cli_help():
-    """m1-parser --help must exit 0 and show usage."""
+    """m1-parser --help 必须退出码为 0 并显示用法。"""
     result = subprocess.run(
         [sys.executable, "-m", "m1_parser.standalone.cli", "--help"],
         capture_output=True, text=True,
@@ -2391,68 +2332,66 @@ def test_cli_help():
 
 
 def test_cli_nonexistent_file():
-    """Parsing a nonexistent file must exit non-zero."""
+    """解析不存在的文件必须非零退出。"""
     result = subprocess.run(
         [sys.executable, "-m", "m1_parser.standalone.cli", "nonexistent.xyz"],
         capture_output=True, text=True,
     )
-    # Should fail gracefully
-    assert "FAIL" in result.stdout or result.returncode != 0
+    assert "失败" in result.stdout or result.returncode != 0
 ```
 
-- [ ] **Step 4: Run tests**
+- [ ] **步骤 4：运行测试**
 
 ```bash
 pip install fastapi && python -m pytest m1-doc-parsing/tests/test_cli.py -v
 ```
-Expected: 2 PASS
+预期：2 PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add m1-doc-parsing/m1_parser/standalone/ m1-doc-parsing/tests/test_cli.py
-git commit -m "[00060-11] feat: standalone CLI (m1-parser) and FastAPI web server stub"
+git commit -m "[00060-11] feat: 独立 CLI (m1-parser) 和 FastAPI Web 服务骨架"
 ```
 
 ---
 
-### Task 12: Final Packaging & Verification (00060-12)
+### 任务 12：最终打包与验证 (00060-12)
 
-**Files:**
-- Verify: all files created, all tests pass
-- Verify: m1-parser CLI works
-- Verify: pip install succeeds
+**涉及文件：**
+- 验证：所有文件已创建，全部测试通过
+- 验证：m1-parser CLI 可执行
+- 验证：pip install 成功
 
-- [ ] **Step 1: Install and verify**
+- [ ] **步骤 1：安装并验证导入**
 
 ```bash
 cd E:/myCode/RAG && pip install -e m1-doc-parsing/
-python -c "from m1_parser import convert, detect_hardware; print('Import OK')"
+python -c "from m1_parser import convert, detect_hardware; print('导入成功')"
 python -m m1_parser.standalone.cli --help
 ```
+预期：显示 "导入成功" 和 CLI 帮助文本
 
-Expected: "Import OK" and CLI help text
-
-- [ ] **Step 2: Run full test suite**
+- [ ] **步骤 2：运行完整测试套件**
 
 ```bash
 python -m pytest m1-doc-parsing/tests/ -v
 ```
-Expected: all tests pass
+预期：全部测试通过
 
-- [ ] **Step 3: Commit**
+- [ ] **步骤 3：提交**
 
 ```bash
 git add m1-doc-parsing/
-git commit -m "[00060-12] chore: finalize M1 packaging, public API, and verification"
+git commit -m "[00060-12] chore: 完成 M1 打包、公开 API 与最终验证"
 ```
 
 ---
 
-## Dependency Graph
+## 依赖关系图
 
 ```
-00060-01 (config) ──→ 00060-02 (router) ──→ 00060-03 (Docling backend)
+00060-01 (config) ──→ 00060-02 (router) ──→ 00060-03 (Docling后端)
                                                │
                          00060-04 (Marker/MinerU)
                                                │
@@ -2461,21 +2400,21 @@ git commit -m "[00060-12] chore: finalize M1 packaging, public API, and verifica
          ┌─────────────────────┼─────────────────────┐
          │                     │                     │
    00060-06              00060-07              00060-08
- (marine_metadata)   (quality+table stubs)   (serializer+images)
+ (元数据提取)         (质量+表格骨架)     (序列化+图片)
          │                     │                     │
          └─────────────────────┼─────────────────────┘
                                │
                          00060-09 (chunker)
                                │
-                         00060-10 (M2 bridge)
+                         00060-10 (M2桥接)
                                │
-                         00060-11 (CLI + Web UI)
+                         00060-11 (CLI + Web)
                                │
-                         00060-12 (packaging)
+                         00060-12 (打包验证)
 ```
 
-Tasks 00060-06, 00060-07, 00060-08 are independent and can run in parallel.
+任务 00060-06、00060-07、00060-08 相互独立，可以并行开发。
 
 ---
 
-*Plan complete. Proceed with superpowers:subagent-driven-development or superpowers:executing-plans.*
+*计划完成。请使用 superpowers:subagent-driven-development 或 superpowers:executing-plans 执行。*
