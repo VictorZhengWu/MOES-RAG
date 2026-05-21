@@ -1,0 +1,6 @@
+docling>=2.94.0
+pyyaml>=6.0
+python-magic>=0.4.27
+langdetect>=1.0.9
+pytest>=8.0
+pytest-asyncio>=0.23.0

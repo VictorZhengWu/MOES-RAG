@@ -321,7 +321,7 @@
 
 ---
 
-#### 🔲 00060-01 — 项目骨架与配置系统 (config.py + pyproject.toml)
+#### ✅ 00060-01 — 项目骨架与配置系统 (config.py + pyproject.toml)
 
 **功能描述：**
 - 创建 m1-doc-parsing 项目结构（目录、pyproject.toml、requirements.txt）
