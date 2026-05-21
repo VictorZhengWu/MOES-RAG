@@ -13,6 +13,7 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
+import yaml
 
 # ---------------------------------------------------------------------------
 # Pre-seed sys.modules with a fake torch to prevent @patch decorators
@@ -30,7 +31,9 @@ if "torch" not in sys.modules:
 
 from m1_parser.core.config import (
     HardwareProfile,
+    M1Config,
     detect_hardware,
+    load_m1_config,
     recommend_ocr_engine,
     SUPPORTED_BACKENDS,
     OCR_ENGINE_PRIORITY,
@@ -120,3 +123,60 @@ def test_supported_backends():
     assert "docling" in SUPPORTED_BACKENDS
     assert "marker" in SUPPORTED_BACKENDS
     assert "mineru" in SUPPORTED_BACKENDS
+
+
+# ===========================================================================
+# C3 fixes: deploy.yaml parsing, nvidia-smi, and OCR fallback tests
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Test 7: load_m1_config() parses M1-specific section from deploy.yaml
+# ---------------------------------------------------------------------------
+
+def test_load_m1_config(tmp_path):
+    """load_m1_config() MUST parse M1 configuration overrides from YAML."""
+    # Create a temporary deploy.yaml with M1 overrides
+    yaml_content = {
+        "m1": {
+            "backend": "marker",
+            "ocr": "suryaocr",
+            "output_dir": "/custom/output",
+            "quality_threshold": 4,
+        },
+        "m2": {  # unrelated section, should be ignored
+            "storage_backend": "chromadb",
+        },
+    }
+    deploy_path = tmp_path / "deploy.yaml"
+    deploy_path.write_text(yaml.dump(yaml_content), encoding="utf-8")
+
+    config = load_m1_config(str(deploy_path))
+    assert config.backend_override == "marker"
+    assert config.ocr_override == "suryaocr"
+    assert config.output_dir == "/custom/output"
+    assert config.quality_threshold == 4
+
+
+# ---------------------------------------------------------------------------
+# Test 8: load_m1_config() returns defaults when file not found
+# ---------------------------------------------------------------------------
+
+def test_load_m1_config_file_not_found():
+    """load_m1_config() MUST return sensible defaults when deploy.yaml is missing."""
+    config = load_m1_config("/nonexistent/deploy.yaml")
+    assert config.backend_override is None
+    assert config.ocr_override is None
+    assert config.output_dir == "./output"
+    assert config.quality_threshold == 3
+
+
+# ---------------------------------------------------------------------------
+# Test 9: recommend_ocr_engine() raises RuntimeError when no engine available
+# ---------------------------------------------------------------------------
+
+@patch("m1_parser.core.config._is_ocr_available", return_value=False)
+def test_recommend_ocr_engine_raises(mock_available):
+    """recommend_ocr_engine() MUST raise RuntimeError when all engines fail."""
+    with pytest.raises(RuntimeError, match="No OCR engine available"):
+        recommend_ocr_engine()

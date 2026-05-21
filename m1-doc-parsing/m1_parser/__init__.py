@@ -15,10 +15,11 @@ __version__ = "0.1.0"
 
 # NOTE: converter imports are deferred -- converter.py is not yet implemented.
 # Once implemented, uncomment the line below and remove the deferred import block.
-from .core.config import detect_hardware, HardwareProfile
+from .core.config import detect_hardware, HardwareProfile, M1Config, load_m1_config
 
 __all__ = [
     "detect_hardware", "HardwareProfile",
+    "M1Config", "load_m1_config",
     "__version__",
 ]
 
