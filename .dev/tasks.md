@@ -312,7 +312,7 @@
 00050-09 (打包 + 最终验证)
 ```
 
-### 🔲 00060 — M1 文档解析引擎
+### ✅ 00060 — M1 文档解析引擎
 
 > **详细设计**：`.dev/specs/m1-doc-parsing-design-2026-05-21.md`
 > **Docling 参考**：`.dev/specs/docling-capabilities-reference-2026-05-21.md`
@@ -513,7 +513,7 @@
 
 ---
 
-#### 🔲 00060-12 — 打包与最终验证 (pyproject.toml + requirements.txt + 全量测试)
+#### ✅ 00060-12 — 打包与最终验证 (pyproject.toml + requirements.txt + 全量测试)
 
 **功能描述：**
 - pyproject.toml：依赖分组（`[core]`, `[vlm]`, `[ocr]`, `[all]`, `[dev]`）

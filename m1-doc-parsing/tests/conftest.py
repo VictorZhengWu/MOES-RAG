@@ -37,9 +37,18 @@ def _isolate_torch_for_docling(request):
     torchvision, etc.) need the real torch with all submodules present.
     Removing the MagicMock allows the real torch to be imported.
     """
-    # Intervene for any test that imports docling (backend or converter)
+    # Intervene for any test that imports docling (backend, converter, chunker)
+    # WHY test_chunker included: test_create_chunker_returns_hybrid_chunker_when_available
+    # does ``from docling.chunking import HybridChunker`` which cascades through
+    # docling_core → transformers → importlib.util.find_spec("torch").
+    # A MagicMock in sys.modules["torch"] causes find_spec to raise ValueError
+    # in Python 3.13+ (C-level __spec__ check cannot be mocked).
     node_path = str(request.node.fspath)
-    if "test_docling_backend" not in node_path and "test_converter" not in node_path:
+    if (
+        "test_docling_backend" not in node_path
+        and "test_converter" not in node_path
+        and "test_chunker" not in node_path
+    ):
         yield
         return
 

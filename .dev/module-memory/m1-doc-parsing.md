@@ -8,11 +8,11 @@
 
 | Field | Value |
 |-------|-------|
-| Status | 🔄 In Development |
-| Active Tasks | 00060-03 (Docling backend adapter) |
+| Status | ✅ Complete (12/12 sub-tasks) |
+| Active Tasks | 00060-12 (Packaging & final verification) |
 | First Dev Date | 2026-05-21 |
 | Last Session Date | 2026-05-21 |
-| Total Sessions | 3 |
+| Total Sessions | 5 |
 
 ---
 
@@ -83,6 +83,27 @@
   - max_tokens parameter moved from HybridChunker to HuggingFaceTokenizer in the new API
   - Triple-level graceful degradation: docling import check → transformers import check → tokenizer load check
   - Default model: BAAI/bge-small-en-v1.5 (balanced perf vs BGE-M3 for marine domain)
+
+---
+### Session 5 — 2026-05-21: 00060-12 Final Packaging & Verification
+
+**Outcome**: M1 complete. All 12 sub-tasks done. 118/118 tests passing. pip install successful. Public API and CLI verified.
+
+**Tasks completed**: 00060-12 (Packaging & final verification)
+**Files changed**:
+  - `m1_parser/output/chunker.py` — `except ImportError` → `except Exception` for resilient transformers import (handles `ValueError: torch.__spec__ is not set` edge case)
+  - `tests/test_chunker.py` — Removed `sys.modules.pop` pattern; simplified `patch.dict` mock to avoid module cache corruption
+  - `tests/conftest.py` — Added `test_chunker` to fake-torch cleanup list (alongside `test_docling_backend` and `test_converter`)
+
+**Verification results**:
+  - Full test suite: 118 passed, 0 failed
+  - `pip install -e m1-doc-parsing/`: Success
+  - Public API: `from m1_parser import convert, detect_hardware` → OK
+  - CLI: `python -m m1_parser.standalone.cli --help` → OK (shows subcommand usage)
+
+**Key design decisions**:
+  - M1-D13: chunker.py Step 2 catches `Exception` (not just `ImportError`) because transformers' module-level code can raise `ValueError` during `importlib.util.find_spec("torch")` when torch is a MagicMock in sys.modules (Python 3.13+ C-level __spec__ check)
+  - M1-D14: test_chunker fix avoids sys.modules pop/restore pattern entirely; uses simple `patch.dict` context that restores automatically via context manager exit
 
 ---
 

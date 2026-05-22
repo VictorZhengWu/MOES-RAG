@@ -13,7 +13,7 @@ These tests cover the graceful-degradation path and the happy path.
 from __future__ import annotations
 
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -30,33 +30,31 @@ def test_create_chunker_returns_none_when_docling_missing():
     create_chunker() MUST return None (not crash) when docling is not
     installed or cannot be imported.
 
-    WHAT: Simulates a missing docling installation by temporarily hiding
-    the docling.chunking module from sys.modules.
+    WHAT: Simulates a missing docling installation by temporarily setting
+    docling.chunking to None in sys.modules. Python's import machinery
+    treats None in sys.modules as a halted import, causing
+    ``from docling.chunking import HybridChunker`` to raise ImportError.
 
     WHY: M1 should be installable without docling (for lightweight CI,
     linting, or non-parsing tasks). The chunker is optional -- callers
     should check for None and fall back gracefully rather than crashing
     with ImportError at runtime.
 
+    NOTE: We use patch.dict() which properly restores sys.modules after
+    the test, leaving no side effects for subsequent tests. We do NOT
+    pop/re-import the m1_parser module (which would corrupt module state
+    and cause the second test to use stale cached code).
+
     Verification:
       - create_chunker() returns None
       - No exception is raised
     """
-    # Temporarily hide docling.chunking to simulate missing dependency
     with patch.dict(sys.modules, {"docling.chunking": None}):
-        # Force re-import by removing the cached chunker module
-        saved = sys.modules.pop("m1_parser.output.chunker", None)
-        try:
-            from m1_parser.output.chunker import create_chunker as _fresh
-
-            result = _fresh()
-            assert result is None, (
-                "Expected None when docling is not installed, "
-                f"got {type(result).__name__}"
-            )
-        finally:
-            if saved is not None:
-                sys.modules["m1_parser.output.chunker"] = saved
+        result = create_chunker()
+        assert result is None, (
+            "Expected None when docling is not installed, "
+            f"got {type(result).__name__}"
+        )
 
 
 # ===========================================================================

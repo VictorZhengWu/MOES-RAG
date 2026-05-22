@@ -116,11 +116,16 @@ def create_chunker(
     # WHY: We need AutoTokenizer to load the tokenizer model, and
     # HuggingFaceTokenizer from docling_core to wrap it. Both
     # transformers and docling-core[chunking] are required.
+    # NOTE: We catch Exception (not just ImportError) because
+    # transformers' module-level code can raise ValueError when
+    # torch.__spec__ is unset (a known Python 3.12+ edge case where
+    # importlib.util.find_spec fails for torch after certain
+    # sys.modules manipulations in test environments).
     try:
         from transformers import AutoTokenizer  # noqa: F401
-    except ImportError:
+    except Exception:
         logger.warning(
-            "transformers is not installed but is required by HybridChunker. "
+            "transformers failed to import. "
             "create_chunker() returns None. "
             "Install with: pip install transformers"
         )
