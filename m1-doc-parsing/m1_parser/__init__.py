@@ -16,10 +16,26 @@ __version__ = "0.1.0"
 # NOTE: converter imports are deferred -- converter.py is not yet implemented.
 # Once implemented, uncomment the line below and remove the deferred import block.
 from .core.config import detect_hardware, HardwareProfile, M1Config, load_m1_config
+from .enrichments.marine_metadata import (
+    MarineMetadata,
+    extract_classification_society,
+    extract_regulation_name,
+    extract_version_year,
+    extract_chapter_section,
+    extract_language,
+    extract_marine_metadata,
+)
 
 __all__ = [
     "detect_hardware", "HardwareProfile",
     "M1Config", "load_m1_config",
+    "MarineMetadata",
+    "extract_classification_society",
+    "extract_regulation_name",
+    "extract_version_year",
+    "extract_chapter_section",
+    "extract_language",
+    "extract_marine_metadata",
     "__version__",
 ]
 
