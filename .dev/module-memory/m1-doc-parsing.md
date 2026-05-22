@@ -12,7 +12,7 @@
 | Active Tasks | 00060-03 (Docling backend adapter) |
 | First Dev Date | 2026-05-21 |
 | Last Session Date | 2026-05-21 |
-| Total Sessions | 2 |
+| Total Sessions | 3 |
 
 ---
 
@@ -49,8 +49,25 @@
   - `tests/test_serializer.py` — 5 tests (MD, JSON, encoder, validation, empty content)
   - `tests/test_image_manager.py` — 7 tests (path creation, idempotent, traversal, validation, sidecar, parent creation, input validation)
 
----
+### Session 3 — 2026-05-21: 00060-11 Implementation
 
+**Outcome**: Standalone CLI (m1-parser) and FastAPI Web Server implemented. 9 CLI tests passing.
+
+**Tasks completed**: 00060-11 (CLI + Web Server)
+**Files created**:
+  - `m1_parser/standalone/__init__.py` — Sub-package docstring
+  - `m1_parser/standalone/cli.py` — argparse CLI with convert subcommand, 5 config flags
+  - `m1_parser/standalone/web_server.py` — FastAPI app factory with placeholder endpoints
+  - `tests/test_cli.py` — 9 tests (5 in-process argparse + 4 subprocess integration)
+
+**Key design decisions**:
+  - CLI uses argparse subcommands (convert) for future extensibility
+  - Converter import is deferred (lazy) to keep --help sub-second
+  - File existence check happens before converter import for fast failure on typos
+  - Web server uses FastAPI factory pattern for testability
+  - FastAPI is try/except guarded so CLI-only installs don't need it
+
+---
 ## 3. Key Design Decisions (Module-Internal)
 
 | ID | Date | Decision | Why |
