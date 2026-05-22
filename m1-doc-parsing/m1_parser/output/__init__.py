@@ -25,6 +25,9 @@ from .image_manager import (
     get_output_paths,
     save_figure_metadata,
 )
+from .chunker import (
+    create_chunker,
+)
 
 __all__ = [
     "save_markdown",
@@ -32,4 +35,5 @@ __all__ = [
     "CustomJSONEncoder",
     "get_output_paths",
     "save_figure_metadata",
+    "create_chunker",
 ]

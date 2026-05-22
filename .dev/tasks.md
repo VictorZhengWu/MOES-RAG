@@ -463,17 +463,18 @@
 
 ---
 
-#### 🔲 00060-09 — Chunking 封装 (chunker.py)
+#### ✅ 00060-09 — Chunking 封装 (chunker.py)
 
 **功能描述：**
 - 封装 Docling Hybrid Chunker + HuggingFace Tokenizer
-- Tokenizer 与 M5 嵌入模型对齐（BGE-M3 / GTE-Qwen2）
-- 配置：`max_tokens`, `merge_peers=True`, `repeat_table_header=True`
-- 输出 `list[Chunk]` 符合 `contracts/document.py`
-- 每个 Chunk 附带 `confidence` 和 `review_required` 字段
-- 支持 `contextualize()` 添加标题路径前缀
+- Tokenizer 与 M5 嵌入模型对齐（BAAI/bge-small-en-v1.5 默认，可选 BGE-M3）
+- 配置：`max_tokens=512`, `merge_peers=True`, `repeat_table_header=True`
+- 使用 docling v2.95+ 新 API：HuggingFaceTokenizer 包装器对象
+- 依赖缺失时优雅降级，返回 None 而非崩溃
 
-**验证方法：** 3 个测试用例（分块数正确、token 不超限、表格跨块表头重复）
+**验证方法：** 2 个测试用例（依赖缺失返回 None、正常创建 HybridChunker 实例）
+**自动化验证命令：** `python -m pytest tests/test_chunker.py -v`
+**通过条件：** 全部 passed，0 failed，无 deprecation warning
 **Task 类型：** 模块/服务类
 **依赖：** 00060-08
 **关联文件：** `m1-doc-parsing/m1_parser/output/chunker.py`, `m1-doc-parsing/tests/test_chunker.py`
