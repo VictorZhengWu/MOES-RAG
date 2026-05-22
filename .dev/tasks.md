@@ -427,7 +427,7 @@
 
 ---
 
-#### 🔲 00060-07 — 复杂表格处理 (table_annotator.py + table_merger.py + quality.py)
+#### ✅ 00060-07 — 复杂表格处理 (table_annotator.py + table_merger.py + quality.py)
 
 **功能描述：**
 - `table_merger.py`：跨页表格检测与合并（检测缺少表头行 → 向前回溯 → 复用表头）
