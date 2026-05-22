@@ -480,7 +480,7 @@
 
 ---
 
-#### 🔲 00060-10 — M2 存储桥接 (m2_bridge.py)
+#### ✅ 00060-10 — M2 存储桥接 (m2_bridge.py)
 
 **功能描述：**
 - `write_document_record(doc) → doc_id`：写入 `m1_documents` 表
