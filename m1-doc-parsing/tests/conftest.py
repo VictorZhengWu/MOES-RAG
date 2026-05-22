@@ -37,9 +37,9 @@ def _isolate_torch_for_docling(request):
     torchvision, etc.) need the real torch with all submodules present.
     Removing the MagicMock allows the real torch to be imported.
     """
-    # Only intervene for docling backend tests
+    # Intervene for any test that imports docling (backend or converter)
     node_path = str(request.node.fspath)
-    if "test_docling_backend" not in node_path:
+    if "test_docling_backend" not in node_path and "test_converter" not in node_path:
         yield
         return
 
