@@ -68,6 +68,24 @@
   - FastAPI is try/except guarded so CLI-only installs don't need it
 
 ---
+### Session 4 — 2026-05-22: 00060-09 Implementation
+
+**Outcome**: HybridChunker wrapper (chunker.py) implemented. 2 tests passing, no deprecation warnings.
+
+**Tasks completed**: 00060-09 (Chunking encapsulation)
+**Files created**:
+  - `m1_parser/output/chunker.py` — create_chunker() factory function
+  - `tests/test_chunker.py` — 2 tests (missing deps → None, normal → HybridChunker)
+
+**Key design decisions**:
+  - Uses docling v2.95+ API: HuggingFaceTokenizer wrapper (not deprecated string tokenizer)
+  - Import path: `docling_core.transforms.chunker.tokenizer.huggingface` (not exported from __init__.py)
+  - max_tokens parameter moved from HybridChunker to HuggingFaceTokenizer in the new API
+  - Triple-level graceful degradation: docling import check → transformers import check → tokenizer load check
+  - Default model: BAAI/bge-small-en-v1.5 (balanced perf vs BGE-M3 for marine domain)
+
+---
+
 ## 3. Key Design Decisions (Module-Internal)
 
 | ID | Date | Decision | Why |
@@ -83,6 +101,7 @@
 | M1-D09 | 2026-05-21 | 5 metadata fields auto-extracted, remainder manual | Regex works for predictable patterns; domain expertise needed for rest |
 | M1-D10 | 2026-05-21 | Accuracy-first: no complex content enters VectorStore until reviewed | Non-negotiable quality requirement |
 | M1-D11 | 2026-05-21 | FileFormat as str+Enum mixin, magic bytes priority over extension | F-string/JSON friendly; ZIP-based formats (DOCX/XLSX/PPTX) share PK magic and need extension fallback |
+| M1-D12 | 2026-05-22 | HybridChunker: HuggingFaceTokenizer wrapper API (docling v2.95+) | The deprecated string-tokenizer API emits a DeprecationWarning and will be removed. The new API wraps AutoTokenizer in HuggingFaceTokenizer (from `docling_core.transforms.chunker.tokenizer.huggingface`). max_tokens moves from HybridChunker param to HuggingFaceTokenizer param. |
 
 ---
 
