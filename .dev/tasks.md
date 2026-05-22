@@ -443,7 +443,7 @@
 
 ---
 
-#### 🔲 00060-08 — 输出序列化与图片管理 (serializer.py + image_manager.py)
+#### ✅ 00060-08 — 输出序列化与图片管理 (serializer.py + image_manager.py)
 
 **功能描述：**
 - `serializer.py`：ParsedDocument → Markdown / JSON / HTML 三格式输出

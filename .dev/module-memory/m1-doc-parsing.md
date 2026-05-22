@@ -12,7 +12,7 @@
 | Active Tasks | 00060-03 (Docling backend adapter) |
 | First Dev Date | 2026-05-21 |
 | Last Session Date | 2026-05-21 |
-| Total Sessions | 1 |
+| Total Sessions | 2 |
 
 ---
 
@@ -36,6 +36,18 @@
   - `tests/test_config.py` — 6 tests for config
   - `tests/test_router.py` — 6 tests for router
   - `pyproject.toml` — Package config with grouped dependencies
+
+### Session 2 — 2026-05-21: 00060-08 Implementation
+
+**Outcome**: Output serializer (MD/JSON) and image manager (path creation, metadata sidecars) implemented. 12 tests written (5 serializer + 7 image_manager).
+
+**Tasks completed**: 00060-08 (serializer + image_manager)
+**Files created**:
+  - `m1_parser/output/__init__.py` — Public API exports
+  - `m1_parser/output/serializer.py` — save_markdown, save_json, CustomJSONEncoder
+  - `m1_parser/output/image_manager.py` — get_output_paths, save_figure_metadata
+  - `tests/test_serializer.py` — 5 tests (MD, JSON, encoder, validation, empty content)
+  - `tests/test_image_manager.py` — 7 tests (path creation, idempotent, traversal, validation, sidecar, parent creation, input validation)
 
 ---
 
