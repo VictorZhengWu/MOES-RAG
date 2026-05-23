@@ -35,7 +35,7 @@ class TestParseOptions:
         opts = ParseOptions()
         assert opts.backend == "docling"
         assert opts.ocr_engine == "easyocr"
-        assert opts.output_dir == "./output"
+        assert opts.output_dir is None
 
     def test_custom_options(self):
         """Custom options must be preserved as given."""

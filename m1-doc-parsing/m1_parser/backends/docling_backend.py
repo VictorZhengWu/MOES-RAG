@@ -48,6 +48,7 @@ class ParseResult:
     """
 
     markdown: str
+    html: str = ""
     json_dict: dict[str, Any] | None = None
     page_count: int = 0
     figure_count: int = 0
@@ -144,42 +145,25 @@ class DoclingBackend:
     # Public API
     # ------------------------------------------------------------------
 
-    def convert(self, source: str) -> ParseResult:
+    def convert(self, source: str, output_dir: str | None = None) -> ParseResult:
         """
         Convert a single document to structured output.
 
-        WHAT: takes a file path, runs it through Docling's conversion
-        pipeline (format detection -> parsing -> OCR if needed ->
-        Markdown export), and returns a ParseResult with all extracted
-        content.
-
-        WHY single-source interface: the converter.py pipeline iterates
-        over files and calls convert() for each one. This keeps batch
-        logic in converter.py (progress tracking, error aggregation)
-        while keeping DoclingBackend focused on the actual conversion.
-
         Args:
-            source: Absolute or relative path to the document file.
+            source: File path to the document.
+            output_dir: If set, saves page/figure images to {output_dir}/pages/ etc.
 
         Returns:
             ParseResult with markdown, JSON, and counts.
-
-        Raises:
-            RuntimeError: If docling is not installed.
-            Various Docling-internal exceptions for corrupted files.
         """
+        from pathlib import Path
         try:
             from docling.document_converter import DocumentConverter
         except ImportError:
             raise RuntimeError(
-                "docling is not installed. Install it with: "
-                "pip install docling>=2.94.0"
+                "docling is not installed. Install: pip install docling>=2.94.0"
             )
 
-        # Build a DocumentConverter with format-specific pipeline options.
-        # WHY per-call construction: DocumentConverter is lightweight to
-        # create (no model loading until first convert). Creating it fresh
-        # each time avoids stale state from previous conversions.
         converter = self._build_converter()
 
         logger.info("Converting: %s (ocr=%s, vlm=%s)",
@@ -187,15 +171,40 @@ class DoclingBackend:
         result = converter.convert(source)
         doc = result.document
 
-        # Extract counts for the caller's convenience.
-        # WHY hasattr checks: Docling's document model varies slightly
-        # between format types. Pages only exist for paginated formats.
         page_count = len(doc.pages) if hasattr(doc, "pages") else 0
         figure_count = len(doc.pictures) if hasattr(doc, "pictures") else 0
         table_count = len(doc.tables) if hasattr(doc, "tables") else 0
 
+        # Save images if output directory specified
+        if output_dir:
+            base = Path(output_dir)
+            base.mkdir(parents=True, exist_ok=True)
+
+            # Save page images
+            if hasattr(doc, "pages"):
+                pages_dir = base / "pages"
+                pages_dir.mkdir(parents=True, exist_ok=True)
+                for i, page in enumerate(doc.pages):
+                    if hasattr(page, "image") and page.image is not None:
+                        img_path = pages_dir / f"page_{i+1:03d}.png"
+                        page.image.pil_image.save(str(img_path))
+
+            # Save embedded figures
+            if hasattr(doc, "pictures"):
+                figs_dir = base / "figures"
+                figs_dir.mkdir(parents=True, exist_ok=True)
+                for i, pic in enumerate(doc.pictures):
+                    try:
+                        img = pic.get_image(doc)
+                        if img is not None:
+                            img_path = figs_dir / f"figure_{i+1:03d}.png"
+                            img.save(str(img_path), "PNG")
+                    except Exception:
+                        pass
+
         return ParseResult(
             markdown=doc.export_to_markdown(),
+            html=doc.export_to_html(),
             json_dict=doc.export_to_dict(),
             page_count=page_count,
             figure_count=figure_count,

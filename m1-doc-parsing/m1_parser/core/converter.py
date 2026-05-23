@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class ParseOptions:
     ocr_engine: str = "easyocr"
     vlm_preset: str | None = None
     use_gpu: bool = False
-    output_dir: str = "./output"
+    output_dir: str | None = None
     output_formats: list[str] = field(default_factory=lambda: ["md", "json"])
 
 
@@ -62,12 +63,16 @@ class ParseResult:
     doc_id: str
     source_path: str
     markdown: str = ""
+    html: str = ""
     json_dict: dict | None = None
     page_count: int = 0
     figure_count: int = 0
     table_count: int = 0
     success: bool = False
     error: str | None = None
+    output_dir: str | None = None
+    metadata: dict | None = None
+    parse_time_sec: float = 0.0
 
 
 # ===========================================================================
@@ -131,7 +136,9 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
             vlm_preset=options.vlm_preset,
             use_gpu=options.use_gpu,
         )
-        raw: BackendResult = backend.convert(source)
+        # Treat empty string as "not set" (web form sends "")
+        out_dir = options.output_dir or None
+        raw: BackendResult = backend.convert(source, output_dir=out_dir)
     else:
         return ParseResult(
             doc_id=doc_id,
@@ -140,21 +147,46 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
             error=f"Backend '{backend_name}' is not yet implemented",
         )
 
-    # --- Stages 3-6: to be wired in as they are built ---
     # Stage 3: metadata extraction (marine_metadata.py)
-    # Stage 4: table enhancement (table_annotator + table_merger)
-    # Stage 5: quality gating (quality.py)
-    # Stage 6: output serialization (serializer + chunker + image_manager)
+    import time; t0 = time.time()
+    meta: dict[str, object] = {}
+    try:
+        from m1_parser.enrichments.marine_metadata import extract_marine_metadata as _ext_meta
+        mm = _ext_meta(text=raw.markdown, filename=source)
+        meta = {
+            "classification_society": mm.classification_society,
+            "regulation_name": mm.regulation_name,
+            "version_year": mm.version_year,
+            "chapter_section": mm.chapter_section,
+            "language": mm.language,
+        }
+    except Exception as e:
+        logger.warning("Metadata extraction failed: %s", e)
+
+    # Stage 4: table enhancement (not yet wired)
+    # Stage 5: quality gating (not yet wired)
+    # Stage 6: output serialization
+    saved_dir = None
+    if out_dir:
+        from ..output.serializer import save_markdown, save_json
+        save_markdown(raw.markdown, out_dir, doc_id)
+        if raw.json_dict:
+            save_json(raw.json_dict, out_dir, doc_id)
+        saved_dir = str(Path(out_dir) / doc_id)
 
     return ParseResult(
         doc_id=doc_id,
         source_path=source,
         markdown=raw.markdown,
+        html=raw.html,
         json_dict=raw.json_dict,
         page_count=raw.page_count,
         figure_count=raw.figure_count,
         table_count=raw.table_count,
         success=True,
+        output_dir=saved_dir,
+        metadata=meta,
+        parse_time_sec=round(time.time() - t0, 1),
     )
 
 
