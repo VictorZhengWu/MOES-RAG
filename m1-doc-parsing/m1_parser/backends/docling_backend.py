@@ -68,6 +68,7 @@ _OCR_ENGINE_CLASS_MAP: dict[str, str] = {
     "easyocr": "EasyOcrOptions",
     "tesseract": "TesseractCliOcrOptions",
     "tesseract_ocr": "TesseractOcrOptions",
+    "paddleocr": "RapidOcrOptions",
     "rapidocr": "RapidOcrOptions",
     "ocrmac": "OcrMacOptions",
 }
@@ -383,6 +384,11 @@ class DoclingBackend:
                 TesseractOcrOptions,
             )
             return TesseractOcrOptions()
+
+        # PaddleOCR: Baidu's engine, best Chinese text recognition
+        if engine == "paddleocr":
+            from docling.datamodel.pipeline_options import RapidOcrOptions
+            return RapidOcrOptions()
 
         # RapidOCR: ONNX Runtime based, very fast on CPU, Chinese-first
         if engine == "rapidocr":
