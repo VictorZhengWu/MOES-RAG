@@ -150,7 +150,7 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
         if out_dir and (Path(out_dir) / doc_basename).exists():
             from datetime import datetime
             ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-            doc_basename = f"{Path(source).stem}--{ts}"
+            doc_basename = f"{doc_basename}--{ts}"
         backend_out = str(Path(out_dir) / doc_basename) if out_dir else None
         raw: BackendResult = backend.convert(
             source, output_dir=backend_out,
