@@ -146,6 +146,10 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
         # Treat empty string as "not set" (web form sends "")
         out_dir = options.output_dir or None
         doc_basename = Path(source).stem
+        if out_dir and (Path(out_dir) / doc_basename).exists():
+            from datetime import datetime
+            ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+            doc_basename = f"{Path(source).stem}--{ts}"
         backend_out = str(Path(out_dir) / doc_basename) if out_dir else None
         raw: BackendResult = backend.convert(
             source, output_dir=backend_out,
