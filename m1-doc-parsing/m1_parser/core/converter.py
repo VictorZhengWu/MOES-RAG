@@ -54,6 +54,7 @@ class ParseOptions:
     max_pages: int | None = None          # limit pages parsed (null = all)
     picture_description: bool = False      # enable VLM picture captioning
     export_tables: bool = False            # also export tables as CSV
+    doc_name: str | None = None            # override output directory name
 
 
 @dataclass
@@ -145,7 +146,7 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
         )
         # Treat empty string as "not set" (web form sends "")
         out_dir = options.output_dir or None
-        doc_basename = Path(source).stem
+        doc_basename = options.doc_name or Path(source).stem
         if out_dir and (Path(out_dir) / doc_basename).exists():
             from datetime import datetime
             ts = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -199,16 +200,19 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
         for sub in ["pages", "figures", "tables", "chunks"]:
             (doc_dir / sub).mkdir(exist_ok=True)
 
-        # Images are already saved by backend to doc_dir/pages/ and doc_dir/figures/
-        # Rewrite Markdown image references to relative paths
-        for i in range(raw.page_count):
-            md_text = md_text.replace(f"page_{i+1}.png", f"pages/page_{i+1}.png")
-        for i in range(raw.figure_count):
-            md_text = re.sub(
-                rf'!\[([^\]]*)\]\([^)]*figure[^)]*{i+1}[^)]*\)',
-                rf'![\1](figures/figure_{i+1:03d}.png)',
-                md_text,
-            )
+        # Collect saved image files
+        page_imgs = sorted((doc_dir / "pages").glob("page_*.png"))
+        fig_imgs = sorted((doc_dir / "figures").glob("figure_*.png"))
+
+        # Replace all <!-- image --> placeholders with actual figure references
+        # Docling uses these placeholders when pictures are detected but not embedded
+        fig_idx = 0
+        while "<!-- image -->" in md_text and fig_idx < len(fig_imgs):
+            fname = fig_imgs[fig_idx].name
+            md_text = md_text.replace("<!-- image -->", f"![Figure {fig_idx+1}](figures/{fname})", 1)
+            fig_idx += 1
+        # Replace any remaining placeholders that don't have corresponding images
+        md_text = md_text.replace("<!-- image -->", "[Image not available]")
 
         # Save MD and JSON at doc_dir root
         (doc_dir / f"{doc_basename}.md").write_text(md_text, encoding="utf-8")

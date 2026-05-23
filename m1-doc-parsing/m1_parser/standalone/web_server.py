@@ -429,6 +429,7 @@ def create_app() -> "FastAPI":
                 vlm_preset=vlm_preset or None,
                 output_dir=output_dir or None,
                 output_formats=[format],
+                doc_name=Path(file.filename or "document").stem,
                 max_pages=int(max_pages) if max_pages.strip() else None,
                 picture_description=picture_description == "1",
                 export_tables=export_tables == "1",
