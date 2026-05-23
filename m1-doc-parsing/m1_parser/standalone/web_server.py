@@ -191,6 +191,7 @@ def build_page() -> str:
 <div id="resultsArea"></div>
 
 <script>
+var _COMPONENTS = {json.dumps(_COMPONENTS)};
 window.onerror = function(msg, url, line) {{
   document.getElementById('resultsArea').innerHTML =
     '<div class="error">JS Error: ' + msg + ' (line ' + line + '). Try Ctrl+F5 refresh.</div>';
@@ -248,8 +249,30 @@ function fmtSize(b) {{
   return (b/1048576).toFixed(1) + ' MB';
 }}
 
+// Load saved config on startup
+fetch('/config').then(r => r.json()).then(cfg => {{
+  if (cfg.output_dir) document.getElementById('outdir').value = cfg.output_dir;
+}}).catch(() => {{}});
+
+// Auto-save output_dir when changed
+document.getElementById('outdir').addEventListener('change', function() {{
+  fetch('/config', {{ method:'POST', headers:{{'Content-Type':'application/json'}}, body:JSON.stringify({{output_dir: this.value}}) }});
+}});
+
+// Warn about unavailable components before parsing
+function checkUnavailable() {{
+  var ocr = document.getElementById('ocr').value;
+  var occ = _COMPONENTS ? _COMPONENTS.ocr : null;
+  if (occ && occ[ocr] && !occ[ocr].ok) {{
+    return 'Warning: ' + occ[ocr].name + ' is not installed and will fall back to EasyOCR.\\n\\nInstall: ' + occ[ocr].install;
+  }}
+  return null;
+}}
+
 btn.onclick = async function() {{
   if (!selectedFiles.length || isParsing) return;
+  var warn = checkUnavailable();
+  if (warn && !confirm(warn + '\\n\\nContinue anyway?')) return;
   isParsing = true; updateUI(); btn.textContent = 'Parsing...'; resultsArea.innerHTML = '';
   var b = document.getElementById('backend').value;
   var o = document.getElementById('ocr').value;
@@ -386,6 +409,26 @@ function escAttr(s) {{
 </html>"""
 
 # ===========================================================================
+# Config persistence
+# ===========================================================================
+
+_CONFIG_PATH = Path("m1_parser_config.json")
+
+def _load_config() -> dict:
+    try:
+        if _CONFIG_PATH.exists():
+            return json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {}
+
+def _save_config(data: dict) -> None:
+    try:
+        _CONFIG_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+# ===========================================================================
 # App
 # ===========================================================================
 
@@ -402,6 +445,19 @@ def create_app() -> "FastAPI":
     @app.get("/status")
     async def status():
         return _COMPONENTS
+
+    @app.get("/config")
+    async def get_config():
+        cfg = _load_config()
+        cfg.setdefault("output_dir", "./output")
+        return cfg
+
+    @app.post("/config")
+    async def save_config(data: dict):
+        cfg = _load_config()
+        cfg.update(data)
+        _save_config(cfg)
+        return {"ok": True}
 
     @app.post("/parse")
     async def parse(
@@ -421,6 +477,10 @@ def create_app() -> "FastAPI":
             tmp.write(content)
             tmp_path = tmp.name
         logger.info("Parsing: filename=%s doc_name=%s", file.filename, Path(file.filename or "document").stem)
+
+        # Persist output_dir setting
+        if output_dir.strip():
+            _save_config({"output_dir": output_dir.strip()})
 
         try:
             from m1_parser.core.converter import convert, ParseOptions
