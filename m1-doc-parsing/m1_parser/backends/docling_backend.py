@@ -50,6 +50,7 @@ class ParseResult:
     markdown: str
     html: str = ""
     json_dict: dict[str, Any] | None = None
+    tables_csv: str = ""
     page_count: int = 0
     figure_count: int = 0
     table_count: int = 0
@@ -145,16 +146,21 @@ class DoclingBackend:
     # Public API
     # ------------------------------------------------------------------
 
-    def convert(self, source: str, output_dir: str | None = None) -> ParseResult:
+    def convert(
+        self, source: str, output_dir: str | None = None,
+        max_pages: int | None = None,
+        picture_description: bool = False,
+        export_tables: bool = False,
+    ) -> ParseResult:
         """
         Convert a single document to structured output.
 
         Args:
             source: File path to the document.
-            output_dir: If set, saves page/figure images to {output_dir}/pages/ etc.
-
-        Returns:
-            ParseResult with markdown, JSON, and counts.
+            output_dir: If set, saves page/figure images to disk.
+            max_pages: Limit pages parsed (None = all).
+            picture_description: Enable VLM picture captioning.
+            export_tables: Also export tables as CSV files.
         """
         from pathlib import Path
         try:
@@ -164,16 +170,35 @@ class DoclingBackend:
                 "docling is not installed. Install: pip install docling>=2.94.0"
             )
 
-        converter = self._build_converter()
+        converter = self._build_converter(picture_description)
 
-        logger.info("Converting: %s (ocr=%s, vlm=%s)",
-                     source, self.ocr_engine, self.vlm_preset or "none")
-        result = converter.convert(source)
+        logger.info("Converting: %s (ocr=%s, vlm=%s, max_pages=%s)",
+                     source, self.ocr_engine, self.vlm_preset or "none",
+                     max_pages or "all")
+        kwargs = {}
+        if max_pages is not None:
+            kwargs["max_num_pages"] = max_pages
+        result = converter.convert(source, **kwargs)
         doc = result.document
 
         page_count = len(doc.pages) if hasattr(doc, "pages") else 0
         figure_count = len(doc.pictures) if hasattr(doc, "pictures") else 0
         table_count = len(doc.tables) if hasattr(doc, "tables") else 0
+
+        # Export tables as CSV if requested
+        tables_csv = ""
+        if export_tables and hasattr(doc, "tables") and doc.tables:
+            import io, csv as csv_mod
+            buf = io.StringIO()
+            for ti, table in enumerate(doc.tables):
+                try:
+                    df = table.export_to_dataframe(doc=doc)
+                    buf.write(f"# Table {ti+1}\n")
+                    df.to_csv(buf, index=False)
+                    buf.write("\n")
+                except Exception:
+                    buf.write(f"# Table {ti+1} (export failed)\n\n")
+            tables_csv = buf.getvalue()
 
         # Save images if output directory specified
         if output_dir:
@@ -206,6 +231,7 @@ class DoclingBackend:
             markdown=doc.export_to_markdown(),
             html=doc.export_to_html(),
             json_dict=doc.export_to_dict(),
+            tables_csv=tables_csv,
             page_count=page_count,
             figure_count=figure_count,
             table_count=table_count,
@@ -258,7 +284,7 @@ class DoclingBackend:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _build_converter(self):
+    def _build_converter(self, picture_description: bool = False):
         """
         Construct a DocumentConverter with the configured pipeline options.
 
@@ -290,6 +316,11 @@ class DoclingBackend:
         pdf_options.generate_page_images = True
         pdf_options.generate_picture_images = True
         pdf_options.images_scale = 2.0
+
+        # Picture description via VLM (optional)
+        if picture_description:
+            pdf_options.do_picture_description = True
+            logger.info("Picture description enabled")
 
         # OCR engine selection
         pdf_options.ocr_options = self._build_ocr_options()

@@ -48,6 +48,9 @@ class ParseOptions:
     use_gpu: bool = False
     output_dir: str | None = None
     output_formats: list[str] = field(default_factory=lambda: ["md", "json"])
+    max_pages: int | None = None          # limit pages parsed (null = all)
+    picture_description: bool = False      # enable VLM picture captioning
+    export_tables: bool = False            # also export tables as CSV
 
 
 @dataclass
@@ -68,6 +71,7 @@ class ParseResult:
     page_count: int = 0
     figure_count: int = 0
     table_count: int = 0
+    tables_csv: str = ""
     success: bool = False
     error: str | None = None
     output_dir: str | None = None
@@ -138,7 +142,12 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
         )
         # Treat empty string as "not set" (web form sends "")
         out_dir = options.output_dir or None
-        raw: BackendResult = backend.convert(source, output_dir=out_dir)
+        raw: BackendResult = backend.convert(
+            source, output_dir=out_dir,
+            max_pages=options.max_pages,
+            picture_description=options.picture_description,
+            export_tables=options.export_tables,
+        )
     else:
         return ParseResult(
             doc_id=doc_id,
@@ -180,6 +189,7 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
         markdown=raw.markdown,
         html=raw.html,
         json_dict=raw.json_dict,
+        tables_csv=getattr(raw, "tables_csv", ""),
         page_count=raw.page_count,
         figure_count=raw.figure_count,
         table_count=raw.table_count,

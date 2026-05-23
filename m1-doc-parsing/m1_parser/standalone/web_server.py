@@ -215,8 +215,29 @@ def _build_page(components: dict) -> str:
     </select>
   </div>
   <div class="opt-group">
-    <label for="outdir">Output Dir <span style="font-weight:400;color:#aaa">(optional)</span></label>
-    <input type="text" id="outdir" placeholder="./output" style="width:160px">
+    <label for="vlm">VLM (PDF only)</label>
+    <select id="vlm">
+      <option value="">Standard Pipeline</option>
+      <option value="granite_docling">GraniteDocling (lightweight)</option>
+      <option value="deepseek_ocr">DeepSeek-OCR 2 (efficient)</option>
+      <option value="paddleocr_vl">PaddleOCR-VL 1.5 (best Chinese)</option>
+    </select>
+  </div>
+  <div class="opt-group">
+    <label for="pages">Pages <span style="font-weight:400;color:#aaa">(optional)</span></label>
+    <input type="text" id="pages" placeholder="all" style="width:70px">
+  </div>
+  <div class="opt-group">
+    <label for="outdir">Output Dir</label>
+    <input type="text" id="outdir" placeholder="./output" style="width:140px">
+  </div>
+  <div style="display:flex;gap:14px;align-items:center">
+    <label style="font-size:0.88em;display:flex;align-items:center;gap:4px;cursor:pointer">
+      <input type="checkbox" id="picDesc"> Picture Desc
+    </label>
+    <label style="font-size:0.88em;display:flex;align-items:center;gap:4px;cursor:pointer">
+      <input type="checkbox" id="exportTbls"> Export Tables (CSV)
+    </label>
   </div>
   <button id="parseBtn" disabled>Parse All</button>
   <button id="clearBtn" style="background:#888" disabled>Clear All</button>
@@ -383,6 +404,10 @@ btn.addEventListener('click', async () => {{
     fd.append('ocr', ocr);
     fd.append('format', fmt);
     fd.append('output_dir', outDir);
+    fd.append('vlm_preset', document.getElementById('vlm').value);
+    fd.append('max_pages', document.getElementById('pages').value);
+    fd.append('picture_description', document.getElementById('picDesc').checked ? '1' : '0');
+    fd.append('export_tables', document.getElementById('exportTbls').checked ? '1' : '0');
 
     try {{
       const resp = await fetch('/parse', {{ method: 'POST', body: fd }});
@@ -421,6 +446,11 @@ btn.addEventListener('click', async () => {{
         if (data.output_dir) metaLine += ', saved: ' + escapeHtml(data.output_dir);
         metaLine += '</span>';
         metaLine += '<span class="meta-time">' + (data.parse_time_sec || '?') + 's</span></div>';
+          if (data.tables_csv) {{
+            const csvId = 'csv_' + i + '_' + Math.random().toString(36).substr(2,6);
+            metaLine += '<div style="margin-top:4px"><button class="btn-sm" onclick="copyResult('' + csvId + '')">Copy Tables CSV</button></div>';
+            metaLine += '<textarea id="' + csvId + '" style="display:none">' + escapeHtml(data.tables_csv) + '</textarea>';
+          }}
 
         const truncated = display.length > 3000;
         const preview = truncated ? display.substring(0, 3000) + '\n\n... (truncated, ' + display.length + ' chars total)' : display;
@@ -502,6 +532,10 @@ async function retryFile(idx) {{
   fd.append('ocr', selOcr.value);
   fd.append('format', document.getElementById('format').value);
   fd.append('output_dir', document.getElementById('outdir').value);
+  fd.append('vlm_preset', document.getElementById('vlm').value);
+  fd.append('max_pages', document.getElementById('pages').value);
+  fd.append('picture_description', document.getElementById('picDesc').checked ? '1' : '0');
+  fd.append('export_tables', document.getElementById('exportTbls').checked ? '1' : '0');
 
   try {{
     const resp = await fetch('/parse', {{ method: 'POST', body: fd }});
@@ -559,6 +593,10 @@ def create_app() -> "FastAPI":
         ocr: str = Form("easyocr"),
         format: str = Form("md"),
         output_dir: str = Form(""),
+        vlm_preset: str = Form(""),
+        max_pages: str = Form(""),
+        picture_description: str = Form("0"),
+        export_tables: str = Form("0"),
     ):
         """Upload + parse a single document."""
         suffix = Path(file.filename or "upload").suffix or ".bin"
@@ -573,8 +611,12 @@ def create_app() -> "FastAPI":
             options = ParseOptions(
                 backend=backend,
                 ocr_engine=ocr,
+                vlm_preset=vlm_preset or None,
                 output_dir=output_dir or None,
                 output_formats=[format],
+                max_pages=int(max_pages) if max_pages.strip() else None,
+                picture_description=picture_description == "1",
+                export_tables=export_tables == "1",
             )
             result = convert(tmp_path, options)
 
@@ -591,6 +633,7 @@ def create_app() -> "FastAPI":
                     "output_dir": result.output_dir,
                     "metadata": result.metadata,
                     "parse_time_sec": result.parse_time_sec,
+                    "tables_csv": result.tables_csv,
                 }
             else:
                 return {"success": False, "error": result.error or "Unknown error"}
