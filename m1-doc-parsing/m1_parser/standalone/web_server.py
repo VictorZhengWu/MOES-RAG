@@ -420,6 +420,7 @@ def create_app() -> "FastAPI":
             content = await file.read()
             tmp.write(content)
             tmp_path = tmp.name
+        logger.info("Parsing: filename=%s doc_name=%s", file.filename, Path(file.filename or "document").stem)
 
         try:
             from m1_parser.core.converter import convert, ParseOptions
