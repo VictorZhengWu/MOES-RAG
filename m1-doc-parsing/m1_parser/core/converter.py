@@ -214,11 +214,20 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
         # Replace any remaining placeholders that don't have corresponding images
         md_text = md_text.replace("<!-- image -->", "[Image not available]")
 
-        # Save MD and JSON at doc_dir root
-        (doc_dir / f"{doc_basename}.md").write_text(md_text, encoding="utf-8")
+        # Save tables CSV if available
+        tables_csv = getattr(raw, "tables_csv", "")
+        if tables_csv:
+            (doc_dir / "tables" / "tables.csv").write_text(tables_csv, encoding="utf-8")
+
+        # Save output in requested formats + always save JSON
         if raw.json_dict:
             (doc_dir / f"{doc_basename}.json").write_text(
                 json.dumps(raw.json_dict, indent=2, ensure_ascii=False), encoding="utf-8")
+        for fmt in options.output_formats:
+            if fmt == "md":
+                (doc_dir / f"{doc_basename}.md").write_text(md_text, encoding="utf-8")
+            elif fmt == "html" and raw.html:
+                (doc_dir / f"{doc_basename}.html").write_text(raw.html, encoding="utf-8")
 
         saved_dir = str(doc_dir)
 
