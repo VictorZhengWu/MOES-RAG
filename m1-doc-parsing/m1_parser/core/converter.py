@@ -18,7 +18,10 @@ Pipeline stages:
 
 from __future__ import annotations
 
+import json
 import logging
+import re
+import shutil
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -142,8 +145,10 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
         )
         # Treat empty string as "not set" (web form sends "")
         out_dir = options.output_dir or None
+        doc_basename = Path(source).stem
+        backend_out = str(Path(out_dir) / doc_basename) if out_dir else None
         raw: BackendResult = backend.convert(
-            source, output_dir=out_dir,
+            source, output_dir=backend_out,
             max_pages=options.max_pages,
             picture_description=options.picture_description,
             export_tables=options.export_tables,
@@ -175,18 +180,44 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
     # Stage 4: table enhancement (not yet wired)
     # Stage 5: quality gating (not yet wired)
     # Stage 6: output serialization
+    md_text = raw.markdown
     saved_dir = None
+
     if out_dir:
-        from ..output.serializer import save_markdown, save_json
-        save_markdown(raw.markdown, out_dir, doc_id)
+        doc_dir = Path(out_dir) / doc_basename
+        doc_dir.mkdir(parents=True, exist_ok=True)
+
+        # Copy original to originals/
+        (doc_dir / "originals").mkdir(exist_ok=True)
+        shutil.copy2(source, doc_dir / "originals" / f"original{Path(source).suffix}")
+
+        # Create subdirectories
+        for sub in ["pages", "figures", "tables", "chunks"]:
+            (doc_dir / sub).mkdir(exist_ok=True)
+
+        # Images are already saved by backend to doc_dir/pages/ and doc_dir/figures/
+        # Rewrite Markdown image references to relative paths
+        for i in range(raw.page_count):
+            md_text = md_text.replace(f"page_{i+1}.png", f"pages/page_{i+1}.png")
+        for i in range(raw.figure_count):
+            md_text = re.sub(
+                rf'!\[([^\]]*)\]\([^)]*figure[^)]*{i+1}[^)]*\)',
+                rf'![\1](figures/figure_{i+1:03d}.png)',
+                md_text,
+            )
+
+        # Save MD and JSON at doc_dir root
+        (doc_dir / f"{doc_basename}.md").write_text(md_text, encoding="utf-8")
         if raw.json_dict:
-            save_json(raw.json_dict, out_dir, doc_id)
-        saved_dir = str(Path(out_dir) / doc_id)
+            (doc_dir / f"{doc_basename}.json").write_text(
+                json.dumps(raw.json_dict, indent=2, ensure_ascii=False), encoding="utf-8")
+
+        saved_dir = str(doc_dir)
 
     return ParseResult(
         doc_id=doc_id,
         source_path=source,
-        markdown=raw.markdown,
+        markdown=md_text,
         html=raw.html,
         json_dict=raw.json_dict,
         tables_csv=getattr(raw, "tables_csv", ""),
