@@ -12,7 +12,7 @@
 |--------|------|--------|----------|-------------|-------------|
 | M1 | Document Parsing Engine | ✅ Complete | 8 | 2026-05-24 | — |
 | M2 | Storage Abstraction Layer | ✅ Complete | 1 | 2026-05-19 | — |
-| M3 | Retrieval Engine | 🔲 Not Started | 0 | — | — |
+| M3 | Retrieval Engine | ✅ Complete | 1 | 2026-05-24 | — |
 | M4 | Knowledge Graph Engine | 🔲 Not Started | 0 | — | — |
 | M5 | RAG QA Engine | 🔲 Not Started | 0 | — | — |
 | M6 | User Web Portal | 🔄 In Development | ~8 | 2026-05-16 | 00030 + 18 placeholders |

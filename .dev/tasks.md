@@ -555,14 +555,14 @@
 
 **并行机会**：00060-06, 00060-07, 00060-08 互不依赖，可并行开发。
 
-### 🔲 00070 — M3 检索引擎
+### ✅ 00070 — M3 检索引擎
 
 > **详细设计**：`.dev/specs/m3-retrieval-design-2026-05-24.md`
 > **核心原则**：精准优先——元数据过滤 > 精确匹配 > 语义检索
 
 ---
 
-#### 🔲 00070-01 — 项目骨架与配置 (config.py + pyproject.toml)
+#### ✅ 00070-01 — 项目骨架与配置 (config.py + pyproject.toml)
 
 **功能描述：**
 - 创建 m3-retrieval 项目结构
@@ -577,7 +577,7 @@
 
 ---
 
-#### 🔲 00070-02 — 查询分析器 (query_analyzer.py)
+#### ✅ 00070-02 — 查询分析器 (query_analyzer.py)
 
 **功能描述：**
 - 从自然语言查询提取元数据过滤条件
@@ -593,7 +593,7 @@
 
 ---
 
-#### 🔲 00070-03 — 向量检索器 (dense_retriever.py)
+#### ✅ 00070-03 — 向量检索器 (dense_retriever.py)
 
 **功能描述：**
 - 封装 BGE-M3 嵌入模型
@@ -608,7 +608,7 @@
 
 ---
 
-#### 🔲 00070-04 — 全文检索器 (sparse_retriever.py)
+#### ✅ 00070-04 — 全文检索器 (sparse_retriever.py)
 
 **功能描述：**
 - 通过 M2 StorageManager 调用 Meilisearch BM25 搜索
@@ -623,7 +623,7 @@
 
 ---
 
-#### 🔲 00070-05 — 融合模块 (fusion.py)
+#### ✅ 00070-05 — 融合模块 (fusion.py)
 
 **功能描述：**
 - 实现 3 种融合策略：RRF (默认 k=60)、加权融合（基于原始分数）、混合（RRF + weighted）
@@ -638,7 +638,7 @@
 
 ---
 
-#### 🔲 00070-06 — 重排序器 (reranker.py)
+#### ✅ 00070-06 — 重排序器 (reranker.py)
 
 **功能描述：**
 - 封装 BGE-Reranker-v2-m3 Cross-Encoder 模型
@@ -653,7 +653,7 @@
 
 ---
 
-#### 🔲 00070-07 — 上下文扩展器 (context_expander.py)
+#### ✅ 00070-07 — 上下文扩展器 (context_expander.py)
 
 **功能描述：**
 - 每个 chunk 从 M2 FileStore 读取父文档 (`full.md`)
@@ -668,7 +668,7 @@
 
 ---
 
-#### 🔲 00070-08 — 管线编排 + 主引擎 (pipeline.py + engine.py)
+#### ✅ 00070-08 — 管线编排 + 主引擎 (pipeline.py + engine.py)
 
 **功能描述：**
 - `pipeline.py`：编排 7 阶段顺序执行。阶段 2a/2b 通过 `asyncio.gather` 并行。阶段 5（去重）内联实现
@@ -685,7 +685,7 @@
 
 ---
 
-#### 🔲 00070-09 — 质量度量 (metrics.py)
+#### ✅ 00070-09 — 质量度量 (metrics.py)
 
 **功能描述：**
 - 计算 Recall@k, MRR, NDCG@k, Precision@k
