@@ -743,7 +743,164 @@
 
 ### 🔲 00080 — M4 知识图谱引擎
 
-（详细设计将在开发本模块时制定）
+> **详细设计**：`.dev/specs/m4-knowledge-graph-design-2026-05-24.md`
+> **核心原则**：建图离线（LLM 花费），搜索在线（图遍历免费）
+
+---
+
+#### 🔲 00080-01 — 项目骨架与配置 (config.py + pyproject.toml)
+
+**功能描述：**
+- 创建 m4-knowledge-graph 项目结构
+- pyproject.toml：`kuzu>=0.3.0`, `openai`, `httpx`
+- config.py：`ExtractionConfig`（LLM 后端、batch_size、max_concurrent）、`UserTier`（三级配置）
+- LLM 后端配置支持：Ollama (本地)、DeepSeek/OpenAI/Claude (API)
+
+**验证方法：** 3 个测试用例（默认配置、自定义 LLM 后端、用户分级取值）
+**Task 类型：** 工具/原子函数类
+**依赖：** 无
+**关联文件：** `m4-knowledge-graph/m4_kg/core/config.py`, `m4-knowledge-graph/m4_kg/core/tier.py`, `m4-knowledge-graph/pyproject.toml`
+
+---
+
+#### 🔲 00080-02 — 规则抽取器 (rule_extractor.py)
+
+**功能描述：**
+- 正则+字典匹配快速覆盖 70% 实体
+- 实体类型：`steel_grade` (`[A-Z]{2,4}\d{2,3}`)、`regulation_clause` (Pt./Ch./§)、`equipment` (Type-XXX)、`parameter` (温度值/厚度值/压力值)
+- 关系类型：`references`（规范条目之间引用）、`constrains`（参数约束实体）
+- 返回 `list[Entity]` + `list[Relation]`
+
+**验证方法：** 5 个测试用例（钢级提取、规范条目提取、温度参数提取、无匹配空返回、多实体混合）
+**Task 类型：** 模块/服务类
+**依赖：** 无
+**关联文件：** `m4-knowledge-graph/m4_kg/extraction/rule_extractor.py`, `m4-knowledge-graph/tests/test_rule_extractor.py`
+
+---
+
+#### 🔲 00080-03 — LLM 抽取器 (llm_extractor.py + prompt_templates.py)
+
+**功能描述：**
+- Prompt 模板管理（中英文），控制 JSON 输出格式
+- 调用 LLM（Ollama / DeepSeek / OpenAI / Claude），支持并发控制
+- 格式归一化：三层解析（`json.loads` → regex 提取 `{...}` → 规则回退）
+- 批量处理：20 个 chunk/批，`asyncio.Semaphore(2)` 控制本地模型并发
+- 返回 `list[Entity]` + `list[Relation]`
+
+**验证方法：** 4 个测试用例（Mock LLM 响应、有效 JSON 解析、无 JSON 正则提取、LLM 失败规则回退）
+**Task 类型：** 模块/服务类
+**依赖：** 00080-02
+**关联文件：** `m4-knowledge-graph/m4_kg/extraction/llm_extractor.py`, `m4-knowledge-graph/m4_kg/extraction/prompt_templates.py`, `m4-knowledge-graph/tests/test_llm_extractor.py`
+
+---
+
+#### 🔲 00080-04 — 合并去重器 (merger.py)
+
+**功能描述：**
+- 规则结果 + LLM 结果合并
+- 去重策略：同名+同类型实体合并（同名但不同类型保留）
+- LLM 结果优先（置信度更高），规则结果补充 LLM 漏掉的实体
+- 关系去重：同一对 (source, target, relation_type) 只保留一条，优先 LLM
+
+**验证方法：** 3 个测试用例（同名实体去重、关系去重、LLM 优先）
+**Task 类型：** 工具/原子函数类
+**依赖：** 00080-02, 00080-03
+**关联文件：** `m4-knowledge-graph/m4_kg/extraction/merger.py`, `m4-knowledge-graph/tests/test_merger.py`
+
+---
+
+#### 🔲 00080-05 — Kuzu 图存储 (kuzu_store.py + schema.py)
+
+**功能描述：**
+- Schema 定义：Entity 节点表（entity_id, name, type, properties, source_doc_id）, Rel 边表（from, to, relation_type, confidence）
+- 批量写入：100 实体/批，单事务
+- 查询：节点查询（按 name/type）、边查询（按 entity_ids/relation_types）
+- 数据库文件默认路径：`./data/graph/marine_rag.db`
+
+**验证方法：** 4 个测试用例（节点写入读取、边写入读取、按类型查询、空结果）
+**Task 类型：** 模块/服务类
+**依赖：** 00080-04
+**关联文件：** `m4-knowledge-graph/m4_kg/graph/kuzu_store.py`, `m4-knowledge-graph/m4_kg/graph/schema.py`, `m4-knowledge-graph/tests/test_kuzu_store.py`
+
+---
+
+#### 🔲 00080-06 — 图遍历 (traversal.py)
+
+**功能描述：**
+- BFS 遍历：从 seed 实体出发，按 depth 参数扩展
+- 支持遍历边类型过滤（`relation_types` 参数）
+- 支持用户等级限制（Basic depth=1, Pro depth=3, Enterprise depth=5）
+- 返回 `Subgraph`（entities + relations）
+
+**验证方法：** 3 个测试用例（单跳遍历、多跳遍历+深度限制、空种子返回空）
+**Task 类型：** 工具/原子函数类
+**依赖：** 00080-05
+**关联文件：** `m4-knowledge-graph/m4_kg/graph/traversal.py`, `m4-knowledge-graph/tests/test_traversal.py`
+
+---
+
+#### 🔲 00080-07 — 图谱搜索 + 交叉引用 (graph_search.py + cross_reference.py)
+
+**功能描述：**
+- `graph_search(topic, depth)`：按主题词搜索实体 → BFS 扩展 → 返回 Subgraph
+- `cross_reference(source_clause, source_society, target_society)`：跨规范等价查找
+- 与 M3 联合查询接口：`combined_search(query)` → 返回 `CombinedRetrievalResult`
+
+**验证方法：** 3 个测试用例（单个实体搜索、跨规范交叉引用、联合查询）
+**Task 类型：** 模块/服务类
+**依赖：** 00080-06
+**关联文件：** `m4-knowledge-graph/m4_kg/search/graph_search.py`, `m4-knowledge-graph/m4_kg/search/cross_reference.py`, `m4-knowledge-graph/tests/test_graph_search.py`, `m4-knowledge-graph/tests/test_cross_reference.py`
+
+---
+
+#### 🔲 00080-08 — 主引擎 + M2 桥接 (engine.py + m2_bridge.py)
+
+**功能描述：**
+- `engine.py`：实现 `KGEngineProtocol`，`extract_entities()`, `extract_relations()`, `query_entities()`, `query_relations()`, `graph_search()`, `cross_reference()`, `health_check()`
+- `m2_bridge.py`：从 M2 FileStore 读取 chunk 文本，向 M2 RelationalDB 写入图谱状态
+
+**验证方法：** 3 个测试用例（实体提取全流程、图谱搜索、健康检查）
+**Task 类型：** 集成/跨模块类
+**依赖：** 00080-07, M2
+**关联文件：** `m4-knowledge-graph/m4_kg/core/engine.py`, `m4-knowledge-graph/m4_kg/integration/m2_bridge.py`, `m4-knowledge-graph/tests/test_engine.py`
+
+---
+
+#### 🔲 00080-09 — 打包与最终验证 (pyproject.toml + 全量测试)
+
+**功能描述：**
+- requirements.txt：kuzu, openai, httpx
+- pyproject.toml：依赖分组（`[core]`, `[llm]`, `[dev]`）
+- 全量测试套件通过
+
+**验证方法：** pip install 成功、全量 pytest 通过
+**Task 类型：** 集成/跨模块类
+**依赖：** 00080-01 ~ 00080-08
+**关联文件：** `m4-knowledge-graph/pyproject.toml`, `m4-knowledge-graph/requirements.txt`
+
+---
+
+**依赖关系图：**
+
+```
+00080-01 (config)
+    ↓
+00080-02 (rule_extractor) ──→ 00080-03 (llm_extractor)
+                                       ↓
+                                 00080-04 (merger)
+                                       ↓
+                                 00080-05 (kuzu_store)
+                                       ↓
+                                 00080-06 (traversal)
+                                       ↓
+                                 00080-07 (graph_search)
+                                       ↓
+                                 00080-08 (engine + M2 bridge)
+                                       ↓
+                                 00080-09 (打包验证)
+```
+
+00080-02 和 00080-03 可部分并行（规则抽取无 LLM 依赖）。
 
 ### 🔲 00090 — M5 智能问答引擎
 
