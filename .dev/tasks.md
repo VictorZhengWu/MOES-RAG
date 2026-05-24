@@ -557,7 +557,187 @@
 
 ### 🔲 00070 — M3 检索引擎
 
-（详细设计将在开发本模块时制定）
+> **详细设计**：`.dev/specs/m3-retrieval-design-2026-05-24.md`
+> **核心原则**：精准优先——元数据过滤 > 精确匹配 > 语义检索
+
+---
+
+#### 🔲 00070-01 — 项目骨架与配置 (config.py + pyproject.toml)
+
+**功能描述：**
+- 创建 m3-retrieval 项目结构
+- pyproject.toml：依赖 `m2-storage`, `flagembedding`(BGE-M3), `sentence-transformers`(Cross-Encoder)
+- config.py：嵌入模型选择、融合参数(k=60)、重排序阈值、上下文窗口
+- 默认配置：BGE-M3 dense, BM25 sparse, RRF fusion, BGE-Reranker-v2-m3 rerank
+
+**验证方法：** 3 个测试用例（默认配置、自定义配置、无效模型报错）
+**Task 类型：** 工具/原子函数类
+**依赖：** 无
+**关联文件：** `m3-retrieval/m3_retrieval/core/config.py`, `m3-retrieval/pyproject.toml`
+
+---
+
+#### 🔲 00070-02 — 查询分析器 (query_analyzer.py)
+
+**功能描述：**
+- 从自然语言查询提取元数据过滤条件
+- 复用 M1 的 `marine_metadata.py` 正则规则
+- 关键词分离：钢级标识、温度值、规范章节号
+- 语义查询构建：去除已提取的关键词，生成纯语义查询字符串
+- 返回 `QueryAnalysis` dataclass
+
+**验证方法：** 5 个测试用例（DNV 章节查询、ABS 无章节查询、含温度值查询、纯关键词查询、无船级社查询）
+**Task 类型：** 模块/服务类
+**依赖：** 00060 (M1 marine_metadata.py)
+**关联文件：** `m3-retrieval/m3_retrieval/stages/query_analyzer.py`, `m3-retrieval/tests/test_query_analyzer.py`
+
+---
+
+#### 🔲 00070-03 — 向量检索器 (dense_retriever.py)
+
+**功能描述：**
+- 封装 BGE-M3 嵌入模型
+- 通过 M2 StorageManager 调用 ChromaDB 向量检索
+- 支持 metadata where 过滤（classification_society, chapter_section）
+- 返回 `list[ScoredChunk]` (source="dense")
+
+**验证方法：** 4 个测试用例（基本检索、元数据过滤检索、空结果、嵌入模型初始化）
+**Task 类型：** 模块/服务类
+**依赖：** 00050 (M2), 00070-02
+**关联文件：** `m3-retrieval/m3_retrieval/stages/dense_retriever.py`, `m3-retrieval/m3_retrieval/embeddings/embedder.py`, `m3-retrieval/tests/test_dense_retriever.py`
+
+---
+
+#### 🔲 00070-04 — 全文检索器 (sparse_retriever.py)
+
+**功能描述：**
+- 通过 M2 StorageManager 调用 Meilisearch BM25 搜索
+- 查询构建：关键词 AND 连接
+- 支持 metadata filter（Meilisearch SQL-like filter 语法）
+- 返回 `list[ScoredChunk]` (source="bm25")
+
+**验证方法：** 4 个测试用例（关键词检索、过滤检索、空结果、中文关键词）
+**Task 类型：** 模块/服务类
+**依赖：** 00050 (M2), 00070-02
+**关联文件：** `m3-retrieval/m3_retrieval/stages/sparse_retriever.py`, `m3-retrieval/tests/test_sparse_retriever.py`
+
+---
+
+#### 🔲 00070-05 — 融合模块 (fusion.py)
+
+**功能描述：**
+- 实现 3 种融合策略：RRF (默认 k=60)、加权融合（基于原始分数）、混合（RRF + weighted）
+- 输入：多个 `list[ScoredChunk]`（来自 dense + sparse）
+- 输出：合并去重后的 `list[ScoredChunk]` (source="fusion")
+- 分数归一化处理
+
+**验证方法：** 4 个测试用例（RRF 融合去重、加权融合、空输入、单输入直通）
+**Task 类型：** 工具/原子函数类
+**依赖：** 00070-03, 00070-04
+**关联文件：** `m3-retrieval/m3_retrieval/stages/fusion.py`, `m3-retrieval/tests/test_fusion.py`
+
+---
+
+#### 🔲 00070-06 — 重排序器 (reranker.py)
+
+**功能描述：**
+- 封装 BGE-Reranker-v2-m3 Cross-Encoder 模型
+- 输入：query + Top 50 chunks（来自融合结果）
+- 输出：Top 20 chunks（score 更新为 Cross-Encoder relevance 分数）
+- 批处理：单次推理 50 对 (query, chunk.text)
+
+**验证方法：** 3 个测试用例（重排序改变顺序、输出数量正确、模型初始化）
+**Task 类型：** 模块/服务类
+**依赖：** 00070-05
+**关联文件：** `m3-retrieval/m3_retrieval/stages/reranker.py`, `m3-retrieval/tests/test_reranker.py`
+
+---
+
+#### 🔲 00070-07 — 上下文扩展器 (context_expander.py)
+
+**功能描述：**
+- 每个 chunk 从 M2 FileStore 读取父文档 (`full.md`)
+- 扩展逻辑：向前取 3 段 + 向后取 3 段
+- 表格 chunk：附加表标题 + column headers
+- 返回的 chunk.text 不变，新增 `expanded_context` 字段
+
+**验证方法：** 3 个测试用例（文本块扩展、表格块扩展、父文档不存在降级）
+**Task 类型：** 模块/服务类
+**依赖：** 00050 (M2), 00070-06
+**关联文件：** `m3-retrieval/m3_retrieval/stages/context_expander.py`, `m3-retrieval/tests/test_context_expander.py`
+
+---
+
+#### 🔲 00070-08 — 管线编排 + 主引擎 (pipeline.py + engine.py)
+
+**功能描述：**
+- `pipeline.py`：编排 6 阶段顺序执行
+- `engine.py`：实现 `RetrievalEngineProtocol`，`retrieve()` 方法
+- 支持 `RetrievalRequest` 所有参数：top_k, filters, enable_query_rewriting, enable_hyde, fusion_strategy
+- `health_check()`：验证 ChromaDB + Meilisearch 连通性
+
+**验证方法：** 3 个测试用例（完整管线、HyDE 关闭/开启、health_check）
+**Task 类型：** 集成/跨模块类
+**依赖：** 00070-01 ~ 00070-07
+**关联文件：** `m3-retrieval/m3_retrieval/core/pipeline.py`, `m3-retrieval/m3_retrieval/core/engine.py`, `m3-retrieval/tests/test_pipeline.py`, `m3-retrieval/tests/test_engine.py`
+
+---
+
+#### 🔲 00070-09 — 质量度量 (metrics.py)
+
+**功能描述：**
+- 计算 Recall@k, MRR, NDCG@k, Precision@k
+- 输入：标注好的查询-文档对
+- 离线评估模式 + 在线记录模式
+
+**验证方法：** 4 个测试用例（Recall@20 计算、MRR 计算、NDCG 计算、空结果处理）
+**Task 类型：** 工具/原子函数类
+**依赖：** 无
+**关联文件：** `m3-retrieval/m3_retrieval/core/metrics.py`, `m3-retrieval/tests/test_metrics.py`
+
+---
+
+#### 🔲 00070-10 — M2 集成 + 打包验证 (m2_client.py + pyproject.toml)
+
+**功能描述：**
+- `m2_client.py`：封装 StorageManager 调用，统一错误处理
+- pyproject.toml：依赖分组
+- requirements.txt：锁定版本
+- 全量测试套件通过
+
+**验证方法：** pip install 成功、全量 pytest 通过
+**Task 类型：** 集成/跨模块类
+**依赖：** 00070-08
+**关联文件：** `m3-retrieval/m3_retrieval/integration/m2_client.py`, `m3-retrieval/pyproject.toml`, `m3-retrieval/requirements.txt`
+
+---
+
+**依赖关系图：**
+
+```
+00070-01 (config)
+    ↓
+00070-02 (query_analyzer) ← 依赖 M1 marine_metadata
+    ↓
+┌───────────────────────┐
+│ 00070-03  00070-04    │  ← 并行：dense + sparse 独立
+│ (dense)   (sparse)    │
+└──────────┬────────────┘
+           ↓
+    00070-05 (fusion)
+           ↓
+    00070-06 (reranker)
+           ↓
+    00070-07 (context_expander)
+           ↓
+    00070-08 (pipeline + engine)
+           ↓
+    00070-09 (metrics)   ← 独立，可并行
+           ↓
+    00070-10 (M2 集成 + 打包)
+```
+
+**并行机会**：00070-03/04 可并行，00070-09 可与其他任务并行。
 
 ### 🔲 00080 — M4 知识图谱引擎
 
