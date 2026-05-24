@@ -569,6 +569,42 @@
 
 ---
 
+## Phase 2-3 过渡：Mock 迁移
+
+### 🔲 00085 — Mock Data 渐进迁移
+
+> **依赖**：M3 (00070), M4 (00080), M5 (00090) 完成后执行
+> **策略来源**：审查报告 `.dev/advisor/20260524-112101-m2-m6-m7-review.md`
+
+**功能描述：**
+- 将 M6/M7 的 18+7 项 mock 功能分三阶段切换到真实后端 API
+
+**三阶段切换清单：**
+
+| 阶段 | 功能 | 从 (Mock) | 到 (真实后端) |
+|:--:|------|-----------|-------------|
+| 1 | Settings 加载 | Mock Server | M5 Config API |
+| 1 | 语言切换持久化 | localStorage only | M5 User API |
+| 1 | 文档列表加载 | Mock Server | M2 RelationalDB → M7 API |
+| 1 | 用户列表加载 | Mock Server | M5 User API |
+| 2 | 文档上传+解析 | Mock Server | M1 解析 → M2 FileStore |
+| 2 | 元数据标注保存 | Mock Server | M2 RelationalDB |
+| 2 | 知识库搜索 | Mock Server | M3 Retrieval API |
+| 2 | LLM 配置保存 | Mock Server | M5 Config API |
+| 3 | 聊天消息 | Mock Server | M5 QA Engine (RAG + SSE) |
+| 3 | 文件真实上传 | Mock Server | M1 文件处理管线 + M2 存储 |
+| 3 | 流式输出 | Mock Server | M5 SSE 流式 |
+| 3 | 会话历史 | Mock Server | M5 Conversation API |
+
+**回滚策略**：每阶段保留快速回滚到 Mock Server 的能力（环境变量 `USE_MOCK=true`）
+
+**验证方法：** 每阶段切换后运行 Playwright E2E，确认原有功能无回归
+**Task 类型：** 集成/跨模块类
+**依赖：** 00060 (M1), 00070 (M3), 00080 (M4), 00090 (M5)
+**关联文件：** `m6-user-portal/src/`, `m7-admin-portal/src/`, `mock-server/`
+
+---
+
 ## Phase 3: 对外服务与部署
 
 ### 🔲 00100 — M8 API 网关
