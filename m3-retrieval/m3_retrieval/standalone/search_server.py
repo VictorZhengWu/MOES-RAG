@@ -169,6 +169,8 @@ def create_app() -> "FastAPI":
     @app.post("/search")
     async def search(query: str = Form(""), top_k: str = Form("10")):
         """Execute retrieval pipeline and return results."""
+        import time, hashlib
+        t0 = time.perf_counter()
         try:
             k = int(top_k) if top_k.isdigit() else 10
         except Exception:
@@ -192,7 +194,6 @@ def create_app() -> "FastAPI":
             path = "full (7-stage pipeline)"
             path_desc = "Full natural language query"
 
-        # For demo mode (no M2 connected): show analysis without actual retrieval
         analysis = {
             "classification_society": qa.classification_society,
             "chapter_section": qa.chapter_section,
@@ -201,14 +202,44 @@ def create_app() -> "FastAPI":
             "semantic_query": qa.semantic_query,
         }
 
+        # Try real retrieval via M2
+        chunks = []
+        total_found = 0
+        note = "Demo mode: no M2 backend. Run demo_m3.py first to load test data."
+        try:
+            from m2_storage.factory import create_storage_manager
+            mgr = create_storage_manager("deploy.yaml")
+            await mgr.initialize()
+
+            def simple_embed(text, dim=256):
+                h = int(hashlib.md5(text.encode()).hexdigest(), 16)
+                return [(h >> i) & 0xFF for i in range(0, dim * 8, 8)]
+
+            query_vec = simple_embed(qa.semantic_query or query)
+            results = await mgr.vector_store.search(query_vec, top_k=k)
+            for chunk, score in results:
+                chunks.append({
+                    "text": chunk.text,
+                    "score": round(score, 4),
+                    "source": "dense",
+                    "citation": chunk.metadata.source_filename,
+                })
+            total_found = len(chunks)
+            note = None
+            await mgr.close()
+        except Exception as e:
+            note = f"M2 not available: {e}"
+
+        latency_ms = round((time.perf_counter() - t0) * 1000, 1)
+
         return {
             "analysis": analysis,
             "path": path,
             "path_desc": path_desc,
-            "chunks": [],  # Demo mode — no M2 backend connected
-            "total_found": 0,
-            "latency_ms": 0,
-            "note": "Demo mode: query analysis only. Connect M2 StorageManager for full retrieval.",
+            "chunks": chunks,
+            "total_found": total_found,
+            "latency_ms": latency_ms,
+            "note": note,
         }
 
     return app
