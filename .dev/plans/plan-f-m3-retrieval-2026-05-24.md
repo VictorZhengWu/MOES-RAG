@@ -590,7 +590,8 @@ WHY: 规范编号（"Pt.4 Ch.3"）在向量空间中无对应语义，
 from __future__ import annotations
 import logging
 from contracts.retrieval import ScoredChunk
-from contracts.document import Chunk, DocumentMetadata, Domain
+from contracts.document import Chunk, DocumentMetadata
+from contracts.document import Domain  # explicit import
 
 logger = logging.getLogger(__name__)
 
@@ -752,7 +753,8 @@ def rrf_fusion(
 """融合模块测试。"""
 import pytest
 from contracts.retrieval import ScoredChunk
-from contracts.document import Chunk, DocumentMetadata, Domain
+from contracts.document import Chunk, DocumentMetadata
+from contracts.document import Domain  # explicit import
 from m3_retrieval.stages.fusion import rrf_fusion
 
 
@@ -885,9 +887,11 @@ class Reranker:
             return []
 
         model = self._load()
-        # 构建 (query, chunk_text) 对
         pairs = [(query, sc.chunk.text) for sc in chunks]
-        scores = model.predict(pairs)
+        # Run blocking predict() in thread pool to avoid blocking event loop
+        import asyncio
+        loop = asyncio.get_event_loop()
+        scores = await loop.run_in_executor(None, model.predict, pairs)
 
         # 按新分数排序
         ranked = sorted(
@@ -912,7 +916,8 @@ class Reranker:
 import pytest
 from m3_retrieval.stages.reranker import Reranker
 from contracts.retrieval import ScoredChunk
-from contracts.document import Chunk, DocumentMetadata, Domain
+from contracts.document import Chunk, DocumentMetadata
+from contracts.document import Domain  # explicit import
 
 
 def _make_scored(chunk_id: str, text: str, score: float) -> ScoredChunk:
@@ -1067,7 +1072,8 @@ from m3_retrieval.stages.context_expander import (
     _jaccard,
 )
 from contracts.retrieval import ScoredChunk
-from contracts.document import Chunk, DocumentMetadata, Domain
+from contracts.document import Chunk, DocumentMetadata
+from contracts.document import Domain  # explicit import
 
 
 def _make_scored(chunk_id: str, text: str) -> ScoredChunk:
