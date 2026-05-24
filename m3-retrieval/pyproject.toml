@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "m3-retrieval"
+version = "0.1.0"
+description = "Marine & Offshore Expert System -- Retrieval Engine (M3)"
+requires-python = ">=3.12"
+dependencies = [
+    "FlagEmbedding>=1.2.0",
+    "sentence-transformers>=3.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23.0"]
+all = ["m3-retrieval[dev]"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
