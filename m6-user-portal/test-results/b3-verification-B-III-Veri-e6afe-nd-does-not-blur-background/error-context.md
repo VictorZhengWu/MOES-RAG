@@ -6,8 +6,8 @@
 
 # Test info
 
-- Name: c5-verification.spec.ts >> C5 — Admin Layout & Sidebar >> llm config page shows 7 purpose boxes
-- Location: tests\e2e\c5-verification.spec.ts:146:7
+- Name: b3-verification.spec.ts >> B-III Verification >> citation panel opens, switches, and does not blur background
+- Location: tests\e2e\b3-verification.spec.ts:126:7
 
 # Error details
 

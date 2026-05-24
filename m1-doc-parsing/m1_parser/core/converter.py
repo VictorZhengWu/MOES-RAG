@@ -231,11 +231,8 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
         fig_imgs = sorted((doc_dir / "figures").glob("figure_*.png"))
 
         # Replace Docling image placeholders with actual figure references.
-        # Docling uses "<!-- image -->" when pictures are detected in the document
-        # but not embedded in the Markdown output. We replace each placeholder
-        # with a relative path to the extracted figure file.
-        # Using regex for robustness: handles whitespace variants like "<!--image-->".
         _IMAGE_PLACEHOLDER = re.compile(r"<!--\s*image\s*-->")
+        placeholder_count = len(_IMAGE_PLACEHOLDER.findall(md_text))
         fig_idx = 0
         while fig_idx < len(fig_imgs):
             fname = fig_imgs[fig_idx].name
@@ -243,6 +240,12 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
                 f"![Figure {fig_idx+1}](figures/{fname})", md_text, count=1
             )
             fig_idx += 1
+        if len(fig_imgs) > placeholder_count:
+            logger.warning(
+                "Extracted %d figures but only %d placeholders in markdown. "
+                "Extra figures saved but not referenced.",
+                len(fig_imgs), placeholder_count,
+            )
         # Any remaining placeholders without matching images
         md_text = _IMAGE_PLACEHOLDER.sub("[Image not available]", md_text)
 

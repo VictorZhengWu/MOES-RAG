@@ -29,6 +29,20 @@ def _has(pkg: str) -> bool:
     try: __import__(pkg); return True
     except ImportError: return False
 
+def _tesseract_ok() -> bool:
+    """True only if both pytesseract wrapper AND tesseract binary are present."""
+    if not _has("pytesseract"):
+        return False
+    import shutil
+    if shutil.which("tesseract"):
+        return True
+    from pathlib import Path
+    for p in [r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+              r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"]:
+        if Path(p).exists():
+            return True
+    return False
+
 _COMPONENTS = {
     "backends": {
         "docling": {"ok": _has("docling"), "name": "Docling (IBM)", "install": "pip install docling>=2.94.0"},
@@ -38,8 +52,8 @@ _COMPONENTS = {
     "ocr": {
         "easyocr":   {"ok": _has("easyocr"), "name": "EasyOCR", "install": "pip install easyocr"},
         "paddleocr": {"ok": _has("paddleocr"), "name": "PaddleOCR", "install": "pip install paddlepaddle paddleocr"},
-        "tesseract": {"ok": _has("pytesseract"), "name": "Tesseract", "install": "pip install pytesseract"},
-        "suryaocr":  {"ok": False, "name": "SuryaOCR (not supported)", "install": "Docling pipeline does not support SuryaOCR. Use PaddleOCR or EasyOCR."},
+        "tesseract": {"ok": _tesseract_ok(), "name": "Tesseract", "install": "pip install pytesseract + install tesseract binary from https://github.com/UB-Mannheim/tesseract/wiki"},
+        "suryaocr":  {"ok": False, "name": "SuryaOCR (not supported by Docling pipeline)", "install": "Not supported. Use PaddleOCR or EasyOCR instead."},
     },
 }
 
