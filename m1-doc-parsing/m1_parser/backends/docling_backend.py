@@ -177,7 +177,7 @@ class DoclingBackend:
                      source, self.ocr_engine, self.vlm_preset or "none",
                      max_pages or "all")
         if max_pages is not None and max_pages > 0:
-            result = converter.convert(source, max_num_pages=max_pages)
+            result = converter.convert(source, page_range=(1, max_pages))
         else:
             result = converter.convert(source)
         doc = result.document
@@ -390,6 +390,21 @@ class DoclingBackend:
             from docling.datamodel.pipeline_options import RapidOcrOptions
             return RapidOcrOptions()
 
+        # SuryaOCR: Transformer-based, best layout analysis and table recognition
+        if engine == "suryaocr":
+            from docling.datamodel.pipeline_options import EasyOcrOptions
+            # SuryaOCR requires docling-surya package (GPL).
+            # Fall back to EasyOCR if not available.
+            try:
+                from docling_surya import SuryaOcrOptions
+                return SuryaOcrOptions()
+            except ImportError:
+                logger.warning(
+                    "SuryaOCR requested but docling-surya not installed. "
+                    "Falling back to EasyOCR. Install: pip install docling-surya"
+                )
+                return EasyOcrOptions(use_gpu=self.use_gpu)
+
         # RapidOCR: ONNX Runtime based, very fast on CPU, Chinese-first
         if engine == "rapidocr":
             from docling.datamodel.pipeline_options import RapidOcrOptions
@@ -411,66 +426,23 @@ class DoclingBackend:
 
     def _apply_vlm_pipeline(self, pdf_options):
         """
-        Apply VLM pipeline configuration for picture description.
+        Apply VLM-based picture description using Docling preset constants.
 
-        WHAT: enables the VLM-based picture description feature on the
-        PDF pipeline, selecting the appropriate model from Docling's
-        built-in vlm_model_specs.
-
-        WHY picture description: VLM-generated natural language
-        descriptions of figures dramatically improve retrieval quality
-        for visually-rich documents (engineering diagrams, schematics,
-        photos from offshore inspection reports).
-
-        The model is selected from the vlm_model_specs module based on
-        the user's vlm_preset choice. This uses Docling 2.x's built-in
-        model registry rather than hardcoding model paths.
-
-        Args:
-            pdf_options: PdfPipelineOptions instance to mutate in-place.
+        WHY: Docling v2.95+ ships pre-configured preset options
+        (granite_picture_description, smolvlm_picture_description) that
+        include the correct repo_id, prompt, and generation config.
+        Using these avoids API compatibility issues.
         """
-        from docling.datamodel.accelerator_options import (
-            AcceleratorOptions,
-            AcceleratorDevice,
-        )
-        from docling.datamodel.pipeline_options import (
-            PictureDescriptionVlmOptions,
-        )
-
-        # Configure hardware accelerator for VLM inference
-        acc_device = (
-            AcceleratorDevice.CUDA if self.use_gpu
-            else AcceleratorDevice.CPU
-        )
-        pdf_options.accelerator_options = AcceleratorOptions(
-            num_threads=4,
-            device=acc_device,
-        )
-
-        # Look up the VLM model spec from Docling's built-in registry.
-        # WHY built-in registry: Docling 2.x ships with pre-configured
-        # model specs that include the correct prompts, scales, and
-        # engine configurations for each supported VLM. Using these
-        # avoids manual model configuration errors.
-        spec_attr = _VLM_PRESET_MAP.get(self.vlm_preset or "")
-        if spec_attr:
-            import docling.datamodel.vlm_model_specs as vms
-            vlm_spec = getattr(vms, spec_attr, None)
-            if vlm_spec is not None:
-                pdf_options.picture_description_options = (
-                    PictureDescriptionVlmOptions(
-                        model_spec=vlm_spec,
-                    )
-                )
-                logger.info(
-                    "VLM picture description enabled: preset=%s, device=%s",
-                    self.vlm_preset, acc_device,
-                )
-                return
-
-        # If we reach here, the VLM preset was not found in the registry.
-        logger.warning(
-            "VLM preset '%s' not found in vlm_model_specs. "
-            "Picture description will use Docling defaults.",
-            self.vlm_preset,
-        )
+        from docling.datamodel import pipeline_options as po
+        preset_map = {
+            "granite_docling": "granite_picture_description",
+            "smoldocling": "smolvlm_picture_description",
+        }
+        attr = preset_map.get(self.vlm_preset or "")
+        opts = getattr(po, attr, None) if attr else None
+        if opts is not None:
+            pdf_options.picture_description_options = opts
+            logger.info("Picture description: %s", self.vlm_preset)
+        else:
+            pdf_options.picture_description_options = po.granite_picture_description
+            logger.info("Picture description: using default")
