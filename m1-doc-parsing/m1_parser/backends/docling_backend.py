@@ -176,10 +176,21 @@ class DoclingBackend:
         logger.info("Converting: %s (ocr=%s, vlm=%s, max_pages=%s)",
                      source, self.ocr_engine, self.vlm_preset or "none",
                      max_pages or "all")
-        if max_pages is not None and max_pages > 0:
-            result = converter.convert(source, page_range=(1, max_pages))
-        else:
-            result = converter.convert(source)
+        try:
+            if max_pages is not None and max_pages > 0:
+                result = converter.convert(source, page_range=(1, max_pages))
+            else:
+                result = converter.convert(source)
+        except OSError as e:
+            if "WinError 1314" in str(e) or "privilege" in str(e).lower():
+                raise RuntimeError(
+                    "VLM model download failed: Windows permission error. "
+                    "HuggingFace needs to download the VLM model (~2GB) but "
+                    "cannot create symlinks without admin privileges. "
+                    "Workaround: start the server as Administrator, or set "
+                    "environment variable HF_HUB_DISABLE_SYMLINKS=1 before starting."
+                ) from e
+            raise
         doc = result.document
 
         page_count = len(doc.pages) if hasattr(doc, "pages") else 0
@@ -321,7 +332,12 @@ class DoclingBackend:
         # Picture description via VLM (optional)
         if picture_description:
             pdf_options.do_picture_description = True
-            logger.info("Picture description enabled")
+            # On Windows, HuggingFace model downloads may fail due to symlink
+            # permissions. Setting this env var disables symlinks.
+            import os as _os
+            if _os.name == "nt":
+                _os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+            logger.info("Picture description enabled (VLM model downloads on first use)")
 
         # OCR engine selection
         pdf_options.ocr_options = self._build_ocr_options()
@@ -376,7 +392,24 @@ class DoclingBackend:
             from docling.datamodel.pipeline_options import (
                 TesseractCliOcrOptions,
             )
-            return TesseractCliOcrOptions()
+            # Auto-detect tesseract binary path
+            import shutil
+            tesseract_bin = shutil.which("tesseract")
+            if tesseract_bin:
+                return TesseractCliOcrOptions(tesseract_cmd=tesseract_bin)
+            # Try common Windows install locations
+            common_paths = [
+                r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+                r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+            ]
+            for p in common_paths:
+                if __import__("os").path.exists(p):
+                    return TesseractCliOcrOptions(tesseract_cmd=p)
+            raise RuntimeError(
+                "Tesseract not found. Install from "
+                "https://github.com/UB-Mannheim/tesseract/wiki, "
+                "then add it to PATH or set TESSERACT_CMD environment variable."
+            )
 
         # Tesseract Python: uses pytesseract library directly
         if engine == "tesseract_ocr":
@@ -390,20 +423,17 @@ class DoclingBackend:
             from docling.datamodel.pipeline_options import RapidOcrOptions
             return RapidOcrOptions()
 
-        # SuryaOCR: Transformer-based, best layout analysis and table recognition
+        # SuryaOCR: requires docling-surya package (GPL).
+        # NOTE: Docling's pipeline OCR model registry does not include "suryaocr".
+        # The docling-surya package provides OCR through its own backend.
+        # Until integrated, we raise a clear error rather than silently falling back.
         if engine == "suryaocr":
-            from docling.datamodel.pipeline_options import EasyOcrOptions
-            # SuryaOCR requires docling-surya package (GPL).
-            # Fall back to EasyOCR if not available.
-            try:
-                from docling_surya import SuryaOcrOptions
-                return SuryaOcrOptions()
-            except ImportError:
-                logger.warning(
-                    "SuryaOCR requested but docling-surya not installed. "
-                    "Falling back to EasyOCR. Install: pip install docling-surya"
-                )
-                return EasyOcrOptions(use_gpu=self.use_gpu)
+            raise RuntimeError(
+                "SuryaOCR is not yet integrated with Docling's pipeline. "
+                "The docling-surya package uses a separate OCR backend that "
+                "is incompatible with Docling's StandardPdfPipeline. "
+                "Use PaddleOCR or EasyOCR instead."
+            )
 
         # RapidOCR: ONNX Runtime based, very fast on CPU, Chinese-first
         if engine == "rapidocr":

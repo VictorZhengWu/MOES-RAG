@@ -39,7 +39,7 @@ _COMPONENTS = {
         "easyocr":   {"ok": _has("easyocr"), "name": "EasyOCR", "install": "pip install easyocr"},
         "paddleocr": {"ok": _has("paddleocr"), "name": "PaddleOCR", "install": "pip install paddlepaddle paddleocr"},
         "tesseract": {"ok": _has("pytesseract"), "name": "Tesseract", "install": "pip install pytesseract"},
-        "suryaocr":  {"ok": _has("docling_surya"), "name": "SuryaOCR", "install": "pip install docling-surya"},
+        "suryaocr":  {"ok": False, "name": "SuryaOCR (not supported)", "install": "Docling pipeline does not support SuryaOCR. Use PaddleOCR or EasyOCR."},
     },
 }
 
@@ -66,7 +66,7 @@ def build_page() -> str:
         _option("easyocr", f"EasyOCR {'(available)' if c['ocr']['easyocr']['ok'] else ''}", selected=True),
         _option("paddleocr", f"PaddleOCR {'(available)' if c['ocr']['paddleocr']['ok'] else '(not installed)'}"),
         _option("tesseract", f"Tesseract {'(available)' if c['ocr']['tesseract']['ok'] else '(not installed)'}"),
-        _option("suryaocr", f"SuryaOCR {'(available)' if c['ocr']['suryaocr']['ok'] else '(not installed)'}"),
+        _option("suryaocr", c['ocr']['suryaocr']['name'], disabled=not c['ocr']['suryaocr']['ok']),
     ])
     status_html = "".join([
         f'<span style="display:flex;align-items:center;gap:4px;font-size:0.82em"><span style="width:8px;height:8px;border-radius:50%;background:{_status_dot(v["ok"])};flex-shrink:0"></span>{v["name"]}{("" if v["ok"] else " -- "+v["install"])}</span>'
