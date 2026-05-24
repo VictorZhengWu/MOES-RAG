@@ -671,12 +671,14 @@
 #### 🔲 00070-08 — 管线编排 + 主引擎 (pipeline.py + engine.py)
 
 **功能描述：**
-- `pipeline.py`：编排 6 阶段顺序执行
+- `pipeline.py`：编排 7 阶段顺序执行。阶段 2a/2b 通过 `asyncio.gather` 并行。阶段 5（去重）内联实现
 - `engine.py`：实现 `RetrievalEngineProtocol`，`retrieve()` 方法
 - 支持 `RetrievalRequest` 所有参数：top_k, filters, enable_query_rewriting, enable_hyde, fusion_strategy
+- **自适应快速路径**：精确匹配→BM25 only，关键词查询→混合不重排，完整查询→7 阶段
+- **检索缓存**：内存 LRU, TTL 1h, key=md5(query+filters)，命中时 <1ms 响应
 - `health_check()`：验证 ChromaDB + Meilisearch 连通性
 
-**验证方法：** 3 个测试用例（完整管线、HyDE 关闭/开启、health_check）
+**验证方法：** 5 个测试用例（完整管线、快速路径、缓存命中、HyDE 关闭/开启、health_check）
 **Task 类型：** 集成/跨模块类
 **依赖：** 00070-01 ~ 00070-07
 **关联文件：** `m3-retrieval/m3_retrieval/core/pipeline.py`, `m3-retrieval/m3_retrieval/core/engine.py`, `m3-retrieval/tests/test_pipeline.py`, `m3-retrieval/tests/test_engine.py`
