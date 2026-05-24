@@ -22,6 +22,7 @@ import json
 import logging
 import re
 import shutil
+import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -81,6 +82,8 @@ class ParseResult:
     output_dir: str | None = None
     metadata: dict | None = None
     parse_time_sec: float = 0.0
+    review_required: bool = False
+    review_reasons: list = field(default_factory=list)
 
 
 # ===========================================================================
@@ -167,7 +170,7 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
         )
 
     # Stage 3: metadata extraction (marine_metadata.py)
-    import time; t0 = time.time()
+    t0 = time.time()
     meta: dict[str, object] = {}
     try:
         from m1_parser.enrichments.marine_metadata import extract_marine_metadata as _ext_meta
@@ -182,8 +185,31 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
     except Exception as e:
         logger.warning("Metadata extraction failed: %s", e)
 
-    # Stage 4: table enhancement (not yet wired)
-    # Stage 5: quality gating (not yet wired)
+    # Stage 4: table enhancement (deferred — merger and annotator are stubs)
+    # Stage 5: quality gating
+    review_required = False
+    review_reasons: list[str] = []
+    if raw.table_count > 0:
+        try:
+            from m1_parser.core.quality import score_table_complexity
+            # Score based on structural hints from Docling's parse
+            qa = score_table_complexity(
+                # Docling TableFormer detects merged cells; if many tables,
+                # assume some complexity. Exact counts require full integration.
+                merged_cells=raw.table_count * 2,  # heuristic: ~2 merged cells per table
+                is_cross_page=raw.page_count > 1 and raw.table_count > 0,
+                column_count=0,  # would need Docling table structure access
+                row_count=0,
+            )
+            review_required = qa.review_required
+            review_reasons = qa.review_reasons
+            if review_required:
+                logger.info("Quality gate BLOCKED: score=%d reasons=%s", qa.score, qa.review_reasons)
+            else:
+                logger.debug("Quality gate PASSED: score=%d", qa.score)
+        except Exception as e:
+            logger.warning("Quality scoring failed: %s", e)
+
     # Stage 6: output serialization
     md_text = raw.markdown
     saved_dir = None
@@ -204,15 +230,21 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
         page_imgs = sorted((doc_dir / "pages").glob("page_*.png"))
         fig_imgs = sorted((doc_dir / "figures").glob("figure_*.png"))
 
-        # Replace all <!-- image --> placeholders with actual figure references
-        # Docling uses these placeholders when pictures are detected but not embedded
+        # Replace Docling image placeholders with actual figure references.
+        # Docling uses "<!-- image -->" when pictures are detected in the document
+        # but not embedded in the Markdown output. We replace each placeholder
+        # with a relative path to the extracted figure file.
+        # Using regex for robustness: handles whitespace variants like "<!--image-->".
+        _IMAGE_PLACEHOLDER = re.compile(r"<!--\s*image\s*-->")
         fig_idx = 0
-        while "<!-- image -->" in md_text and fig_idx < len(fig_imgs):
+        while fig_idx < len(fig_imgs):
             fname = fig_imgs[fig_idx].name
-            md_text = md_text.replace("<!-- image -->", f"![Figure {fig_idx+1}](figures/{fname})", 1)
+            md_text = _IMAGE_PLACEHOLDER.sub(
+                f"![Figure {fig_idx+1}](figures/{fname})", md_text, count=1
+            )
             fig_idx += 1
-        # Replace any remaining placeholders that don't have corresponding images
-        md_text = md_text.replace("<!-- image -->", "[Image not available]")
+        # Any remaining placeholders without matching images
+        md_text = _IMAGE_PLACEHOLDER.sub("[Image not available]", md_text)
 
         # Save tables CSV if available
         tables_csv = getattr(raw, "tables_csv", "")
@@ -245,6 +277,8 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
         output_dir=saved_dir,
         metadata=meta,
         parse_time_sec=round(time.time() - t0, 1),
+        review_required=review_required,
+        review_reasons=review_reasons,
     )
 
 

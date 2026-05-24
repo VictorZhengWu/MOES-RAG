@@ -80,6 +80,9 @@ class Chunk:
     parent_section: str | None = None
     position_in_document: int = 0
     embedding: list[float] | None = None
+    confidence: float = 1.0
+    review_required: bool = False
+    review_reasons: list[str] = field(default_factory=list)
 
 
 @dataclass
