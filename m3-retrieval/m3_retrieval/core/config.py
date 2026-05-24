@@ -69,6 +69,11 @@ class RetrievalConfig:
     rerank_top_k: int = 20
     """Number of final results to return after reranking."""
 
+    rerank_input_k: int = 50
+    """Number of fused results to pass to the reranker.
+    The reranker processes this many candidates and outputs rerank_top_k.
+    Must be >= rerank_top_k. Default 50."""
+
     # ---- Deduplication ------------------------------------------------------
     dedup_threshold: float = 0.85
     """Cosine similarity threshold above which two chunks are merged.
@@ -80,6 +85,10 @@ class RetrievalConfig:
 
     cache_ttl: int = 3600
     """Time-to-live for cached entries in seconds (default: 1 hour)."""
+
+    cache_max_size: int = 128
+    """Maximum number of entries in the LRU result cache.
+    When exceeded, the oldest entry is evicted. Default 128."""
 
     # ---- Context ------------------------------------------------------------
     context_window: int = 3
