@@ -10,7 +10,7 @@
 
 | Module | Name | Status | Sessions | Last Session | Active Task |
 |--------|------|--------|----------|-------------|-------------|
-| M1 | Document Parsing Engine | 🔄 Design Approved | 0 | 2026-05-21 | 00060 (12 sub-tasks) |
+| M1 | Document Parsing Engine | ✅ Complete | 8 | 2026-05-24 | — |
 | M2 | Storage Abstraction Layer | ✅ Complete | 1 | 2026-05-19 | — |
 | M3 | Retrieval Engine | 🔲 Not Started | 0 | — | — |
 | M4 | Knowledge Graph Engine | 🔲 Not Started | 0 | — | — |

@@ -8,11 +8,11 @@
 
 | Field | Value |
 |-------|-------|
-| Status | ✅ Complete (12/12 sub-tasks) |
-| Active Tasks | 00060-12 (Packaging & final verification) |
+| Status | ✅ Complete (12/12 sub-tasks, browser verified) |
+| Active Tasks | — |
 | First Dev Date | 2026-05-21 |
-| Last Session Date | 2026-05-21 |
-| Total Sessions | 5 |
+| Last Session Date | 2026-05-24 |
+| Total Sessions | 8 |
 
 ---
 
@@ -104,6 +104,34 @@
 **Key design decisions**:
   - M1-D13: chunker.py Step 2 catches `Exception` (not just `ImportError`) because transformers' module-level code can raise `ValueError` during `importlib.util.find_spec("torch")` when torch is a MagicMock in sys.modules (Python 3.13+ C-level __spec__ check)
   - M1-D14: test_chunker fix avoids sys.modules pop/restore pattern entirely; uses simple `patch.dict` context that restores automatically via context manager exit
+
+### Session 6 — 2026-05-23/24: Browser Testing & Bug Fixes
+
+**Outcome**: 12 bugs found and fixed through browser testing. Web UI rewritten twice.
+
+**Key bugs fixed**:
+  - Directory name = temp filename → added doc_name parameter
+  - Conflict timestamp using temp stem → fixed to use doc_basename
+  - `<!-- image -->` placeholders → regex replacement with figure references
+  - Format selection ignored → generate {basename}.{md|html|json} per selection
+  - Export Tables CSV empty → saved to tables/tables.csv
+  - PaddleOCR 'NoneType' error → added to OCR mapping
+  - Server zombie processes → used TerminateProcess API
+  - Pages input crash → moved to page_range param, added validation
+  - VLM API incompatible → switched to preset constants
+  - SuryaOCR not in Docling registry → disabled with explanation
+  - Tesseract not found → added binary detection + common paths
+
+### Session 7 — 2026-05-24: Code Review & Advisor Feedback
+
+**Outcome**: 4 issues fixed (Chunk fields, PEP 8, image placeholder robustness, quality gate wired).
+Advisor review (`.dev/advisor/20260524-002500-m1-review.md`) addressed.
+
+### Session 8 — 2026-05-24: Dropdown Linking & Final Polish
+
+**Outcome**: Backend-OCR-VLM dropdowns linked. Accurate availability labels.
+Tesseract binary detection verified. SuryaOCR disabled.
+Advisor feedback (`.dev/advisor/20260524-112101-m2-m6-m7-review.md`) on M2/M6/M7 reviewed.
 
 ---
 
