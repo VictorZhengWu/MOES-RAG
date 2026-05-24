@@ -558,6 +558,46 @@ def create_app() -> "FastAPI":
             )
             result = convert(tmp_path, options)
             if result.success:
+                # Auto-store chunks in M2 for retrieval
+                m2_status = "not stored"
+                try:
+                    from m2_storage.factory import create_storage_manager
+                    from contracts.document import Chunk, DocumentMetadata, Domain, ClassificationSociety
+                    import hashlib
+
+                    mgr = create_storage_manager("deploy.yaml")
+                    await mgr.initialize()
+
+                    # Create chunks from parsed markdown
+                    lines = [l.strip() for l in result.markdown.split("\n") if l.strip() and not l.strip().startswith("# ")]
+                    chunks = []
+                    for i, line in enumerate(lines[:50]):  # cap at 50 chunks
+                        cid = hashlib.md5(line.encode()).hexdigest()[:12]
+                        soc = ClassificationSociety(result.metadata.get("classification_society", "DNV") or "DNV")
+                        chunks.append(Chunk(
+                            chunk_id=cid, text=line,
+                            metadata=DocumentMetadata(
+                                source_filename=file.filename or "upload",
+                                domain=Domain.GENERAL,
+                                classification_society=soc,
+                                language=result.metadata.get("language", "en"),
+                            ),
+                            chunk_type="clause", position_in_document=i,
+                        ))
+
+                    # Embed + store in ChromaDB
+                    if chunks:
+                        def _embed(t, d=256):
+                            h = int(hashlib.md5(t.encode()).hexdigest(), 16)
+                            return [(h >> j) & 0xFF for j in range(0, d*8, 8)]
+                        await mgr.vector_store.insert(chunks, [_embed(c.text) for c in chunks])
+                        try: await mgr.doc_index.index(chunks)
+                        except Exception: pass
+                        m2_status = f"stored {len(chunks)} chunks"
+                    await mgr.close()
+                except Exception as e2:
+                    m2_status = f"M2 unavailable: {e2}"
+
                 return {
                     "success": True, "doc_id": result.doc_id,
                     "markdown": result.markdown, "html": result.html,
@@ -569,6 +609,7 @@ def create_app() -> "FastAPI":
                     "metadata": result.metadata,
                     "parse_time_sec": result.parse_time_sec,
                     "tables_csv": result.tables_csv,
+                    "m2_status": m2_status,
                 }
             return {"success": False, "error": result.error or "Unknown error"}
         except Exception as e:
