@@ -58,15 +58,21 @@ def _status_dot(ok: bool) -> str:
 def build_page() -> str:
     c = _COMPONENTS
     be_opts = "".join([
-        _option("docling", "Docling (available)", True),
-        _option("marker", "Marker (not implemented)", disabled=True),
-        _option("mineru", "MinerU (not implemented)", disabled=True),
+        _option("docling", "Docling (IBM) — PDF/DOCX/XLSX/PPTX/HTML/Images", True),
+        _option("marker", "Marker — PDF/Images only (not implemented)", disabled=True),
+        _option("mineru", "MinerU — PDF only (not implemented)", disabled=True),
     ])
     ocr_opts = "".join([
-        _option("easyocr", f"EasyOCR {'(available)' if c['ocr']['easyocr']['ok'] else ''}", selected=True),
-        _option("paddleocr", f"PaddleOCR {'(available)' if c['ocr']['paddleocr']['ok'] else '(not installed)'}"),
-        _option("tesseract", f"Tesseract {'(available)' if c['ocr']['tesseract']['ok'] else '(not installed)'}"),
-        _option("suryaocr", c['ocr']['suryaocr']['name'], disabled=not c['ocr']['suryaocr']['ok']),
+        _option("easyocr", "EasyOCR (default)", selected=True),
+        _option("paddleocr", "PaddleOCR (best Chinese)" if c['ocr']['paddleocr']['ok'] else "PaddleOCR (not installed)"),
+        _option("tesseract", "Tesseract (CPU)" if c['ocr']['tesseract']['ok'] else "Tesseract (not installed)"),
+        _option("suryaocr", c['ocr']['suryaocr']['name'], disabled=True),
+    ])
+    vlm_opts = "".join([
+        _option("", "Standard Pipeline (no VLM)", selected=True),
+        _option("granite_docling", "GraniteDocling (needs model download ~2GB)"),
+        _option("deepseek_ocr", "DeepSeek-OCR 2 (needs Ollama setup)"),
+        _option("paddleocr_vl", "PaddleOCR-VL 1.5 (needs GPU + Linux)"),
     ])
     status_html = "".join([
         f'<span style="display:flex;align-items:center;gap:4px;font-size:0.82em"><span style="width:8px;height:8px;border-radius:50%;background:{_status_dot(v["ok"])};flex-shrink:0"></span>{v["name"]}{("" if v["ok"] else " -- "+v["install"])}</span>'
@@ -198,6 +204,26 @@ window.onerror = function(msg, url, line) {{
   return false;
 }};
 
+// Dynamic dropdown linking: OCR and VLM depend on Backend choice
+var backendSel = document.getElementById('backend');
+var ocrSel = document.getElementById('ocr');
+var vlmSel = document.getElementById('vlm');
+var picDescCb = document.getElementById('picDesc');
+
+function updateLinkedOptions() {{
+  var be = backendSel.value;
+  // Marker/MinerU have built-in OCR and don't use VLM
+  var builtin = (be === 'marker' || be === 'mineru');
+  ocrSel.disabled = builtin;
+  vlmSel.disabled = builtin;
+  picDescCb.disabled = builtin;
+  if (builtin) {{
+    picDescCb.checked = false;
+  }}
+}}
+backendSel.addEventListener('change', updateLinkedOptions);
+updateLinkedOptions();
+
 var selectedFiles = [], isParsing = false;
 var dz = document.getElementById('dropZone');
 var fi = document.getElementById('fileInput');
@@ -261,10 +287,19 @@ document.getElementById('outdir').addEventListener('change', function() {{
 
 // Warn about unavailable components before parsing
 function checkUnavailable() {{
-  var ocr = document.getElementById('ocr').value;
+  var be = backendSel.value;
+  var ocr = ocrSel.value;
+  var vlm = vlmSel.value;
   var occ = _COMPONENTS ? _COMPONENTS.ocr : null;
-  if (occ && occ[ocr] && !occ[ocr].ok) {{
-    return 'Warning: ' + occ[ocr].name + ' is not installed and will fall back to EasyOCR.\\n\\nInstall: ' + occ[ocr].install;
+
+  if (be !== 'docling') {{
+    return 'Backend "' + be + '" is not yet implemented. Only Docling works.';
+  }}
+  if (occ && occ[ocr] && !occ[ocr].ok && ocr !== 'suryaocr') {{
+    return 'Warning: ' + occ[ocr].name + ' not installed.\\nWill fall back to EasyOCR.\\n\\nInstall: ' + occ[ocr].install;
+  }}
+  if (vlm && vlm !== '' && !picDescCb.checked) {{
+    return 'VLM preset "' + vlm + '" selected but Picture Desc is NOT checked.\\nVLM only takes effect when Picture Desc is enabled.\\n\\nContinue with Standard Pipeline (no VLM)?';
   }}
   return null;
 }}
