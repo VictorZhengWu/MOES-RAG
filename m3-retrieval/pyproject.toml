@@ -14,7 +14,11 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-asyncio>=0.23.0"]
-all = ["m3-retrieval[dev]"]
+web = ["fastapi>=0.100.0", "uvicorn>=0.30.0", "python-multipart>=0.0.9"]
+all = ["m3-retrieval[dev,web]"]
+
+[project.scripts]
+m3-search = "m3_retrieval.standalone.search_server:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
