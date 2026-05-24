@@ -171,15 +171,12 @@ class DoclingBackend:
                 "docling is not installed. Install: pip install docling>=2.94.0"
             )
 
-        converter = self._build_converter(picture_description)
+        converter = self._build_converter(picture_description, max_pages)
 
         logger.info("Converting: %s (ocr=%s, vlm=%s, max_pages=%s)",
                      source, self.ocr_engine, self.vlm_preset or "none",
                      max_pages or "all")
-        kwargs = {}
-        if max_pages is not None:
-            kwargs["max_num_pages"] = max_pages
-        result = converter.convert(source, **kwargs)
+        result = converter.convert(source)
         doc = result.document
 
         page_count = len(doc.pages) if hasattr(doc, "pages") else 0
@@ -285,7 +282,7 @@ class DoclingBackend:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _build_converter(self, picture_description: bool = False):
+    def _build_converter(self, picture_description: bool = False, max_pages: int | None = None):
         """
         Construct a DocumentConverter with the configured pipeline options.
 
@@ -317,6 +314,8 @@ class DoclingBackend:
         pdf_options.generate_page_images = True
         pdf_options.generate_picture_images = True
         pdf_options.images_scale = 2.0
+        if max_pages is not None:
+            pdf_options.max_num_pages = max_pages
 
         # Picture description via VLM (optional)
         if picture_description:

@@ -478,6 +478,18 @@ def create_app() -> "FastAPI":
             tmp_path = tmp.name
         logger.info("Parsing: filename=%s doc_name=%s", file.filename, Path(file.filename or "document").stem)
 
+        # Validate pages input
+        pages_val = None
+        if max_pages.strip():
+            try:
+                pages_val = int(max_pages.strip())
+                if pages_val < 1:
+                    return {"success": False, "error": f"Pages must be >= 1, got {pages_val}"}
+                if pages_val > 5000:
+                    return {"success": False, "error": f"Pages must be <= 5000, got {pages_val}"}
+            except ValueError:
+                return {"success": False, "error": f"Invalid pages value: {max_pages!r}. Enter a number like 10."}
+
         # Persist output_dir setting
         if output_dir.strip():
             _save_config({"output_dir": output_dir.strip()})
@@ -491,7 +503,7 @@ def create_app() -> "FastAPI":
                 output_dir=output_dir or None,
                 output_formats=[format],
                 doc_name=Path(file.filename or "document").stem,
-                max_pages=int(max_pages) if max_pages.strip() else None,
+                max_pages=pages_val,
                 picture_description=picture_description == "1",
                 export_tables=export_tables == "1",
             )
