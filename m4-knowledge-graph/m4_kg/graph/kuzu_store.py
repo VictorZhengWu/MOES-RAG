@@ -259,15 +259,23 @@ class KuzuStore:
                 properties_json: str = json.dumps(
                     entity.properties, ensure_ascii=False
                 )
+                # MERGE ensures idempotent insertion:
+                #   - If entity_id does NOT exist → CREATE with ref_count=1.
+                #   - If entity_id EXISTS → increment ref_count (shared entity
+                #     across multiple documents per M4-D09 SHARED_RETAIN strategy).
                 self._conn.execute(
-                    "CREATE (e:Entity {"
-                    "  entity_id: $entity_id,"
-                    "  name: $name,"
-                    "  entity_type: $entity_type,"
-                    "  properties: $properties,"
-                    "  source_doc_id: $source_doc_id,"
-                    "  doc_society: $doc_society"
-                    "})",
+                    "MERGE (e:Entity {entity_id: $entity_id}) "
+                    "ON CREATE SET "
+                    "  e.name = $name, "
+                    "  e.entity_type = $entity_type, "
+                    "  e.properties = $properties, "
+                    "  e.source_doc_id = $source_doc_id, "
+                    "  e.doc_society = $doc_society, "
+                    "  e.ref_count = 1 "
+                    "ON MATCH SET "
+                    "  e.ref_count = e.ref_count + 1, "
+                    "  e.properties = $properties, "
+                    "  e.source_doc_id = $source_doc_id",
                     {
                         "entity_id": entity.entity_id,
                         "name": entity.name,
@@ -605,12 +613,21 @@ class KuzuStore:
             {"doc_id": doc_id},
         )
 
-        # Step 4: Delete the entities themselves (relationships are
-        # already removed, so no orphaned-edge errors).
+        # Step 4: Delete or decrement entities based on ref_count.
+        #   - ref_count == 1: Entity exists only in this document → DELETE.
+        #   - ref_count >= 2: Entity shared across multiple documents →
+        #     SET ref_count = ref_count - 1, keep the entity.
+        #   WHY: Implements M4-D09 incremental update strategy (SHARED_RETAIN).
         self._conn.execute(
             "MATCH (e:Entity) "
-            "WHERE e.source_doc_id = $doc_id "
+            "WHERE e.source_doc_id = $doc_id AND e.ref_count = 1 "
             "DELETE e",
+            {"doc_id": doc_id},
+        )
+        self._conn.execute(
+            "MATCH (e:Entity) "
+            "WHERE e.source_doc_id = $doc_id AND e.ref_count >= 2 "
+            "SET e.ref_count = e.ref_count - 1",
             {"doc_id": doc_id},
         )
 
