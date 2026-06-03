@@ -1,6 +1,6 @@
 # M5 智能问答引擎 — 详细设计规范
 
-> **日期**：2026-06-03 | **版本**：v2（折中方案） | **状态**：待审批
+> **日期**：2026-06-03 | **版本**：v3（简化 Self-RAG + 动态预算 + 独立存储） | **状态**：待审批
 > **依赖**：contracts/ (00010), M2 (00050), M3 (00070), M4 (00080)
 > **定位**：Layer 3 (Brain)，系统总调度中心——检索→图搜索→LLM 生成→引用溯源
 
@@ -96,7 +96,7 @@ class PremiumQuota:
         return True
 ```
 
-- 配额存储在 M2 SQLite 的 `m5_quotas` 表
+- 配额存储在 M5 自管理的 SQLite 文件（`m5_qa.db`，`quotas` 表）——**不通过 M2**，M2 是存储抽象层，不应感知业务逻辑
 - 每日零点自动重置
 - 前端可通过 API 查询剩余 Premium 次数
 
@@ -293,14 +293,21 @@ def estimate_tokens(text: str) -> int:
     """Rough: 1 token ≈ 4 chars for English, ≈ 2 chars for Chinese."""
     return len(text) // 4
 
-def allocate_budget(tier: str) -> TokenBudget:
-    """Allocate token budget based on user tier."""
+def allocate_budget(tier: str, query: str = "") -> TokenBudget:
+    """Allocate token budget based on user tier, with query-length adjustment."""
     budgets = {
         "basic":      (4000,  0.30, 0.20, 0.50),
         "pro":        (8000,  0.40, 0.20, 0.40),
         "enterprise": (16000, 0.50, 0.20, 0.30),
     }
     total, ret, hist, gen = budgets.get(tier, budgets["basic"])
+
+    # Dynamic adjustment: longer queries get more retrieval budget (0.5x~1.5x)
+    query_factor = max(0.5, min(len(query) / 500, 1.5))
+    ret *= query_factor
+    # Redistribute from generation budget so total stays 100%
+    gen -= (query_factor - 1.0) * ret
+
     return TokenBudget(total=total, retrieval_ratio=ret, history_ratio=hist, generation_ratio=gen)
 ```
 
@@ -418,9 +425,12 @@ Ollama、DeepSeek、OpenAI 都支持 OpenAI 兼容的 `/v1/chat/completions` 端
 
 ## 10. 对话管理
 
-### 10.1 存储（M2 SQLite）
+### 10.1 存储（M5 自管理 SQLite）
+
+M5 管理自己的数据库文件 `m5_qa.db`，不通过 M2。M2 是存储抽象层，不应感知 M5 的业务逻辑。
 
 ```sql
+-- conversations table
 CREATE TABLE conversations (
     conversation_id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -429,19 +439,21 @@ CREATE TABLE conversations (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- messages table
 CREATE TABLE messages (
     message_id INTEGER PRIMARY KEY AUTOINCREMENT,
     conversation_id TEXT NOT NULL,
-    role TEXT NOT NULL,   -- "user" | "assistant" | "system"
+    role TEXT NOT NULL,
     content TEXT NOT NULL,
-    citations_json TEXT,  -- JSON array of Citation
+    citations_json TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id)
 );
 
-CREATE TABLE m5_quotas (
+-- premium quotas table (M5 business logic, not M2 concern)
+CREATE TABLE quotas (
     user_id TEXT NOT NULL,
-    date TEXT NOT NULL,           -- "2026-06-03"
+    date TEXT NOT NULL,
     tier TEXT NOT NULL,
     premium_used INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, date)
@@ -459,54 +471,50 @@ class ContextCompressor:
 
 ---
 
-## 11. Self-RAG 循环
+## 11. Self-RAG 循环（简化版）
 
-最多 3 次迭代，包含 4 个检查点：
+最多 3 次迭代。使用 M3 自带的检索分数（cosine similarity）作为相关性信号，不做额外的 LLM 或规则评估。
 
 ```
 for iteration in range(max_iterations=3):
     1. 检索 (M3 + M4)
        ↓
-    2. 评估器: 检索结果与问题的关键词命中率 ≥ 0.3？
-       NO → 改查询措辞，回到步骤 1
+    2. 检查检索分数: top-K chunk 的最高分 ≥ 阈值（如 0.5）？
+       NO → 同义词扩展改查询，回到步骤 1
        YES ↓
-    3. 生成器: LLM 生成答案
+    3. LLM 生成答案
        ↓
-    4. 引用验证器: chunk 文本在答案中的覆盖率 ≥ 0.3？
-       NO → 补充检索新关键词，回到步骤 1
-       YES → 返回最终答案
+    4. 返回答案+引用
 ```
 
-### 11.1 评估器（规则版，Phase 2）
+### 11.1 为什么不用独立评估器
+
+Phase 1 不需要额外评估器或引用验证器——M3 的 cosine similarity 分数已经反映了 chunk 与查询的语义相关性，比手写的规则版关键词匹配更可靠，且零额外成本。
+
+### 11.2 查询改写（简单版）
 
 ```python
-class RelevanceEvaluator:
-    """Phase 2: rule-based relevance check using keyword hit rate."""
+SYNONYMS = {
+    "welding": ["weld", "fusion", "joining"],
+    "preheat": ["pre-heat", "heating", "temperature before"],
+    "thickness": ["plate thickness", "material thickness", "plate"],
+    "requirement": ["requirement", "criteria", "specification", "standard"],
+}
 
-    def evaluate(self, query: str, chunks: list[ScoredChunk]) -> EvaluationResult:
-        keywords = set(query.lower().split())
-        hits = sum(1 for c in chunks if any(kw in c.chunk.text.lower() for kw in keywords))
-        score = hits / max(len(chunks), 1)
-        return EvaluationResult(
-            score=score,
-            sufficient=score >= 0.3,
-            missing_keywords=[] if score >= 0.3 else list(keywords)[:5],
-        )
+async def rewrite_query(original: str, iteration: int) -> str:
+    """Simple synonym expansion based on iteration depth."""
+    expanded = original
+    for base, synonyms in SYNONYMS.items():
+        if base in original.lower() and iteration < len(synonyms):
+            expanded += f" {synonyms[iteration]}"
+    return expanded
 ```
 
-### 11.2 引用验证器（规则版，Phase 2）
+### 11.3 重试终止条件
 
-```python
-class CitationVerifier:
-    """Phase 2: rule-based citation coverage check."""
-
-    def verify(self, answer: str, chunks: list[ScoredChunk]) -> VerificationResult:
-        covered = sum(1 for c in chunks if c.chunk.text[:50] in answer)
-        coverage = covered / max(len(chunks), 1) if chunks else 0.0
-        return VerificationResult(coverage=coverage, sufficient=coverage >= 0.3)
-```
-
-Phase 3 升级为 LLM 评估器（更准确，但有成本）。
+- 检索最高分 ≥ 0.5：质量足够，进入生成
+- 3 次迭代后仍低于阈值：用最好的一次结果生成，但标注"检索质量可能不足"
+- Phase 3 可升级为 LLM 驱动的评估器和查询改写
 
 ---
 
@@ -616,9 +624,9 @@ class StructuredLogger:
 |------|------|------|
 | LLM API | `openai.AsyncOpenAI` | 统一覆盖 Ollama/DeepSeek/OpenAI/Claude |
 | 流式生成 | SSE | M6 前端已支持 |
-| Prompt 存储 | M2 SQLite (`m5_prompts`) | 零新增依赖 |
-| 对话存储 | M2 SQLite (`conversations`, `messages`) | 一致技术栈 |
-| 配额存储 | M2 SQLite (`m5_quotas`) | 轻量 |
+| Prompt 存储 | M5 自管理 SQLite (`m5_qa.db`) | 独立于 M2，业务数据不污染存储抽象层 |
+| 对话存储 | M5 自管理 SQLite | 同上 |
+| 配额存储 | M5 自管理 SQLite (`quotas` 表) | 同上 |
 | Token 估算 | 字符数 ÷ 4 | 快速近似 |
 | 评估器/验证器 | 规则版（关键词命中率） | Phase 3 升级 LLM |
 | 监控 | `MetricsCollector` + 结构化 JSON 日志 | 无额外依赖 |
@@ -632,10 +640,10 @@ class StructuredLogger:
 | M5-D01 | 2026-06-03 | 一套引擎三种模式（simple/pipeline/self_rag），不建三套系统 |
 | M5-D02 | 2026-06-03 | Basic 每日 3 次 Premium，Pro 每日 10 次 |
 | M5-D03 | 2026-06-03 | OpenAI 兼容 API 格式，与 M6/M7 前端对齐 |
-| M5-D04 | 2026-06-03 | 评估器和引用验证器 Phase 2 用规则实现，Phase 3 升级 LLM |
-| M5-D05 | 2026-06-03 | 对话和 Prompt 存 M2 SQLite，不引入新数据库 |
-| M5-D06 | 2026-06-03 | 动态 Token 预算：按用户等级分配比例，不按查询复杂度 |
-| M5-D07 | 2026-06-03 | Self-RAG 循环最多 3 次迭代 |
+| M5-D04 | 2026-06-03 | **Phase 1 去掉独立评估器和引用验证器**——用 M3 检索分数作为质量信号 |
+| M5-D05 | 2026-06-03 | 对话/Prompt/配额存储于 M5 自管理 SQLite（`m5_qa.db`），**不通过 M2** |
+| M5-D06 | 2026-06-03 | Token 预算：按等级 + **查询长度因子**（0.5x~1.5x）动态调整检索份额 |
+| M5-D07 | 2026-06-03 | Self-RAG 循环最多 3 次迭代，**简化版**：同义词扩展 + 检索分数阈值 |
 | M5-D08 | 2026-06-03 | 上下文窗口差异化：Basic 4K / Pro 8K / Enterprise 16K |
 | M5-D09 | 2026-06-03 | 单一 LLM 客户端覆盖所有后端，不建独立 provider 文件 |
 | M5-D10 | 2026-06-03 | Prompt 管理器 DB 存储中英文模板，Phase 3 加版本控制 |

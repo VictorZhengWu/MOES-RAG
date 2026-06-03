@@ -969,10 +969,11 @@
 
 **功能描述：**
 - `citation_builder.py`：从 ScoredChunk 构建 Citation，去重，映射 [1][2] 标记
-- `token_budget.py`：`TokenBudget` dataclass + `allocate_budget(tier)` 按等级动态分配
+- `token_budget.py`：`TokenBudget` + `allocate_budget(tier, query)` 按等级 + 查询长度因子动态分配
   - Basic 4K: retrieval 30% / history 20% / generation 50%
   - Pro 8K: retrieval 40% / history 20% / generation 40%
   - Enterprise 16K: retrieval 50% / history 20% / generation 30%
+  - **查询长度因子**（0.5x~1.5x）：长查询给更多检索 budget，短查询给更多生成 budget
 - `estimate_tokens(text)`：字符数 ÷ 4
 
 **验证方法：** 5 个测试用例（单引用、多引用去重、Basic 预算、Pro 预算、Enterprise 预算）
@@ -1002,8 +1003,9 @@
 **功能描述：**
 - `simple.py`：M3 → token_budget → prompt → LLM → 答案（4K 上下文）
 - `pipeline.py`：M3+M4 并行 → fusion → citation → token_budget → prompt → LLM → 答案+引用（8K 上下文）
-- `self_rag.py`：最多 3 次迭代，规则评估器 + 规则引用验证器
-  1. 检索 → 2. 评估（关键词命中率≥0.3）→ 3. 不够则改查询 → 4. LLM 生成 → 5. 验证（chunk 覆盖率≥0.3）→ 6. 不够则补充检索
+- `self_rag.py`：简化版 Self-RAG，最多 3 次迭代
+  1. 检索（M3+M4）→ 2. 检查检索分数（M3 cosine sim ≥ 0.5）→ 3. 不够则同义词扩展改查询 → 4. LLM 生成 → 5. 返回答案+引用
+  - **Phase 1 无独立评估器和引用验证器**——直接用 M3 检索分数作为质量信号
 
 **验证方法：** 6 个测试用例（simple 全流程、pipeline 全流程、self_rag 评估通过、self_rag 重试、self_rag 超限终止、空检索）
 **Task 类型：** 模块/服务类
@@ -1015,11 +1017,11 @@
 #### 🔲 00090-07 — 对话管理 + 上下文压缩 (manager.py + compressor.py)
 
 **功能描述：**
-- `manager.py`：`ConversationManager` `aiosqlite` 操作 M2 SQLite
+- `manager.py`：`ConversationManager` 使用 `aiosqlite` 管理 M5 自有的 `m5_qa.db`
+  - 三张表：`conversations`, `messages`, `quotas`
   - `create/get/list/delete` + `add_message/get_messages`
-  - 三张表：`conversations`, `messages`, `m5_quotas`
+  - **不通过 M2**——M2 是存储抽象层，不应感知 M5 业务逻辑
 - `compressor.py`：`ContextCompressor.compress(messages, max_tokens)`
-  - 保留最后 N 条完整消息 + 旧消息截断
 
 **验证方法：** 4 个测试用例（创建+读取、消息追加、删除、压缩截断）
 **Task 类型：** 模块/服务类
