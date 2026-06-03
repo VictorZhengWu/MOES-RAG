@@ -388,6 +388,47 @@ class KuzuStore:
             entities.append(self._row_to_entity(result.get_next()))
         return entities
 
+    async def query_entities_by_ids(
+        self, entity_ids: list[str]
+    ) -> list[Entity]:
+        """
+        Fetch entities by their exact entity_id values.
+
+        WHAT:
+        - Runs an IN-clause query against the primary key ``Entity.entity_id``.
+        - Returns all matching entities in a single batch query.
+        - Returns empty list if ``entity_ids`` is empty (no query executed).
+
+        WHY:
+        - ID-based lookup is required by graph traversal (``bfs_traverse``)
+          to efficiently fetch newly discovered entities after each BFS hop.
+          Without this, each entity would require a separate name-based
+          query, making traversal O(N) queries instead of O(depth).
+
+        Args:
+            entity_ids: List of entity ID strings to look up.
+
+        Returns:
+            List of matching ``Entity`` instances (may be empty or shorter
+            than input if some IDs don't exist in the graph).
+        """
+        if not entity_ids:
+            return []
+
+        self._ensure_connected()
+        assert self._conn is not None
+
+        result = self._conn.execute(
+            "MATCH (e:Entity) "
+            "WHERE e.entity_id IN $entity_ids "
+            "RETURN e.entity_id, e.name, e.entity_type, e.properties, e.source_doc_id",
+            {"entity_ids": entity_ids},
+        )
+        entities: list[Entity] = []
+        while result.has_next():
+            entities.append(self._row_to_entity(result.get_next()))
+        return entities
+
     # ------------------------------------------------------------------
     # Public API: relation CRUD
     # ------------------------------------------------------------------
