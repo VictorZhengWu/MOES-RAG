@@ -9,10 +9,10 @@
 | Field | Value |
 |-------|-------|
 | Status | 🔄 In Development |
-| Active Tasks | 00080-02 (rule_extractor) |
+| Active Tasks | 00080-07 (graph_search + cross_reference) |
 | First Dev Date | 2026-06-03 |
 | Last Session Date | 2026-06-03 |
-| Total Sessions | 1 |
+| Total Sessions | 2 |
 
 ---
 
@@ -118,3 +118,26 @@
 
 - 00080-05 (KuzuStore) test records not yet written — needs to be created before marking 00080-06 complete.
 - Test execution pending — user must run `python -m pytest m4-knowledge-graph/tests/test_traversal.py -v` to verify.
+- **00080-07**: _llm_cross_reference is a STUB — returns None until M7's LLM backend configuration is available. The hybrid strategy works correctly via graph lookup and mock LLM (in tests), but real LLM integration requires M7 to provide the LLM backend config.
+
+---
+
+### Session 3 — 2026-06-03 (00080-07)
+
+**Completed**:
+- **00080-07**: Graph search + Hybrid cross-reference
+  - 5/5 tests passing (2 graph_search, 3 cross_reference)
+  - 69/69 full test suite passing (no regressions)
+  - TDD workflow: tests written before implementation
+
+**Created files**:
+- `m4-knowledge-graph/m4_kg/search/__init__.py` — package init, exports graph_search + cross_reference
+- `m4-knowledge-graph/m4_kg/search/graph_search.py` — graph_search function (75 lines)
+- `m4-knowledge-graph/m4_kg/search/cross_reference.py` — cross_reference + _graph_lookup + _llm_cross_reference + _cache_cross_reference (290 lines)
+- `m4-knowledge-graph/tests/test_graph_search.py` — 2 test cases
+- `m4-knowledge-graph/tests/test_cross_reference.py` — 3 test cases
+
+**Updated files**:
+- `.dev/tasks.md` — marked 00080-07 as ✅
+- `.dev/test_records/index.md` — added 00080-07 entry
+- `.dev/test_records/00080-07.md` — created test record

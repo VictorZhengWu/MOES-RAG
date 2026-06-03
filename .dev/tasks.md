@@ -844,14 +844,14 @@
 
 ---
 
-#### 🔲 00080-07 — 图谱搜索 + 交叉引用 (graph_search.py + cross_reference.py)
+#### ✅ 00080-07 — 图谱搜索 + 交叉引用 (graph_search.py + cross_reference.py)
 
 **功能描述：**
 - `graph_search(topic, depth)`：按主题词搜索实体 → BFS 扩展 → 返回 Subgraph
 - `cross_reference(source_clause, source_society, target_society)`：**混合策略**——先查图中已有 `similar_to` 边，无结果则 LLM 实时计算，结果缓存为图边
 - **注意**：M4 不实现 `combined_search`——联合检索是 M5 的职责（并行调用 M3+M4 并合并）
 
-**验证方法：** 3 个测试用例（图谱搜索、图查交叉引用、LLM fallback 交叉引用）
+**验证方法：** 5 个测试用例（图谱搜索 2、图查交叉引用 1、LLM fallback 1、无匹配 1）
 **Task 类型：** 模块/服务类
 **依赖：** 00080-06
 **关联文件：** `m4-knowledge-graph/m4_kg/search/graph_search.py`, `m4-knowledge-graph/m4_kg/search/cross_reference.py`, `m4-knowledge-graph/tests/test_graph_search.py`, `m4-knowledge-graph/tests/test_cross_reference.py`
