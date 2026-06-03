@@ -763,7 +763,7 @@
 
 ---
 
-#### 🔲 00080-02 — 规则抽取器 (rule_extractor.py)
+#### ✅ 00080-02 — 规则抽取器 (rule_extractor.py)
 
 **功能描述：**
 - 正则+字典匹配快速覆盖 70% 实体
@@ -771,8 +771,9 @@
 - 关系类型：`references`（规范条目之间引用）、`constrains`（参数约束实体）
 - **否定词检测**：过滤 except/excluding/not applicable to 后的目标，防止误报
 - 返回 `list[Entity]` + `list[Relation]`
+- Ship type 字典匹配支持 30+ 种船舶类型
 
-**验证方法：** 6 个测试用例（钢级提取、规范条目提取、温度参数提取、否定词过滤、无匹配空返回、多实体混合）
+**验证方法：** 30 个测试用例（钢级提取 3、规范条目提取 3、参数提取 5、设备提取 3、船型提取 3、否定词过滤 5、空输入 2、编排器 3、关系生成 3）
 **Task 类型：** 模块/服务类
 **依赖：** 无
 **关联文件：** `m4-knowledge-graph/m4_kg/extraction/rule_extractor.py`, `m4-knowledge-graph/tests/test_rule_extractor.py`
