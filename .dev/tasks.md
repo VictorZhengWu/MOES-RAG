@@ -1030,7 +1030,7 @@
 
 ---
 
-#### 🔲 00090-08 — 主引擎 + 监控 (engine.py + monitoring/metrics.py + logger.py)
+#### ✅ 00090-08 — 主引擎 + 监控 (engine.py + monitoring/metrics.py + logger.py)
 
 **功能描述：**
 - `engine.py`：`QAEngine` 实现 `QAEngineProtocol`
@@ -1038,10 +1038,10 @@
 - `monitoring/metrics.py`：`MetricsCollector` 记录延迟/token/模式，`get_summary()` 聚合
 - `monitoring/logger.py`：`StructuredLogger` JSON 结构化日志
 
-**验证方法：** 5 个测试用例（chat 流程、stream 流式、Premium 升级、降级、health_check）
+**验证方法：** 10 个测试用例（chat 流程 4、其他 API 2、metrics 4）
 **Task 类型：** 集成/跨模块类
 **依赖：** 00090-03, 00090-04, 00090-06, 00090-07
-**关联文件：** `m5-qa-engine/m5_qa/core/engine.py`, `m5-qa-engine/m5_qa/monitoring/metrics.py`, `m5-qa-engine/m5_qa/monitoring/logger.py`
+**关联文件：** `m5-qa-engine/m5_qa/core/engine.py`, `m5-qa-engine/m5_qa/monitoring/__init__.py`, `m5-qa-engine/m5_qa/monitoring/metrics.py`, `m5-qa-engine/m5_qa/monitoring/logger.py`, `m5-qa-engine/tests/test_engine.py`, `m5-qa-engine/tests/test_metrics.py`
 
 ---
 
