@@ -916,7 +916,7 @@
 
 ---
 
-#### 🔲 00090-01 — 骨架 + 配置 + 等级系统 (config.py + tier.py + router.py + pyproject.toml)
+#### ✅ 00090-01 — 骨架 + 配置 + 等级系统 (config.py + tier.py + router.py + pyproject.toml)
 
 **功能描述：**
 - 创建 m5-qa-engine 项目结构
@@ -925,7 +925,7 @@
 - tier.py：`UserTier`（三级 + 上下文窗口 4K/8K/16K）+ `PremiumQuota`（`can_use()`/`consume()`）
 - router.py：`ModeRouter.select_mode(user_id, tier)` → "simple"/"pipeline"/"self_rag"
 
-**验证方法：** 5 个测试用例（默认配置、自定义 LLM、配额消耗、配额耗尽、模式路由）
+**验证方法：** 12 个测试用例（默认配置、自定义 LLM、自定义 db_path/阈值、Basic 等级、Pro 等级、配额消耗/耗尽、Enterprise 无限、Basic 路由、Pro 路由、Premium 升级、Premium 耗尽回退、未知等级 fallback）
 **Task 类型：** 工具/原子函数类
 **依赖：** 无
 **关联文件：** `m5-qa-engine/m5_qa/core/config.py`, `m5-qa-engine/m5_qa/core/tier.py`, `m5-qa-engine/m5_qa/core/router.py`, `m5-qa-engine/pyproject.toml`
