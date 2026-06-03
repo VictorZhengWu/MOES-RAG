@@ -8,11 +8,11 @@
 
 | Field | Value |
 |-------|-------|
-| Status | 🔄 In Development |
-| Active Tasks | 00080-07 (graph_search + cross_reference) |
+| Status | ✅ Complete |
+| Active Tasks | None (all 9 tasks done) |
 | First Dev Date | 2026-06-03 |
 | Last Session Date | 2026-06-03 |
-| Total Sessions | 2 |
+| Total Sessions | 4 |
 
 ---
 
@@ -141,3 +141,28 @@
 - `.dev/tasks.md` — marked 00080-07 as ✅
 - `.dev/test_records/index.md` — added 00080-07 entry
 - `.dev/test_records/00080-07.md` — created test record
+
+---
+
+### Session 4 — 2026-06-03 (00080-09: Packaging and Final Verification)
+
+**Completed**:
+- **00080-09**: Final packaging verification — M4 complete
+  - 73/73 tests passing (full suite)
+  - pip install -e . successful
+  - Import verification: `from m4_kg import KGEngine` OK
+  - **Bug found and fixed**: `m4_kg/__init__.py` was empty (only comments) — no public API exported. Added explicit exports for `KGEngine`, `ExtractionConfig`, `UserTier`, `USER_TIERS`.
+  - **Also updated**: Tasks 00080-05 (Kuzu store) and 00080-06 (traversal) marked as completed in tasks.md (they had commits but staled markers).
+
+**Module completion summary**:
+- **Source files**: 12 Python source files across 4 subpackages (core, extraction, graph, search, integration)
+- **Test files**: 8 test files with 73 test cases
+- **Total files**: 32 (excluding cache dirs)
+- **Git commits**: 9 (00080-01 through 00080-09 plus the upcoming final commit)
+- **Key fix**: `__init__.py` public API export added during verification
+
+**Updated files**:
+- `m4_kg/__init__.py` — added public API exports (KGEngine, ExtractionConfig, UserTier, USER_TIERS)
+- `.dev/tasks.md` — marked 00080-05, 00080-06, 00080-09, and parent 00080 as ✅
+- `.dev/test_records/index.md` — added 00080-09 entry, updated 00080 status to ✅
+- `.dev/test_records/00080-09.md` — created final test record

@@ -741,7 +741,7 @@
 
 **并行机会**：00070-03/04 可并行，00070-09 可与其他任务并行。
 
-### 🔲 00080 — M4 知识图谱引擎
+### ✅ 00080 — M4 知识图谱引擎
 
 > **详细设计**：`.dev/specs/m4-knowledge-graph-design-2026-05-24.md`
 > **核心原则**：建图离线（LLM 花费），搜索在线（图遍历免费）
@@ -813,7 +813,7 @@
 
 ---
 
-#### 🔲 00080-05 — Kuzu 图存储 (kuzu_store.py + schema.py)
+#### ✅ 00080-05 — Kuzu 图存储 (kuzu_store.py + schema.py)
 
 **功能描述：**
 - Schema 定义：Entity 节点表（entity_id, name, entity_type, properties, source_doc_id, doc_society, ref_count, created_at）, Rel 边表（from, to, relation_type, properties, confidence, source_doc_id, created_at）
@@ -829,7 +829,7 @@
 
 ---
 
-#### 🔲 00080-06 — 图遍历 (traversal.py)
+#### ✅ 00080-06 — 图遍历 (traversal.py)
 
 **功能描述：**
 - BFS 遍历：从 seed 实体出发，按 depth 参数扩展
@@ -873,7 +873,7 @@
 
 ---
 
-#### 🔲 00080-09 — 打包与最终验证 (pyproject.toml + 全量测试)
+#### ✅ 00080-09 — 打包与最终验证 (pyproject.toml + 全量测试)
 
 **功能描述：**
 - requirements.txt：kuzu, openai, httpx
