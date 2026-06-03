@@ -1,0 +1,224 @@
+"""
+Entity/Relation merger with deduplication and disambiguation.
+
+WHAT:
+  This module merges rule-based and LLM-based extraction results into a
+  single, deduplicated set of entities and relations. Key behaviors:
+
+  - merge_entities(): Merges two entity lists. The dedup key is (name, type).
+    LLM results overwrite rule results for the same key (LLM has higher
+    confidence). Cross-society entity disambiguation is applied automatically.
+  - merge_relations(): Merges two relation lists. The dedup key is
+    (source_entity_id, target_entity_id, relation_type). LLM overwrites rule.
+  - disambiguate_entity(): Adds classification society prefix to document-scoped
+    entity types (regulation_clause, equipment) to prevent name collisions
+    across societies. Global types (steel_grade, ship_type, parameter,
+    system_type) are left unchanged.
+  - disambiguate_name(): Qualifies a raw name string with the society prefix.
+
+WHY:
+  The M4 Knowledge Graph engine uses a hybrid extraction pipeline:
+  1. Rule-based extraction covers ~70% of entities deterministically (fast, free).
+  2. LLM extraction fills in the remaining ~30% with higher precision.
+  3. The merger combines both results, with LLM taking priority due to its
+     contextual understanding.
+
+  Cross-society disambiguation is critical because the same clause number
+  (e.g. "section sign 5.2") means different things in DNV vs. ABS vs. LR rulebooks.
+  Without disambiguation, querying by clause number would return conflicting
+  results from multiple societies.
+
+Entity ID format: maintained from extractors (md5("name:type") or UUID).
+Relation ID format: maintained from extractors.
+Confidence: LLM results carry their original confidence; rule results are 1.0.
+"""
+
+from __future__ import annotations
+
+from contracts.knowledge_graph import Entity, Relation
+
+
+def merge_entities(
+    rule_entities: list[Entity],
+    llm_entities: list[Entity],
+    doc_society: str = "",
+) -> list[Entity]:
+    """Merge rule-based and LLM-based entity extraction results.
+
+    WHAT:
+      Merges two entity lists into one deduplicated list. The deduplication
+      key is (name.lower(), entity_type) — entities with the same name and
+      type are treated as the same entity. Rule results are loaded first,
+      then LLM results overwrite any matching keys (LLM priority).
+
+      Each entity is passed through disambiguate_entity() to apply
+      classification-society prefixing where appropriate.
+
+    WHY:
+      The hybrid extraction pipeline produces two independent entity lists.
+      The rule-based extractor catches common patterns cheaply; the LLM
+      extractor catches rare or context-dependent entities with higher
+      precision. The merger ensures no duplicates and that the more
+      trustworthy LLM result wins when both extractors agree.
+
+    Args:
+        rule_entities: Entities extracted by the rule-based extractor.
+        llm_entities: Entities extracted by the LLM extractor.
+        doc_society: Classification society code (e.g. "DNV", "ABS", "LR").
+                     Used to prefix document-scoped entity types.
+
+    Returns:
+        Deduplicated list of Entity objects with LLM priority applied.
+    """
+    # Build dedup dict keyed by (name.lower(), entity_type).
+    # WHY: Lowercasing the name prevents case-variant duplicates (e.g. "eh36"
+    #      vs "EH36") while preserving the casing of the overwriting entity.
+    merged: dict[tuple[str, str], Entity] = {}
+
+    # Phase 1: Add rule results as baseline.
+    # WHY: Rules-first ordering ensures that entities found only by rules
+    #      are still included. LLM may miss some entities that rules catch.
+    for e in rule_entities:
+        key = (e.name.lower(), e.entity_type)
+        merged[key] = disambiguate_entity(e, doc_society)
+
+    # Phase 2: Overwrite with LLM results (higher confidence).
+    # WHY: LLM extraction considers context and can distinguish between
+    #      genuine entities and coincidental pattern matches. When both
+    #      extractors find the same entity, the LLM version is preferred.
+    for e in llm_entities:
+        key = (e.name.lower(), e.entity_type)
+        merged[key] = disambiguate_entity(e, doc_society)
+
+    return list(merged.values())
+
+
+def merge_relations(
+    rule_relations: list[Relation],
+    llm_relations: list[Relation],
+) -> list[Relation]:
+    """Merge rule-based and LLM-based relation extraction results.
+
+    WHAT:
+      Merges two relation lists into one deduplicated list. The dedup key
+      is (source_entity_id, target_entity_id, relation_type). Rule results
+      are loaded first, then LLM results overwrite (LLM priority).
+
+    WHY:
+      Relations connect entities into a usable knowledge graph. Duplicate
+      relations (same source, target, and type) add noise and bloat without
+      adding information. Like entities, LLM-extracted relations carry
+      higher confidence and richer properties.
+
+    Args:
+        rule_relations: Relations generated by the rule-based extractor.
+        llm_relations: Relations extracted by the LLM extractor.
+
+    Returns:
+        Deduplicated list of Relation objects with LLM priority applied.
+    """
+    # Build dedup dict keyed by (source_entity_id, target_entity_id, relation_type).
+    # WHY: The triple (source, target, type) uniquely identifies a relation's
+    #      semantic meaning. Two relations with the same triple are the same
+    #      fact regardless of their IDs or confidence values.
+    merged: dict[tuple[str, str, str], Relation] = {}
+
+    # Phase 1: Add rule results as baseline
+    for r in rule_relations:
+        key = (r.source_entity_id, r.target_entity_id, r.relation_type)
+        merged[key] = r
+
+    # Phase 2: Overwrite with LLM results (higher confidence)
+    for r in llm_relations:
+        key = (r.source_entity_id, r.target_entity_id, r.relation_type)
+        merged[key] = r
+
+    return list(merged.values())
+
+
+def disambiguate_entity(entity: Entity, doc_society: str) -> Entity:
+    """Add classification society prefix for document-scoped entity types.
+
+    WHAT:
+      Prefixes the entity name with the classification society code for
+      document-scoped entity types (regulation_clause and equipment).
+      The original name is stored in properties["original_name"].
+
+      Global entity types (steel_grade, ship_type, parameter, system_type)
+      are NOT prefixed — they represent universal concepts.
+
+      If doc_society is empty/falsy, no disambiguation is performed.
+
+    WHY:
+      The same clause number (e.g. "section 5.2") exists in multiple
+      classification society rulebooks (DNV, ABS, LR, BV, CCS, etc.) with
+      completely different content. Without society-prefixed names, clause
+      entities from different documents would collide and produce incorrect
+      knowledge graph connections.
+
+      Equipment identifiers (e.g. "Type-A1") are also society-scoped because
+      type designations vary across classification systems.
+
+      Steel grades (EH36, DH36), ship types (bulk carrier), parameters
+      (25mm, 400 degree C), and system types are universal concepts defined
+      by IACS and IMO standards, not by individual societies. They should
+      remain global to enable cross-society knowledge integration.
+
+    Example:
+        >>> e = Entity(entity_id="id1", name="section sign 5.2",
+        ...            entity_type="regulation_clause")
+        >>> result = disambiguate_entity(e, "DNV")
+        >>> result.name
+        'DNV-section sign 5.2'
+        >>> result.properties["original_name"]
+        'section sign 5.2'
+
+    Args:
+        entity: The Entity object to potentially disambiguate.
+        doc_society: Classification society code (e.g. "DNV", "ABS", "LR").
+
+    Returns:
+        A new Entity with the prefixed name if disambiguation applies,
+        or the original Entity unchanged.
+    """
+    # Only disambiguate document-scoped entity types.
+    # WHY: regulation_clause and equipment names are defined within the
+    #      context of a specific classification society's rulebook.
+    #      Other types are global (IACS/IMO standards).
+    if not doc_society or entity.entity_type not in ("regulation_clause", "equipment"):
+        return entity
+
+    # Create a new entity with the society prefix and preserved original name.
+    # WHY: Returning a new Entity object avoids mutating the input, which
+    #      could have unintended side effects on the caller's data.
+    return Entity(
+        entity_id=entity.entity_id,
+        name=f"{doc_society}-{entity.name}",
+        entity_type=entity.entity_type,
+        properties={**entity.properties, "original_name": entity.name},
+        source_doc_id=entity.source_doc_id,
+    )
+
+
+def disambiguate_name(name: str, doc_society: str) -> str:
+    """Qualify an entity name string with a classification society prefix.
+
+    WHAT:
+      Prepends the society code to the entity name with a hyphen separator.
+      If doc_society is empty/falsy, returns the original name unchanged.
+
+    WHY:
+      This is a convenience function for use outside the Entity dataclass
+      context. It is used when only the name string is available (e.g.
+      during query construction or display formatting).
+
+    Args:
+        name: The entity name string to potentially qualify.
+        doc_society: Classification society code (e.g. "DNV", "ABS", "LR").
+
+    Returns:
+        Qualified name string (e.g. "DNV-section sign 5.2") or the original name.
+    """
+    if not doc_society:
+        return name
+    return f"{doc_society}-{name}"
