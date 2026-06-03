@@ -14,7 +14,7 @@
 | M2 | Storage Abstraction Layer | ✅ Complete | 1 | 2026-05-19 | — |
 | M3 | Retrieval Engine | ✅ Complete | 1 | 2026-05-24 | — |
 | M4 | Knowledge Graph Engine | ✅ Complete | 4 | 2026-06-03 | — |
-| M5 | RAG QA Engine | 🔲 Not Started | 0 | — | — |
+| M5 | RAG QA Engine | 🔄 In Development | 3 | 2026-06-03 | 00090-02/04/05 |
 | M6 | User Web Portal | 🔄 In Development | ~8 | 2026-05-16 | 00030 + 18 placeholders |
 | M7 | Admin Web Portal | ✅ Core Pages Complete | 2 | 2026-05-17 | 00040 + 7 placeholders |
 | M8 | API Gateway | 🔲 Not Started | 0 | — | — |

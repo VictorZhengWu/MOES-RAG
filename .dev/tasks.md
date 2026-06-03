@@ -965,7 +965,7 @@
 
 ---
 
-#### 🔲 00090-04 — 引用溯源 + Token 预算 (citation_builder.py + token_budget.py)
+#### ✅ 00090-04 — 引用溯源 + Token 预算 (citation_builder.py + token_budget.py)
 
 **功能描述：**
 - `citation_builder.py`：从 ScoredChunk 构建 Citation，去重，映射 [1][2] 标记
@@ -976,7 +976,7 @@
   - **查询长度因子**（0.5x~1.5x）：长查询给更多检索 budget，短查询给更多生成 budget
 - `estimate_tokens(text)`：字符数 ÷ 4
 
-**验证方法：** 5 个测试用例（单引用、多引用去重、Basic 预算、Pro 预算、Enterprise 预算）
+**验证方法：** 15 个测试用例（单引用、多引用去重、引用附加、格式化、Basic/Pro/Enterprise 预算、等级分配、查询长度因子、空查询无调整）
 **Task 类型：** 工具/原子函数类
 **依赖：** 无
 **关联文件：** `m5-qa-engine/m5_qa/context/citation_builder.py`, `m5-qa-engine/m5_qa/context/token_budget.py`
