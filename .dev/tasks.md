@@ -748,7 +748,7 @@
 
 ---
 
-#### 🔲 00080-01 — 项目骨架与配置 (config.py + pyproject.toml)
+#### ✅ 00080-01 — 项目骨架与配置 (config.py + pyproject.toml)
 
 **功能描述：**
 - 创建 m4-knowledge-graph 项目结构

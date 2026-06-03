@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "m4-knowledge-graph"
+version = "0.1.0"
+description = "Marine & Offshore Expert System -- Knowledge Graph Engine (M4)"
+requires-python = ">=3.12"
+dependencies = [
+    "kuzu>=0.3.0",
+    "openai>=1.0.0",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23.0"]
+all = ["m4-knowledge-graph[dev]"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
