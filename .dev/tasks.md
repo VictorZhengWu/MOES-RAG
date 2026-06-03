@@ -858,7 +858,7 @@
 
 ---
 
-#### 🔲 00080-08 — 主引擎 + M2 桥接 (engine.py + m2_bridge.py)
+#### ✅ 00080-08 — 主引擎 + M1 异步集成 (engine.py + m1_bridge.py)
 
 **功能描述：**
 - `engine.py`：实现 `KGEngineProtocol`，`extract_entities()`, `extract_relations()`, `query_entities()`, `query_relations()`, `graph_search()`, `cross_reference()`, `health_check()`
@@ -869,7 +869,7 @@
 **验证方法：** 4 个测试用例（实体提取全流程、增量删除、图谱搜索、健康检查）
 **Task 类型：** 集成/跨模块类
 **依赖：** 00080-07, M1, M2
-**关联文件：** `m4-knowledge-graph/m4_kg/core/engine.py`, `m4-knowledge-graph/m4_kg/integration/m2_bridge.py`, `m4-knowledge-graph/tests/test_engine.py`
+**关联文件：** `m4-knowledge-graph/m4_kg/core/engine.py`, `m4-knowledge-graph/m4_kg/integration/m1_bridge.py`, `m4-knowledge-graph/m4_kg/integration/__init__.py`, `m4-knowledge-graph/tests/test_engine.py`
 
 ---
 
