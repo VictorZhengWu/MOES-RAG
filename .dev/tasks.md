@@ -947,7 +947,7 @@
 
 ---
 
-#### 🔲 00090-03 — Prompt 管理器 (prompt_manager.py)
+#### ✅ 00090-03 — Prompt 管理器 (prompt_manager.py)
 
 **功能描述：**
 - `PromptManager`：DB 存储 Prompt 模板（SQLite 表 `m5_prompts`）
@@ -958,10 +958,10 @@
 - 模板变量 `{retrieved_context}`, `{graph_context}` 运行时填充
 - **Phase 3 加版本控制，当前不做**
 
-**验证方法：** 4 个测试用例（取模板、语言降级、增改模板、变量填充）
+**验证方法：** 6 个测试用例（取英文模板、中文降级到英文、硬编码默认回退、UPSERT、变量填充、列出模板）
 **Task 类型：** 工具/原子函数类
 **依赖：** 无
-**关联文件：** `m5-qa-engine/m5_qa/generation/prompt_manager.py`
+**关联文件：** `m5-qa-engine/m5_qa/generation/prompt_manager.py`, `m5-qa-engine/tests/test_prompt_manager.py`
 
 ---
 
