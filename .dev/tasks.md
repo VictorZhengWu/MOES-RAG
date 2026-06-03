@@ -780,7 +780,7 @@
 
 ---
 
-#### 🔲 00080-03 — LLM 抽取器 (llm_extractor.py + prompt_templates.py)
+#### ✅ 00080-03 — LLM 抽取器 (llm_extractor.py + prompt_templates.py)
 
 **功能描述：**
 - Prompt 模板管理（中英文），控制 JSON 输出格式
