@@ -911,84 +911,88 @@
 
 ### 🔲 00090 — M5 智能问答引擎
 
-> **详细设计**：`.dev/specs/m5-qa-engine-design-2026-06-03.md`
-> **核心原则**：一套引擎三种模式，OpenAI 兼容 API，分级服务 + Premium 配额
+> **详细设计**：`.dev/specs/m5-qa-engine-design-2026-06-03.md` (v2)
+> **核心原则**：一套引擎三种模式，OpenAI 兼容 API，分级服务 + Premium 配额 + 动态 Token 预算
 
 ---
 
-#### 🔲 00090-01 — 骨架 + 配置 + 等级系统 (config.py + tier.py + pyproject.toml)
+#### 🔲 00090-01 — 骨架 + 配置 + 等级系统 (config.py + tier.py + router.py + pyproject.toml)
 
 **功能描述：**
 - 创建 m5-qa-engine 项目结构
 - pyproject.toml：`openai`, `httpx`, `aiosqlite`
-- config.py：`QAConfig`（LLM backend, mode, max_tokens, system_prompt_template）、`LLMBackend`
-- tier.py：`UserTier` + `PremiumQuota`（每日配额管理，`can_use()` / `consume()`）
+- config.py：`QAConfig`（LLMBackend, db_path, system_prompt_id）
+- tier.py：`UserTier`（三级 + 上下文窗口 4K/8K/16K）+ `PremiumQuota`（`can_use()`/`consume()`）
+- router.py：`ModeRouter.select_mode(user_id, tier)` → "simple"/"pipeline"/"self_rag"
 
-**验证方法：** 4 个测试用例（默认配置、自定义 LLM、配额消耗、配额耗尽）
+**验证方法：** 5 个测试用例（默认配置、自定义 LLM、配额消耗、配额耗尽、模式路由）
 **Task 类型：** 工具/原子函数类
 **依赖：** 无
-**关联文件：** `m5-qa-engine/m5_qa/core/config.py`, `m5-qa-engine/m5_qa/core/tier.py`, `m5-qa-engine/pyproject.toml`
+**关联文件：** `m5-qa-engine/m5_qa/core/config.py`, `m5-qa-engine/m5_qa/core/tier.py`, `m5-qa-engine/m5_qa/core/router.py`, `m5-qa-engine/pyproject.toml`
 
 ---
 
-#### 🔲 00090-02 — LLM 客户端 (llm_client.py + streaming.py)
+#### 🔲 00090-02 — LLM 客户端 + 流式生成 (llm_client.py + streaming.py)
 
 **功能描述：**
-- `LLMClient`：封装 OpenAI 兼容 API（覆盖 Ollama / DeepSeek / OpenAI / Claude）
-- `complete()` 非流式调用，`complete_stream()` SSE 流式
-- 使用 `openai.AsyncOpenAI` 客户端，`base_url` 区分不同后端
+- `LLMClient`：单一客户端，`openai.AsyncOpenAI` 覆盖 Ollama/DeepSeek/OpenAI/Claude
+- `complete()` 非流式，`complete_stream()` SSE 迭代器
 - Token 估算：`estimate_tokens(text)` 字符数 ÷ 4
+- **不创建独立 provider 文件**——base_url 区分后端
 
-**验证方法：** 4 个测试用例（Mock OpenAI 响应、token 估算、base_url 构造、流式 mock）
+**验证方法：** 4 个测试用例（Mock 响应、token 估算、流式 mock、base_url 构造）
 **Task 类型：** 模块/服务类
 **依赖：** 00090-01
 **关联文件：** `m5-qa-engine/m5_qa/generation/llm_client.py`, `m5-qa-engine/m5_qa/generation/streaming.py`
 
 ---
 
-#### 🔲 00090-03 — Prompt 构建器 (prompt_builder.py)
+#### 🔲 00090-03 — Prompt 管理器 (prompt_manager.py)
 
 **功能描述：**
-- `build_system_prompt(retrieval_context, graph_context)`：拼接系统提示 + 检索上下文 + 图谱上下文
-- `build_chat_messages(system_prompt, conversation_history, current_query)`：拼接完整消息列表
-- `estimate_prompt_tokens(messages)`：估算 token 数
-- 上下文窗口分配：chunks ≤4K + graph ≤1K + history ≤2K + reserve 0.7K
+- `PromptManager`：DB 存储 Prompt 模板（SQLite 表 `m5_prompts`）
+- `get_prompt(prompt_id)`：按 ID 取模板
+- `get_prompt_by_language(base_id, language)`：语言降级（→ en → 硬编码默认）
+- `set_prompt(prompt_id, name, language, content)`：增/改模板
+- 预置中英文 system prompt + citation prompt
+- 模板变量 `{retrieved_context}`, `{graph_context}` 运行时填充
+- **Phase 3 加版本控制，当前不做**
 
-**验证方法：** 3 个测试用例（prompt 包含检索文本、历史截断、token 不超预算）
+**验证方法：** 4 个测试用例（取模板、语言降级、增改模板、变量填充）
 **Task 类型：** 工具/原子函数类
 **依赖：** 无
-**关联文件：** `m5-qa-engine/m5_qa/generation/prompt_builder.py`
+**关联文件：** `m5-qa-engine/m5_qa/generation/prompt_manager.py`
 
 ---
 
-#### 🔲 00090-04 — 引用溯源 (citation_builder.py)
+#### 🔲 00090-04 — 引用溯源 + Token 预算 (citation_builder.py + token_budget.py)
 
 **功能描述：**
-- `build_citations(chunks)`：从 ScoredChunk 元数据构建 Citation 列表
-- Citation 格式：`{index, source_doc, section, clause_id, excerpt, url}`
-- `attach_citations_to_answer(answer, citations)`：将 [1] [2] 标记映射到引用列表
-- 去重逻辑：同源 chunk 只保留一条引用
+- `citation_builder.py`：从 ScoredChunk 构建 Citation，去重，映射 [1][2] 标记
+- `token_budget.py`：`TokenBudget` dataclass + `allocate_budget(tier)` 按等级动态分配
+  - Basic 4K: retrieval 30% / history 20% / generation 50%
+  - Pro 8K: retrieval 40% / history 20% / generation 40%
+  - Enterprise 16K: retrieval 50% / history 20% / generation 30%
+- `estimate_tokens(text)`：字符数 ÷ 4
 
-**验证方法：** 3 个测试用例（单引用、多引用去重、引用映射）
+**验证方法：** 5 个测试用例（单引用、多引用去重、Basic 预算、Pro 预算、Enterprise 预算）
 **Task 类型：** 工具/原子函数类
 **依赖：** 无
-**关联文件：** `m5-qa-engine/m5_qa/context/citation_builder.py`
+**关联文件：** `m5-qa-engine/m5_qa/context/citation_builder.py`, `m5-qa-engine/m5_qa/context/token_budget.py`
 
 ---
 
 #### 🔲 00090-05 — 检索融合 (retriever.py + fusion.py)
 
 **功能描述：**
-- `retriever.py`：`RetrievalClient` 封装 M3 + M4 调用
+- `retriever.py`：`RetrievalClient` 封装 M3+M4 调用
   - `simple_retrieve(query)` → 仅 M3
-  - `parallel_retrieve(query, depth)` → M3 + M4 `asyncio.gather` 并行
-- `fusion.py`：`RetrievalContext` 融合
-  - M3 chunks + M4 graph → 统一上下文结构
-  - 图结果格式化为文本描述嵌入 prompt
+  - `parallel_retrieve(query, depth)` → M3+M4 `asyncio.gather`
+- `fusion.py`：`RetrievalContext` 构建 + 图层格式化为文本描述
 
 **验证方法：** 4 个测试用例（M3 调用、M3+M4 并行、M4 失败降级、上下文格式）
 **Task 类型：** 模块/服务类
-**依赖：** 00090-03, 00090-04
+**依赖：** 无（Mock M3/M4）
 **关联文件：** `m5-qa-engine/m5_qa/context/retriever.py`, `m5-qa-engine/m5_qa/context/fusion.py`
 
 ---
@@ -996,60 +1000,50 @@
 #### 🔲 00090-06 — 三种管线 (simple.py + pipeline.py + self_rag.py)
 
 **功能描述：**
-- `simple.py`：M3 检索 → 拼接 prompt → LLM 生成 → 返回答案
-- `pipeline.py`：M3+M4 并行检索 → 融合上下文 → 引用构建 → LLM 生成 → 返回答案+引用
-- `self_rag.py`：循环最多 3 次
-  1. 检索
-  2. 评估器（规则: 关键词命中率 ≥ 0.3）
-  3. 不足 → 改查询 → 回到 1
-  4. LLM 生成
-  5. 引用验证器（规则: chunk 文本命中率 ≥ 0.3）
-  6. 不足 → 补充检索 → 回到 1
-  7. 返回答案+引用
+- `simple.py`：M3 → token_budget → prompt → LLM → 答案（4K 上下文）
+- `pipeline.py`：M3+M4 并行 → fusion → citation → token_budget → prompt → LLM → 答案+引用（8K 上下文）
+- `self_rag.py`：最多 3 次迭代，规则评估器 + 规则引用验证器
+  1. 检索 → 2. 评估（关键词命中率≥0.3）→ 3. 不够则改查询 → 4. LLM 生成 → 5. 验证（chunk 覆盖率≥0.3）→ 6. 不够则补充检索
 
-**验证方法：** 6 个测试用例（simple 全流程、pipeline 全流程、self_rag 评估通过、self_rag 重试、self_rag 超限终止、空检索结果）
+**验证方法：** 6 个测试用例（simple 全流程、pipeline 全流程、self_rag 评估通过、self_rag 重试、self_rag 超限终止、空检索）
 **Task 类型：** 模块/服务类
-**依赖：** 00090-02, 00090-05
-**关联文件：** `m5-qa-engine/m5_qa/pipeline/simple.py`, `m5-qa-engine/m5_qa/pipeline/pipeline.py`, `m5-qa-engine/m5_qa/pipeline/self_rag.py`
+**依赖：** 00090-02, 00090-04, 00090-05
+**关联文件：** `m5-qa-engine/m5_qa/pipelines/simple.py`, `m5-qa-engine/m5_qa/pipelines/pipeline.py`, `m5-qa-engine/m5_qa/pipelines/self_rag.py`
 
 ---
 
 #### 🔲 00090-07 — 对话管理 + 上下文压缩 (manager.py + compressor.py)
 
 **功能描述：**
-- `manager.py`：`ConversationManager` 使用 aiosqlite 操作 M2 SQLite
-  - `create_conversation`, `get_conversation`, `list_conversations`, `delete_conversation`
-  - `add_message`, `get_messages`
-- `compressor.py`：`ContextCompressor`
-  - `compress(messages, max_tokens)`：保留最后 N 条完整消息 + 旧消息截断
-  - 控制 history ≤ 2K tokens
+- `manager.py`：`ConversationManager` `aiosqlite` 操作 M2 SQLite
+  - `create/get/list/delete` + `add_message/get_messages`
+  - 三张表：`conversations`, `messages`, `m5_quotas`
+- `compressor.py`：`ContextCompressor.compress(messages, max_tokens)`
+  - 保留最后 N 条完整消息 + 旧消息截断
 
-**验证方法：** 4 个测试用例（创建+读取对话、消息追加、删除对话、上下文压缩截断）
+**验证方法：** 4 个测试用例（创建+读取、消息追加、删除、压缩截断）
 **Task 类型：** 模块/服务类
 **依赖：** 00090-01
 **关联文件：** `m5-qa-engine/m5_qa/conversation/manager.py`, `m5-qa-engine/m5_qa/conversation/compressor.py`
 
 ---
 
-#### 🔲 00090-08 — 主引擎 + OpenAI 兼容 API (engine.py + router.py)
+#### 🔲 00090-08 — 主引擎 + 监控 (engine.py + monitoring/metrics.py + logger.py)
 
 **功能描述：**
-- `router.py`：`ModeRouter.select_mode(user_tier, query)` → "simple" | "pipeline" | "self_rag"
-  - 检查 Premium 配额 → 高等级模式 vs 降级模式
 - `engine.py`：`QAEngine` 实现 `QAEngineProtocol`
-  - `chat(request)`：完整管线 → `ChatResponse`
-  - `chat_stream(request)`：SSE 流式 → `AsyncIterator[str]`
-  - `list_models()`：返回可用模型列表
-  - `health_check()`：检查 M3+M4+LLM+对话存储
+  - `chat()` → `ChatResponse`、`chat_stream()` → SSE、`list_conversations/get_conversation/delete_conversation`、`list_models`、`health_check()`
+- `monitoring/metrics.py`：`MetricsCollector` 记录延迟/token/模式，`get_summary()` 聚合
+- `monitoring/logger.py`：`StructuredLogger` JSON 结构化日志
 
-**验证方法：** 5 个测试用例（chat 正常流程、stream 流式、Premium 升级、Premium 耗尽降级、health_check）
+**验证方法：** 5 个测试用例（chat 流程、stream 流式、Premium 升级、降级、health_check）
 **Task 类型：** 集成/跨模块类
-**依赖：** 00090-06, 00090-07
-**关联文件：** `m5-qa-engine/m5_qa/core/engine.py`, `m5-qa-engine/m5_qa/core/router.py`
+**依赖：** 00090-03, 00090-04, 00090-06, 00090-07
+**关联文件：** `m5-qa-engine/m5_qa/core/engine.py`, `m5-qa-engine/m5_qa/monitoring/metrics.py`, `m5-qa-engine/m5_qa/monitoring/logger.py`
 
 ---
 
-#### 🔲 00090-09 — 打包与最终验证 (pyproject.toml + 全量测试)
+#### 🔲 00090-09 — 打包与最终验证
 
 **功能描述：**
 - requirements.txt：openai, httpx, aiosqlite
@@ -1081,8 +1075,9 @@
                                                       00090-09 (packaging)
 ```
 
-- 00090-03 (prompt) + 00090-04 (citation) + 00090-07 (conversation) 可并行于 00090-02
-- 00090-06 是最大任务（三种管线），串行于 00090-05 之后
+- 00090-02/03/04/05/07 全部可并行（5 个 agent 同时开工）——各自 Mock 依赖、独立测试
+- 00090-06 是最大任务（三种管线），串行于 -02/-04/-05 之后
+- 00090-08 集合所有模块，串行于 -03/-04/-06/-07 之后
 
 ---
 
