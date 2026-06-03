@@ -909,7 +909,7 @@
 
 00080-02 和 00080-03 可部分并行（规则抽取无 LLM 依赖）。00080-05（Kuzu 存储）和 00080-06（图遍历）可部分并行（先写 Schema 测试再写遍历）。
 
-### 🔲 00090 — M5 智能问答引擎
+### ✅ 00090 — M5 智能问答引擎
 
 > **详细设计**：`.dev/specs/m5-qa-engine-design-2026-06-03.md` (v2)
 > **核心原则**：一套引擎三种模式，OpenAI 兼容 API，分级服务 + Premium 配额 + 动态 Token 预算
@@ -932,7 +932,7 @@
 
 ---
 
-#### 🔲 00090-02 — LLM 客户端 + 流式生成 (llm_client.py + streaming.py)
+#### ✅ 00090-02 — LLM 客户端 + 流式生成 (llm_client.py + streaming.py)
 
 **功能描述：**
 - `LLMClient`：单一客户端，`openai.AsyncOpenAI` 覆盖 Ollama/DeepSeek/OpenAI/Claude
@@ -998,7 +998,7 @@
 
 ---
 
-#### 🔲 00090-06 — 三种管线 (simple.py + pipeline.py + self_rag.py)
+#### ✅ 00090-06 — 三种管线 (simple.py + pipeline.py + self_rag.py)
 
 **功能描述：**
 - `simple.py`：M3 → token_budget → prompt → LLM → 答案（4K 上下文）
@@ -1014,7 +1014,7 @@
 
 ---
 
-#### 🔲 00090-07 — 对话管理 + 上下文压缩 (manager.py + compressor.py)
+#### ✅ 00090-07 — 对话管理 + 上下文压缩 (manager.py + compressor.py)
 
 **功能描述：**
 - `manager.py`：`ConversationManager` 使用 `aiosqlite` 管理 M5 自有的 `m5_qa.db`
@@ -1045,7 +1045,7 @@
 
 ---
 
-#### 🔲 00090-09 — 打包与最终验证
+#### ✅ 00090-09 — 打包与最终验证
 
 **功能描述：**
 - requirements.txt：openai, httpx, aiosqlite

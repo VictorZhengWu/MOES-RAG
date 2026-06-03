@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Marine & Offshore Expert System -- RAG QA Engine (M5)"
 requires-python = ">=3.12"
 dependencies = [
+    "marine-rag-contracts>=0.1.0",
     "openai>=1.0.0",
     "httpx>=0.27.0",
     "aiosqlite>=0.20.0",

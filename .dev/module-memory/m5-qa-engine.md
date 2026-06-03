@@ -8,15 +8,33 @@
 
 | Field | Value |
 |-------|-------|
-| Status | 🔄 In Development |
-| Active Tasks | 00090-08 |
+| Status | ✅ Complete |
+| Active Tasks | — |
 | First Dev Date | 2026-06-03 |
 | Last Session Date | 2026-06-03 |
-| Total Sessions | 5 |
+| Total Sessions | 6 |
 
 ---
 
 ## 2. Session History
+
+### Session 6 — 2026-06-03: Task 00090-09 (Final Packaging and Verification)
+
+**Tasks completed**: 00090-09
+**Key decisions**:
+- Added `__all__` exports to `__init__.py` (QAEngine, QAConfig, LLMBackend) for public API
+- Added `marine-rag-contracts>=0.1.0` to pyproject.toml dependencies
+- Known limitation: contracts editable install only maps `tests` subpackage, not `contracts` top-level module. This is a pre-existing Task 00010 packaging issue. M5 tests work from workspace root where `contracts/` is on `sys.path`.
+- All 9 M5 sub-tasks complete; M5 module status updated to Complete
+
+**Test results**: 83/83 passed (full regression), pip install + import verified
+
+**M5 final statistics**:
+- 25 source files (`m5_qa/`)
+- 17 test files (`tests/`)
+- 83 tests total
+- 16 git commits
+- 6 development sessions
 
 ### Session 5 — 2026-06-03: Task 00090-08 (QAEngine + Monitoring)
 

@@ -11,4 +11,8 @@ Three operating modes:
   - self_rag:  Iterative retrieval with quality checks (Enterprise tier, 16K context)
 """
 
+from m5_qa.core.config import LLMBackend, QAConfig
+from m5_qa.core.engine import QAEngine
+
+__all__ = ["QAEngine", "QAConfig", "LLMBackend"]
 __version__ = "0.1.0"
