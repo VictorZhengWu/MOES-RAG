@@ -9,14 +9,29 @@
 | Field | Value |
 |-------|-------|
 | Status | 🔄 In Development |
-| Active Tasks | 00090-02, 00090-04, 00090-05 |
+| Active Tasks | 00090-02, 00090-04 |
 | First Dev Date | 2026-06-03 |
 | Last Session Date | 2026-06-03 |
-| Total Sessions | 3 |
+| Total Sessions | 4 |
 
 ---
 
 ## 2. Session History
+
+### Session 4 — 2026-06-03: Task 00090-05 (Retrieval Client + Fusion)
+
+**Tasks completed**: 00090-05
+**Key decisions**:
+- `RetrievalClient` wraps M3 + M4 engines; both engines are optional constructor params for graceful degradation
+- `simple_retrieve()` calls M3 only; `parallel_retrieve()` calls M3+M4 via `asyncio.create_task`
+- Each engine failure is isolated — M4 failure does not block M3 results, M3 failure returns empty chunks
+- `fuse_context()` truncates chunks to fit within `max_retrieval_tokens` (first-come, first-serve order)
+- Graph entities capped at 20, relations capped at 10 in fusion output
+- `estimate_tokens()` in `fusion.py` mirrors the same heuristic used in `token_budget.py` (`len(text) // 4`)
+- Tests mock M3/M4 engines using `unittest.mock.AsyncMock`
+
+**Gotchas**:
+- None — implementation passed all tests on first attempt
 
 ### Session 3 — 2026-06-03: Task 00090-04 (Citation Builder + Token Budget)
 

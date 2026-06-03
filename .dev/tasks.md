@@ -983,7 +983,7 @@
 
 ---
 
-#### 🔲 00090-05 — 检索融合 (retriever.py + fusion.py)
+#### ✅ 00090-05 — 检索融合 (retriever.py + fusion.py)
 
 **功能描述：**
 - `retriever.py`：`RetrievalClient` 封装 M3+M4 调用
