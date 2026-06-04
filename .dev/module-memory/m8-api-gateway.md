@@ -8,23 +8,32 @@
 
 | Field | Value |
 |-------|-------|
-| Status | 🔲 Not Started |
-| Active Tasks | — |
-| First Dev Date | — |
-| Last Session Date | — |
-| Total Sessions | 0 |
+| Status | 🔄 In Progress |
+| Active Tasks | 00100-03 (rate limiter) |
+| First Dev Date | 2026-06-04 |
+| Last Session Date | 2026-06-04 |
+| Total Sessions | 2 |
 
 ---
 
 ## 2. Session History
 
-> *No sessions recorded yet.*
+### Session 2: 00100-03 Rate Limiter (2026-06-04)
+- Implemented `RateLimiter` class — in-memory sliding window
+- Tiered limits: basic 30/min, pro 120/min, enterprise unlimited (-1)
+- 3 tests, all passed. Full regression: 11/11.
+
+### Session 1: 00100-01 + 00100-02 (2026-06-04)
+- Created project skeleton: pyproject.toml, config.py, app factory
+- Implemented SQLite-backed API key manager (generate, validate, revoke)
+- 8 tests, all passed.
 
 ---
 
 ## 3. Key Design Decisions (Module-Internal)
 
-> *No decisions recorded yet.*
+- **Rate limiter is in-memory, not persistent**: Restart resets all counters. Acceptable for Personal mode. SaaS deployment will need Redis-backed implementation (swap via DI — no code changes needed in callers).
+- **Sliding window cleanup is lazy**: Expired timestamps removed on each check() call, not via background thread. Keeps the implementation simple with no threading concerns.
 
 ---
 
