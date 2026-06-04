@@ -20,6 +20,13 @@ class RateLimiter:
     Personal mode. No Redis dependency. Restarting the server resets
     all counters — acceptable for Personal/Enterprise, needs Redis in
     Phase 3 SaaS deployment.
+
+    RESTART BEHAVIOR: All rate limit counters are stored in-memory and
+    reset to zero on server restart. This is acceptable for personal and
+    enterprise deployments where temporary rate limit resets during
+    maintenance are acceptable. For SaaS deployments requiring
+    persistent rate limiting across restarts, this should be replaced
+    with a Redis-based implementation.
     """
 
     def __init__(self, rate_limits: dict[str, int] | None = None):

@@ -138,3 +138,120 @@ async def revoke_key(
         )
 
     return RevokeKeyResponse(status="revoked", key_prefix=key_prefix)
+
+
+@router.post("/admin/initialize-engine")
+async def initialize_engine(
+    engine_config: dict,
+    request: Request,
+):
+    """Initialize the QA Engine with provided configuration.
+
+    WHAT: Sets the QA Engine instance in app.state.qa_engine based on
+          the provided configuration dictionary. This endpoint allows
+          runtime initialization of the QA Engine after the gateway
+          has started.
+
+    WHY: The QA Engine requires an LLM backend configuration which may
+         not be available at gateway startup. This endpoint allows the
+         admin portal (M7) or deployment scripts to initialize the
+         engine with the appropriate configuration.
+
+    Request body (JSON):
+        {
+            "llm_backend": "deepseek",
+            "api_key": "...",
+            "base_url": "...",
+            "model": "...",
+            ...other QA Engine config
+        }
+
+    Returns:
+        {"status": "ok", "message": "QA Engine initialized successfully"}
+
+    Raises:
+        HTTPException(400): If the QA Engine is already initialized.
+        HTTPException(500): If initialization fails (invalid config, etc.).
+    """
+    # Check if QA Engine is already initialized
+    if request.app.state.qa_engine is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="QA Engine already initialized. Use PUT /admin/initialize-engine to reconfigure.",
+        )
+
+    try:
+        # Import the QA Engine here to avoid hard dependency at import time
+        # This allows the gateway to start even if M5 is not installed
+        from m5_qa import QAEngine
+        from m5_qa.core.config import QAConfig
+
+        # Create the QA Engine configuration from the provided dictionary
+        config = QAConfig(**engine_config)
+
+        # Initialize the QA Engine
+        qa_engine = QAEngine(config)
+
+        # Store the QA Engine in app state
+        request.app.state.qa_engine = qa_engine
+
+        return {
+            "status": "ok",
+            "message": "QA Engine initialized successfully",
+        }
+
+    except ImportError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"M5 QA Engine not available: {e}. Ensure M5 is properly installed.",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to initialize QA Engine: {e}",
+        )
+
+
+@router.put("/admin/initialize-engine")
+async def reconfigure_engine(
+    engine_config: dict,
+    request: Request,
+):
+    """Reconfigure the QA Engine with new configuration.
+
+    WHAT: Replaces the existing QA Engine instance in app.state.qa_engine
+          with a new instance created from the provided configuration.
+
+    WHY: Allows runtime reconfiguration of the QA Engine when LLM backend
+         settings change (e.g., switching API providers, updating model
+         parameters). Useful for A/B testing and gradual rollout.
+
+    Request body (JSON):
+        Same as POST /admin/initialize-engine
+
+    Returns:
+        {"status": "ok", "message": "QA Engine reconfigured successfully"}
+
+    Raises:
+        HTTPException(500): If reconfiguration fails.
+    """
+    try:
+        from m5_qa import QAEngine
+        from m5_qa.core.config import QAConfig
+
+        config = QAConfig(**engine_config)
+        qa_engine = QAEngine(config)
+
+        # Replace the existing QA Engine
+        request.app.state.qa_engine = qa_engine
+
+        return {
+            "status": "ok",
+            "message": "QA Engine reconfigured successfully",
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to reconfigure QA Engine: {e}",
+        )

@@ -90,6 +90,15 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
         # QA Engine is lazy-initialized. It requires an LLM backend config
         # which is set up separately via the admin portal (M7).
         # Set to None here; routes check for None and return 500 if not ready.
+        #
+        # INITIALIZATION: The QA Engine must be initialized at runtime via one
+        # of these methods:
+        # 1. Direct injection: app.state.qa_engine = QAEngine(config)
+        # 2. Admin endpoint: POST /admin/initialize-engine (if implemented)
+        # 3. Configuration-based: Load from deploy.yaml at startup
+        #
+        # For production deployments, the initialization should happen during
+        # the startup phase after the LLM backend configuration is loaded.
         app.state.qa_engine = None
 
     # ------------------------------------------------------------------
