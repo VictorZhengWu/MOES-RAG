@@ -57,3 +57,34 @@ async def sse_done() -> str:
         str: The literal string "data: [DONE]\n\n".
     """
     return "data: [DONE]\n\n"
+
+
+async def sse_citations(citations: list) -> str:
+    """
+    WHAT: Format source citations as a final SSE event before [DONE].
+
+    WHY: M6 frontend needs citation data to populate the reference panel.
+         Pushing citations as an SSE event (rather than only in the non-streaming
+         ChatResponse) ensures the streaming UX also has full source traceability.
+         The frontend parses the "type": "citations" field to distinguish this
+         event from regular content deltas.
+
+    Returns:
+        str: SSE event with type=citations and the serialized citation list.
+    """
+    # Serialize Citation objects to dicts (if they are dataclasses, convert)
+    cit_list = []
+    for c in citations:
+        if hasattr(c, "__dict__"):
+            cit_list.append({
+                "index": c.index,
+                "source_doc": c.source_doc,
+                "section": c.section,
+                "clause_id": c.clause_id,
+                "excerpt": c.excerpt,
+            })
+        else:
+            cit_list.append(c)
+
+    payload = {"type": "citations", "data": cit_list}
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"

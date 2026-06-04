@@ -162,7 +162,7 @@ class QAEngine:
         # Currently hardcoded to "basic" — future: lookup from user DB/M7 admin.
         # The router resolves the tier string to a UserTier object with
         # context_window size and default_mode ("simple"/"pipeline"/"self_rag").
-        tier_level = "basic"
+        tier_level = getattr(request, "tier", None) or self._config.default_tier
         _, tier = self._router.select_mode(user_id, tier_level)
         mode = tier.default_mode
 
@@ -273,7 +273,7 @@ class QAEngine:
         user_id = request.user or "anonymous"
 
         # Resolve tier and mode (same logic as chat())
-        tier_level = "basic"
+        tier_level = getattr(request, "tier", None) or self._config.default_tier
         _, tier = self._router.select_mode(user_id, tier_level)
         mode = tier.default_mode
 
@@ -283,18 +283,32 @@ class QAEngine:
             if premium_ok:
                 mode = "self_rag"
 
-        # For streaming, we build the prompt ourselves rather than using the
-        # pipeline functions (which return complete answers). We use the
-        # prompt manager to build the system prompt and then stream the LLM
-        # response token by token.
+        # Step 1: Retrieve real context FIRST (non-streaming).
+        # Streaming is about LLM token delivery, NOT about skipping retrieval.
+        # Without real context, the LLM generates from its own knowledge only.
+        if mode == "simple":
+            ctx = await self._retriever.simple_retrieve(user_msg)
+            graph_text = "(not available in simple mode)"
+        else:
+            ctx = await self._retriever.parallel_retrieve(
+                user_msg, kg_depth=tier.traversal_depth if hasattr(tier, "traversal_depth") else 3
+            )
+            graph_text = "(no graph insights)" if not ctx.graph or not ctx.graph.entities else (
+                "\n".join(f"- {e.name} ({e.entity_type})" for e in ctx.graph.entities[:20])
+            )
 
-        # Build system prompt with empty context (streaming mode is simpler —
-        # full context building happens in non-streaming pipeline functions).
+        # Step 2: Token budget + context fusion
+        from m5_qa.context.token_budget import allocate_budget
+        from m5_qa.context.fusion import fuse_context
+        budget = allocate_budget(tier_level, user_msg)
+        context_text = fuse_context(ctx, budget.retrieval_limit)
+
+        # Step 3: Build prompt with REAL retrieval context
         system_template = await self._prompt_manager.get_prompt("system_en", "en")
         system_prompt = self._prompt_manager.fill_template(
             system_template,
-            retrieved_context="(context loading...)",
-            graph_context="(graph loading...)",
+            retrieved_context=context_text,
+            graph_context=graph_text,
         )
 
         messages = [
@@ -302,13 +316,19 @@ class QAEngine:
             {"role": "user", "content": user_msg},
         ]
 
-        # Stream tokens from the LLM and wrap each in SSE format
+        # Step 4: Stream tokens from the LLM
         async for content in self._llm_client.complete_stream(messages):
-            # Each content delta is wrapped as an SSE event for the frontend
             chunk = await sse_chunk(content)
             yield chunk
 
-        # Signal stream completion with the [DONE] marker
+        # Step 5: Push citations as final SSE event before [DONE]
+        from m5_qa.context.citation_builder import build_citations
+        citations = build_citations(ctx.chunks)
+        yield await sse_chunk("", finish_reason="stop")
+        if citations:
+            yield await sse_citations(citations)
+
+        # Step 6: Signal stream completion
         done = await sse_done()
         yield done
 

@@ -59,6 +59,10 @@ class QAConfig:
     system_prompt_id: str = "system_en"
     """Prompt template ID to use for the system message (e.g., 'system_en', 'system_cn')."""
 
+    default_tier: str = "basic"
+    """Default user tier: 'basic' | 'pro' | 'enterprise'.
+    Overridden by request.tier if present (future: M8 API gateway passes it)."""
+
     retrieval_score_threshold: float = 0.5
     """Minimum cosine similarity score for M3 retrieval chunks in Self-RAG mode.
     Chunks below this threshold trigger a re-query with rewritten search terms."""
