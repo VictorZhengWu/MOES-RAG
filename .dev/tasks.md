@@ -1123,7 +1123,112 @@
 
 ### 🔲 00100 — M8 API 网关
 
-（详细设计将在开发本模块时制定）
+> **详细设计**：`.dev/specs/m8-api-gateway-design-2026-06-03.md`
+> **核心原则**：独立 FastAPI 进程（8000），自管 API Key (`sk-m8-xxx`)，分级限流
+
+---
+
+#### 🔲 00100-01 — 骨架 + 配置 + FastAPI 工厂 (config.py + app.py + pyproject.toml)
+
+**功能描述：**
+- 创建 m8-api-gateway 项目结构
+- pyproject.toml：`fastapi`, `uvicorn`, `aiosqlite`, `httpx`
+- config.py：`GatewayConfig`（host, port, db_path, rate_limits dict）
+- app.py：`create_app()` FastAPI 工厂 + 生命周期（startup 建表，shutdown 关 DB）
+
+**验证方法：** 3 个测试用例（默认配置、app 创建、health endpoint）
+**Task 类型：** 工具/原子函数类
+**依赖：** 无
+**关联文件：** `m8-api-gateway/m8_gateway/core/config.py`, `m8-api-gateway/m8_gateway/core/app.py`, `m8-api-gateway/pyproject.toml`
+
+---
+
+#### 🔲 00100-02 — API Key 管理 (key_manager.py)
+
+**功能描述：**
+- `KeyManager`：完整的 Key 生命周期
+  - `generate_key(user_id, tier)` → 返回 `sk-m8-{16hex}`，存 sha256 哈希
+  - `validate_key(raw_key)` → 查哈希，返回 `APIKey \| None`
+  - `revoke_key(key_prefix)` → 设 `is_active=0`
+  - `list_keys(user_id)` → 返回列表（只显示 prefix，不显示完整 key）
+  - `touch_key(key_prefix)` → 更新 `last_used_at`
+- SQLite 表 `api_keys`（key_hash, key_prefix, user_id, tier, created_at, is_active, last_used_at）
+- 生成后只展示一次完整 key
+
+**验证方法：** 4 个测试用例（生成 key、验证有效 key、验证无效 key、撤销后验证失败）
+**Task 类型：** 模块/服务类
+**依赖：** 00100-01
+**关联文件：** `m8-api-gateway/m8_gateway/auth/key_manager.py`
+
+---
+
+#### 🔲 00100-03 — 限流器 (limiter.py)
+
+**功能描述：**
+- `RateLimiter`：内存滑动窗口
+  - `check(key_prefix, tier)` → bool（是否允许）
+  - 窗口：60 秒滑动
+  - 限制：Basic 30/min, Pro 120/min, Enterprise unlimited (-1)
+  - 过期窗口自动清理
+- 非持久化（重启丢失计数，Personal 模式可接受）
+
+**验证方法：** 3 个测试用例（未达限制允许、达限制拒绝、enterprise 无限流）
+**Task 类型：** 工具/原子函数类
+**依赖：** 00100-01
+**关联文件：** `m8-api-gateway/m8_gateway/rate_limit/limiter.py`
+
+---
+
+#### 🔲 00100-04 — 路由 + 中间件 (routes/ + auth/middleware.py)
+
+**功能描述：**
+- `auth/middleware.py`：`get_api_key()` FastAPI Dependency
+  - 提取 `Authorization: Bearer sk-m8-xxx`
+  - 验证 key → `APIKey` 对象，401 若无效
+- `routes/chat.py`：`POST /v1/chat/completions`
+  - 鉴权 + 限流 + 调用 M5 `QAEngine.chat()` → 返回 ChatResponse
+- `routes/models.py`：`GET /v1/models`
+  - 鉴权 + 调用 M5 `QAEngine.list_models()`
+- `routes/keys.py`：key 管理端点
+  - `POST /admin/keys` — 生成新 key
+  - `GET /admin/keys` — 列出 key
+  - `DELETE /admin/keys/{prefix}` — 撤销 key
+
+**验证方法：** 4 个测试用例（无 key 返回 401、有效 key 200、超出限流 429、admin 生成 key）
+**Task 类型：** 模块/服务类
+**依赖：** 00100-02, 00100-03
+**关联文件：** `m8-api-gateway/m8_gateway/routes/chat.py`, `m8-api-gateway/m8_gateway/routes/models.py`, `m8-api-gateway/m8_gateway/routes/keys.py`, `m8-api-gateway/m8_gateway/auth/middleware.py`
+
+---
+
+#### 🔲 00100-05 — 打包与最终验证
+
+**功能描述：**
+- requirements.txt：fastapi, uvicorn, aiosqlite, httpx
+- pyproject.toml：依赖分组
+- pip install 成功
+- 全量 pytest 通过
+
+**验证方法：** pip install + 全量测试
+**Task 类型：** 集成/跨模块类
+**依赖：** 00100-01 ~ 00100-04
+**关联文件：** `m8-api-gateway/pyproject.toml`, `m8-api-gateway/requirements.txt`
+
+---
+
+```
+依赖关系图：
+
+00100-01 (config+app) ──→ 00100-02 (key manager) ──┐
+                      └──→ 00100-03 (rate limiter) ─┤
+                                                      ├──→ 00100-04 (routes)
+                                                      │         │
+                                                      └─────────┤
+                                                                 ▼
+                                                          00100-05 (packaging)
+```
+
+00100-02 和 00100-03 可并行。
 
 ### 🔲 00110 — deploy/ 部署配置
 
