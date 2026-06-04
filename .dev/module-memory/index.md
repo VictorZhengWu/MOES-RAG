@@ -2,7 +2,7 @@
 
 > **Purpose**: Fast-lookup index for all module memory files. Read this first when starting a new session to understand the overall project state, then dive into the specific module file you need.
 
-> **Last Updated**: 2026-06-03
+> **Last Updated**: 2026-06-04
 
 ---
 
@@ -14,10 +14,10 @@
 | M2 | Storage Abstraction Layer | ✅ Complete | 1 | 2026-05-19 | — |
 | M3 | Retrieval Engine | ✅ Complete | 1 | 2026-05-24 | — |
 | M4 | Knowledge Graph Engine | ✅ Complete | 4 | 2026-06-03 | — |
-| M5 | RAG QA Engine | 🔄 In Development | 3 | 2026-06-03 | 00090-02/04/05 |
+| M5 | RAG QA Engine | ✅ Complete | 3 | 2026-06-03 | — |
 | M6 | User Web Portal | 🔄 In Development | ~8 | 2026-05-16 | 00030 + 18 placeholders |
 | M7 | Admin Web Portal | ✅ Core Pages Complete | 2 | 2026-05-17 | 00040 + 7 placeholders |
-| M8 | API Gateway | 🔲 Not Started | 0 | — | — |
+| M8 | API Gateway | ✅ Complete | 1 | 2026-06-04 | — |
 | — | contracts/ | ✅ Complete | 1 | 2026-05-12 | 00010 |
 | — | Mock Server (独立) | ✅ Complete | 1 | 2026-05-13 | 00020 |
 

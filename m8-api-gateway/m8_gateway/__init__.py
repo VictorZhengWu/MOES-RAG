@@ -4,3 +4,7 @@
 #       Authentication -> Rate Limiting -> Routing -> M5 QA Engine.
 # WHY: Independent FastAPI process (port 8000) that exposes an
 #      OpenAI-compatible API with self-managed API keys (sk-m8-xxx).
+
+from m8_gateway.core.app import create_app
+
+__all__ = ["create_app"]

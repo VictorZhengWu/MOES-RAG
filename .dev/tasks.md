@@ -1121,14 +1121,14 @@
 
 ## Phase 3: 对外服务与部署
 
-### 🔲 00100 — M8 API 网关
+### ✅ 00100 — M8 API 网关
 
 > **详细设计**：`.dev/specs/m8-api-gateway-design-2026-06-03.md`
 > **核心原则**：独立 FastAPI 进程（8000），自管 API Key (`sk-m8-xxx`)，分级限流
 
 ---
 
-#### 🔲 00100-01 — 骨架 + 配置 + FastAPI 工厂 (config.py + app.py + pyproject.toml)
+#### ✅ 00100-01 — 骨架 + 配置 + FastAPI 工厂 (config.py + app.py + pyproject.toml)
 
 **功能描述：**
 - 创建 m8-api-gateway 项目结构
@@ -1179,7 +1179,7 @@
 
 ---
 
-#### 🔲 00100-04 — 路由 + 中间件 (routes/ + auth/middleware.py)
+#### ✅ 00100-04 — 路由 + 中间件 (routes/ + auth/middleware.py)
 
 **功能描述：**
 - `auth/middleware.py`：`get_api_key()` FastAPI Dependency
@@ -1219,7 +1219,7 @@ def test_openai_python_sdk_chat():
 
 ---
 
-#### 🔲 00100-05 — 打包与最终验证
+#### ✅ 00100-05 — 打包与最终验证
 
 **功能描述：**
 - requirements.txt：fastapi, uvicorn, aiosqlite, httpx
