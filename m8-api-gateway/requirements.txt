@@ -1,0 +1,6 @@
+# M8 API Gateway — runtime dependencies
+# For dev dependencies, use: pip install -e ".[dev]"
+fastapi>=0.115.0
+uvicorn>=0.30.0
+aiosqlite>=0.20.0
+httpx>=0.27.0
