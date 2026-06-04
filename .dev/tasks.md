@@ -1194,10 +1194,28 @@
   - `GET /admin/keys` — 列出 key
   - `DELETE /admin/keys/{prefix}` — 撤销 key
 
-**验证方法：** 4 个测试用例（无 key 返回 401、有效 key 200、超出限流 429、admin 生成 key）
+**验证方法：** 5 个测试用例（无 key 返回 401、有效 key 200、超出限流 429、admin 生成 key、**OpenAI SDK 兼容**）
 **Task 类型：** 模块/服务类
 **依赖：** 00100-02, 00100-03
-**关联文件：** `m8-api-gateway/m8_gateway/routes/chat.py`, `m8-api-gateway/m8_gateway/routes/models.py`, `m8-api-gateway/m8_gateway/routes/keys.py`, `m8-api-gateway/m8_gateway/auth/middleware.py`
+**关联文件：** `m8-api-gateway/m8_gateway/routes/chat.py`, `m8-api-gateway/m8_gateway/routes/models.py`, `m8-api-gateway/m8_gateway/routes/keys.py`, `m8-api-gateway/m8_gateway/auth/middleware.py`, `m8-api-gateway/tests/test_openai_compat.py`
+
+**OpenAI SDK 兼容测试（必须）：**
+```python
+# test_openai_compat.py
+def test_openai_python_sdk_chat():
+    """Verify official openai Python SDK can call M8."""
+    import openai
+    client = openai.OpenAI(
+        base_url="http://localhost:8000/v1",
+        api_key="sk-m8-test-key",
+    )
+    response = client.chat.completions.create(
+        model="m5-qa",
+        messages=[{"role": "user", "content": "EH36 preheat requirements?"}],
+    )
+    assert response.choices[0].message.content
+    assert hasattr(response, "citations")
+```
 
 ---
 

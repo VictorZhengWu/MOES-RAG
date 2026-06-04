@@ -269,7 +269,9 @@ CREATE INDEX idx_api_keys_prefix ON api_keys(key_prefix);
 
 ---
 
-## 5. 配置
+## 5. 部署模式
+
+M8 显式支持三种部署模式，限流策略自动适配：
 
 ```python
 @dataclass
@@ -277,14 +279,98 @@ class GatewayConfig:
     host: str = "0.0.0.0"
     port: int = 8000
     db_path: str = "./data/m8_gateway.db"
-    rate_limits: dict[str, int] = field(default_factory=lambda: {
-        "basic": 30, "pro": 120, "enterprise": -1,
-    })
+    deployment_mode: str = "personal"  # "personal" | "enterprise" | "saas"
+    rate_limits: dict[str, int] = field(default_factory=dict)
+
+    def __post_init__(self):
+        """Apply rate limits based on deployment mode if not explicitly set."""
+        if not self.rate_limits:
+            if self.deployment_mode == "personal":
+                # Personal mode: lenient — single user, no contention
+                self.rate_limits = {"basic": 100, "pro": -1, "enterprise": -1}
+            elif self.deployment_mode == "enterprise":
+                # Enterprise: moderate — internal team usage
+                self.rate_limits = {"basic": 30, "pro": 120, "enterprise": -1}
+            else:  # saas
+                # SaaS: strict — multi-tenant, cost control
+                self.rate_limits = {"basic": 30, "pro": 120, "enterprise": -1}
+```
+
+| 模式 | Basic | Pro | Enterprise | 适用场景 |
+|------|:--:|:--:|:--:|------|
+| personal | 100/min | 无限 | 无限 | 个人单机 |
+| enterprise | 30/min | 120/min | 无限 | 企业内部 |
+| saas | 30/min | 120/min | 无限 | 多租户付费 |
+
+---
+
+## 6. M5 集成机制
+
+M8 和 M5 在同进程中运行。M8 的 FastAPI app 持有 M5 QAEngine 单例：
+
+```python
+# m8_gateway/core/app.py
+from m5_qa import QAEngine
+from m5_qa.core.config import QAConfig
+
+# Lazy singleton — created on first request, reused across all requests
+_m5_engine: QAEngine | None = None
+
+def get_qa_engine() -> QAEngine:
+    """Get or create the M5 QAEngine singleton.
+
+    WHY singleton: M5 has internal state (conversation manager, metrics collector,
+    prompt manager) that should be shared across requests. Creating a new instance
+    per request would lose conversation history and metrics.
+
+    WHY lazy: defers initialization until the first API call. This allows the
+    FastAPI server to start quickly and report healthy even if M5 dependencies
+    (LLM backend, M3, M4) are not yet ready.
+    """
+    global _m5_engine
+    if _m5_engine is None:
+        config = QAConfig()
+        _m5_engine = QAEngine(config)
+    return _m5_engine
+```
+
+FastAPI 路由中通过 `Depends` 注入：
+
+```python
+@router.post("/v1/chat/completions")
+async def chat_completions(
+    request: ChatRequest,
+    api_key: APIKey = Depends(get_api_key),       # Auth middleware
+    rate_ok: bool = Depends(check_rate_limit),    # Rate limiter
+):
+    engine = get_qa_engine()                       # M5 singleton
+    return await engine.chat(request)
+```
+
+### 6.1 数据流
+
+```
+POST /v1/chat/completions
+  │  Header: Authorization: Bearer sk-m8-a1b2c3d4...
+  │  Body:   {"model":"m5-qa","messages":[...]}
+  ▼
+FastAPI Middleware Stack
+  ├─ Depends(get_api_key)     → KeyManager.validate_key()
+  │     ├─ sha256(raw_key) → DB lookup → APIKey object
+  │     └─ 401 if invalid/revoked
+  ├─ Depends(check_rate_limit) → RateLimiter.check(key_prefix, tier)
+  │     └─ 429 if exceeded
+  ▼
+Route Handler (chat.py)
+  ├─ get_qa_engine() → M5 singleton
+  ├─ await engine.chat(request)
+  │     └─ M5 internally: mode routing → M3/M4 retrieval → LLM generation
+  └─ Return ChatResponse → FastAPI serializes to JSON
 ```
 
 ---
 
-## 6. 子任务列表（5 个）
+## 8. 子任务列表（5 个）
 
 | 编号 | 名称 | 类型 | 依赖 |
 |------|------|------|------|
@@ -310,7 +396,7 @@ class GatewayConfig:
 
 ---
 
-## 7. 技术选型
+## 9. 技术选型
 
 | 组件 | 选型 | 原因 |
 |------|------|------|
@@ -322,7 +408,7 @@ class GatewayConfig:
 
 ---
 
-## 8. 开发决策
+## 10. 开发决策
 
 | ID | 日期 | 决策 |
 |----|------|------|
@@ -331,6 +417,9 @@ class GatewayConfig:
 | M8-D03 | 2026-06-03 | 限流绑定 M5 UserTier：Basic 30/min, Pro 120/min, Enterprise unlimited |
 | M8-D04 | 2026-06-03 | 限流用内存滑动窗口（Personal 模式），Phase 3 SAS 升级 Redis |
 | M8-D05 | 2026-06-03 | M8 M5 同进程 import 调用，不跨 HTTP（避免序列化开销） |
+| M8-D06 | 2026-06-03 | M5 单例模式：`get_qa_engine()` 惰性初始化，所有请求共享同一实例 |
+| M8-D07 | 2026-06-03 | 部署模式显式配置（personal/enterprise/saas），限流自动适配 |
+| M8-D08 | 2026-06-03 | 测试套件包含 OpenAI SDK 兼容测试，确保第三方应用零改动接入 |
 
 ---
 
