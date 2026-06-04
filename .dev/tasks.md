@@ -1143,7 +1143,7 @@
 
 ---
 
-#### 🔲 00100-02 — API Key 管理 (key_manager.py)
+#### ✅ 00100-02 — API Key 管理 (key_manager.py)
 
 **功能描述：**
 - `KeyManager`：完整的 Key 生命周期
