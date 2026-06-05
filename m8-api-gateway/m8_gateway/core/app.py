@@ -134,6 +134,10 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
     from m8_gateway.routes import conversations
     app.include_router(conversations.router)
 
+    # Document upload endpoint (proxies to M1 /parse)
+    from m8_gateway.routes import documents
+    app.include_router(documents.router)
+
     # ------------------------------------------------------------------
     # Health check
     # ------------------------------------------------------------------
