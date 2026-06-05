@@ -13,14 +13,15 @@
 
 'use client';
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Paperclip, Globe, X, FileText } from 'lucide-react';
+import { Paperclip, Globe, X, FileText, Loader2 } from 'lucide-react';
 import type { FileAttachment } from '@/types';
+import { uploadDocuments } from '@/lib/api/documents';
 import { useChatStore } from '@/lib/stores/chat-store';
 import { useChatStream } from '@/lib/hooks/use-chat-stream';
 
@@ -40,6 +41,7 @@ export function ChatInput() {
     clearFiles,
   } = useChatStore();
   const { startStream, stopStream } = useChatStream();
+  const [isUploading, setIsUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,17 +57,38 @@ export function ChatInput() {
 
   const handleSend = async () => {
     const content = inputValue.trim();
-    if (!content || isLoading) return;
+    if (!content || isLoading || isUploading) return;
     setInputValue('');
 
     const files = [...attachedFiles];
     clearFiles();
 
+    // Upload files to M8 before sending the chat message.
+    // Parsed markdown is appended to the user message so the QA engine
+    // can use the document content as retrieval context.
+    let extraContext = '';
+    if (files.length > 0 && files.some((f) => f.file)) {
+      setIsUploading(true);
+      try {
+        const results = await uploadDocuments(files);
+        const parsed = results
+          .filter((r) => r.parse_result?.success)
+          .map((r) => r.parse_result.markdown)
+          .join('\n\n');
+        if (parsed) {
+          extraContext = `\n\n[Uploaded document content]\n${parsed}`;
+        }
+      } catch {
+        // Upload failed — send without document context
+      }
+      finally { setIsUploading(false); }
+    }
+
     await startStream({
-      model: 'marine-rag-mock',
+      model: 'm5-qa',
       messages: [...messages, {
         role: 'user',
-        content,
+        content: content + extraContext,
         attachments: files.length > 0 ? files : undefined,
       }],
       web_search: webSearchEnabled,
@@ -140,7 +163,7 @@ export function ChatInput() {
           placeholder={t('chat.input.placeholder')}
           rows={3}
           className="min-h-[60px] resize-none"
-          disabled={isLoading}
+          disabled={isLoading || isUploading}
         />
 
         {/* Web search toggle */}
@@ -175,10 +198,14 @@ export function ChatInput() {
         ) : (
           <Button
             onClick={handleSend}
-            disabled={!inputValue.trim() || isLoading}
+            disabled={!inputValue.trim() || isLoading || isUploading}
             className="h-9 shrink-0"
           >
-            {t('chat.input.send')}
+            {isUploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              t('chat.input.send')
+            )}
           </Button>
         )}
       </div>
