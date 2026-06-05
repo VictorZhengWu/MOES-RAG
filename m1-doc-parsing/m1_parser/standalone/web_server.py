@@ -631,7 +631,7 @@ def create_app() -> "FastAPI":
     return app
 
 
-def main(host: str = "127.0.0.1", port: int = 8005) -> None:
+def main(host: str = "127.0.0.1", port: int = 8007) -> None:
     try: import uvicorn
     except ImportError: print("pip install uvicorn"); sys.exit(1)
     app = create_app()
