@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from m8_gateway.auth.key_manager import APIKey
 from m8_gateway.auth.middleware import get_api_key
+from m8_gateway.models.schemas import ConversationRenameRequest
 
 router = APIRouter(prefix="/api/v1/conversations", tags=["conversations"])
 
@@ -86,21 +87,19 @@ async def delete_conversation(
 @router.patch("/{conversation_id}")
 async def rename_conversation(
     conversation_id: str,
-    body: dict,
+    body: ConversationRenameRequest,
     request: Request,
     api_key: APIKey = Depends(get_api_key),
 ):
     """
     PATCH /api/v1/conversations/:id — Rename a conversation.
 
-    WHAT: Delegates to M5 QAEngine.rename_conversation() with the new title
-          from the request body. Body format: {"title": "New Name"}.
+    WHAT: Delegates to M5 QAEngine.rename_conversation() with the new title.
+          Auto-validated by Pydantic: title must be 1-200 characters.
 
     WHY: M6 frontend right-click → Rename → inline edit → save calls this.
     """
-    title = body.get("title", "").strip() if body else ""
-    if not title:
-        raise HTTPException(400, "Missing 'title' in request body")
+    title = body.title.strip()
 
     engine = request.app.state.qa_engine
     if engine is None:

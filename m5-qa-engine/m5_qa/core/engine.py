@@ -401,11 +401,11 @@ class QAEngine:
     ) -> list[Message]:
         """
         WHAT: Retrieve all messages for a conversation.
-        WHY: Delegates to ConversationManager. user_id is accepted for protocol
-             compliance but not used by the current manager implementation.
+        WHY: Delegates to ConversationManager with user_id verification
+             to prevent cross-user conversation access.
         """
         return await self._conversations.get_conversation(
-            conversation_id=conversation_id
+            conversation_id=conversation_id, user_id=user_id
         )
 
     async def delete_conversation(
@@ -413,11 +413,11 @@ class QAEngine:
     ) -> bool:
         """
         WHAT: Delete a conversation and all its messages.
-        WHY: Delegates to ConversationManager. user_id is accepted for protocol
-             compliance but not used by the current manager implementation.
+        WHY: Delegates to ConversationManager with user_id verification
+             to prevent cross-user conversation access.
         """
         return await self._conversations.delete_conversation(
-            conversation_id=conversation_id
+            conversation_id=conversation_id, user_id=user_id
         )
 
     async def rename_conversation(

@@ -111,6 +111,23 @@ class RevokeKeyResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Conversation Management Schemas
+# ---------------------------------------------------------------------------
+
+
+class ConversationRenameRequest(BaseModel):
+    """Request body for renaming a conversation via PATCH.
+
+    WHAT: Contains the new title string. Validated for non-empty and
+          maximum 200 characters to prevent DB bloat.
+    WHY: Using Pydantic validation catches empty/missing title at the
+         API boundary (422 response) rather than in the business logic
+         layer, producing clearer error messages.
+    """
+    title: str = Field(..., min_length=1, max_length=200)
+
+
+# ---------------------------------------------------------------------------
 # Error Response
 # ---------------------------------------------------------------------------
 

@@ -218,18 +218,39 @@ class ConversationManager:
             for row in rows
         ]
 
-    async def get_conversation(self, conversation_id: str) -> list[Message]:
+    async def get_conversation(
+        self, conversation_id: str, user_id: str = ""
+    ) -> list[Message]:
         """
         WHAT: Retrieve all messages for a conversation in chronological order.
 
+        WHY user_id: Verifies ownership — if user_id is provided, the
+        conversation must belong to that user. This prevents user A from
+        accessing user B's conversations by guessing conversation IDs.
+        An empty user_id skips the check (admin/internal use).
+
         Args:
             conversation_id: The conversation to fetch messages for.
+            user_id: Optional owner verification. If provided, the
+                     conversation must belong to this user.
 
         Returns:
-            A list of Message objects ordered by created_at (oldest first).
+            A list of Message objects ordered by created_at (oldest first),
+            or empty list if the conversation does not belong to the user.
         """
         async with aiosqlite.connect(self._db_path) as conn:
             await self._ensure_tables(conn)
+
+            # Verify ownership if user_id is provided
+            if user_id:
+                cursor = await conn.execute(
+                    "SELECT 1 FROM conversations "
+                    "WHERE conversation_id = ? AND user_id = ?",
+                    (conversation_id, user_id),
+                )
+                if await cursor.fetchone() is None:
+                    return []  # Not found or not owned by this user
+
             cursor = await conn.execute(
                 """SELECT message_id, conversation_id, role, content,
                           citations_json, created_at
@@ -242,9 +263,14 @@ class ConversationManager:
 
         return [self._row_to_message(row) for row in rows]
 
-    async def delete_conversation(self, conversation_id: str) -> bool:
+    async def delete_conversation(
+        self, conversation_id: str, user_id: str = ""
+    ) -> bool:
         """
         WHAT: Delete a conversation and all its messages (cascading).
+
+        WHY user_id: Verifies ownership before deletion — prevents user A
+        from deleting user B's conversations.
 
         WHY: We manually delete messages first because SQLite's FOREIGN KEY
              with default PRAGMA settings does NOT enforce cascading deletes.
@@ -258,6 +284,17 @@ class ConversationManager:
         """
         async with aiosqlite.connect(self._db_path) as conn:
             await self._ensure_tables(conn)
+
+            # Verify ownership before deleting (permission check)
+            if user_id:
+                cursor = await conn.execute(
+                    "SELECT 1 FROM conversations "
+                    "WHERE conversation_id = ? AND user_id = ?",
+                    (conversation_id, user_id),
+                )
+                if await cursor.fetchone() is None:
+                    return False  # Not found or not owned
+
             # Delete messages first (child rows), then the conversation (parent row)
             await conn.execute(
                 "DELETE FROM messages WHERE conversation_id = ?",
