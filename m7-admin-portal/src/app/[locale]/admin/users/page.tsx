@@ -10,6 +10,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import type { AdminUser } from '@/types';
 import { useTranslations } from 'next-intl';
 import { listUsers, createUser, deleteUser } from '@/lib/api/users';
+import { listAPIKeys, createAPIKey, revokeAPIKey, type APIKeyInfo, type CreateKeyResponse } from '@/lib/api/keys';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -68,6 +69,11 @@ export default function UsersPage() {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [suspendTarget, setSuspendTarget] = useState<MockUser | null>(null);
+  const [keysUser, setKeysUser] = useState<MockUser | null>(null);
+  const [keysDialogOpen, setKeysDialogOpen] = useState(false);
+  const [apiKeys, setApiKeys] = useState<APIKeyInfo[]>([]);
+  const [keysLoading, setKeysLoading] = useState(false);
+  const [newKeyResult, setNewKeyResult] = useState<CreateKeyResponse | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -159,6 +165,42 @@ export default function UsersPage() {
     setDeleteTarget(null);
   };
 
+  // ── API Key management handlers ──
+  const openKeysDialog = async (user: MockUser) => {
+    setKeysUser(user);
+    setNewKeyResult(null);
+    setKeysDialogOpen(true);
+    setKeysLoading(true);
+    try {
+      const keys = await listAPIKeys(user.user_id);
+      setApiKeys(keys);
+    } catch { setApiKeys([]); }
+    finally { setKeysLoading(false); }
+  };
+
+  const handleCreateKey = async (tier: string) => {
+    if (!keysUser) return;
+    setKeysLoading(true);
+    try {
+      const result = await createAPIKey(keysUser.user_id, tier);
+      setNewKeyResult(result);
+      // Refresh key list
+      const keys = await listAPIKeys(keysUser.user_id);
+      setApiKeys(keys);
+    } catch { /* M8 may not be running */ }
+    finally { setKeysLoading(false); }
+  };
+
+  const handleRevokeKey = async (prefix: string) => {
+    setKeysLoading(true);
+    try {
+      await revokeAPIKey(prefix);
+      const keys = await listAPIKeys(keysUser!.user_id);
+      setApiKeys(keys);
+    } catch { /* M8 may not be running */ }
+    finally { setKeysLoading(false); }
+  };
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
@@ -243,7 +285,12 @@ export default function UsersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm">{u.total_queries.toLocaleString()}</TableCell>
-                  <TableCell className="text-sm">{u.api_key_count}</TableCell>
+                  <TableCell className="text-sm">
+                    <Button variant="link" size="sm" className="h-auto p-0 text-blue-600 hover:underline"
+                      onClick={() => openKeysDialog(u)}>
+                      {u.api_key_count ?? 0} keys
+                    </Button>
+                  </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)}>
@@ -336,6 +383,74 @@ export default function UsersPage() {
             <Button variant={suspendTarget?.is_active ? 'destructive' : 'default'} onClick={() => suspendTarget && handleSuspend(suspendTarget)}>
               {suspendTarget?.is_active ? 'Suspend' : 'Reactivate'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── API Keys management dialog ── */}
+      <Dialog open={keysDialogOpen} onOpenChange={(o) => { if (!o) { setKeysDialogOpen(false); setNewKeyResult(null); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>API Keys — {keysUser?.username}</DialogTitle>
+            <div className="text-sm text-muted-foreground">
+              Manage API keys for this user. Keys use the format <code className="bg-muted px-1 rounded">sk-m8-xxxxxxxx</code>.
+            </div>
+          </DialogHeader>
+
+          {/* New key creation */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground">Create New Key</label>
+            <div className="flex gap-2">
+              {['basic', 'pro', 'enterprise'].map((tier) => (
+                <Button key={tier} variant="outline" size="sm"
+                  onClick={() => handleCreateKey(tier)} disabled={keysLoading}>
+                  {tier.charAt(0).toUpperCase() + tier.slice(1)}
+                </Button>
+              ))}
+            </div>
+            {newKeyResult && (
+              <div className="rounded-lg border border-green-300 bg-green-50 p-3">
+                <p className="text-xs font-medium text-green-800">Key created — copy now, it won't be shown again:</p>
+                <code className="mt-1 block text-sm font-mono text-green-900 break-all">{newKeyResult.key}</code>
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Existing keys list */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Existing Keys</label>
+            {keysLoading ? (
+              <p className="text-sm text-muted-foreground py-2">Loading...</p>
+            ) : apiKeys.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">No API keys yet.</p>
+            ) : (
+              <div className="mt-1 space-y-1 max-h-48 overflow-y-auto">
+                {apiKeys.map((k) => (
+                  <div key={k.key_prefix} className={`flex items-center justify-between rounded-md px-3 py-2 text-sm ${k.is_active ? 'bg-muted/50' : 'opacity-50'}`}>
+                    <div>
+                      <code className="text-xs font-mono">{k.key_prefix}...</code>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {k.tier} · {k.is_active ? 'active' : 'revoked'}
+                        {k.last_used_at ? ` · last used ${new Date(k.last_used_at * 1000).toLocaleDateString()}` : ''}
+                      </span>
+                    </div>
+                    {k.is_active && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7"
+                        onClick={() => handleRevokeKey(k.key_prefix)}
+                        title="Revoke key">
+                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setKeysDialogOpen(false); setNewKeyResult(null); }}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
