@@ -330,7 +330,10 @@
       "Bash(python -c \"import contracts; print\\('contracts from', contracts.__file__\\); from m5_qa.core.config import QAConfig; print\\('QAConfig OK'\\)\")",
       "Bash(python -m pytest m3-retrieval/tests/ m5-qa-engine/tests/ -q)",
       "Bash(python -m pytest m8-api-gateway/tests/test_config.py -v)",
-      "Bash(python -m pytest m8-api-gateway/tests/ -v)"
+      "Bash(python -m pytest m8-api-gateway/tests/ -v)",
+      "Bash(python -m pytest m5-qa-engine/tests/ m8-api-gateway/tests/ -q)",
+      "Bash(python -m pytest m8-api-gateway/tests/ -q)",
+      "Bash(python -m pytest m5-qa-engine/tests/test_conversation_manager.py -q)"
     ]
   }
 }

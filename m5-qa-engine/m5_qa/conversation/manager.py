@@ -270,6 +270,27 @@ class ConversationManager:
             await conn.commit()
             return cursor.rowcount > 0
 
+    async def rename_conversation(self, conversation_id: str, title: str) -> bool:
+        """
+        WHAT: Rename a conversation (update its title and updated_at timestamp).
+
+        WHY: M6 frontend provides an inline rename feature (right-click → Rename).
+             This endpoint persists the new title so it survives page reload.
+
+        Returns:
+            True if the conversation was found and renamed, False if not found.
+        """
+        now = time.time()
+        async with aiosqlite.connect(self._db_path) as conn:
+            await self._ensure_tables(conn)
+            cursor = await conn.execute(
+                "UPDATE conversations SET title = ?, updated_at = ? "
+                "WHERE conversation_id = ?",
+                (title, now, conversation_id),
+            )
+            await conn.commit()
+            return cursor.rowcount > 0
+
     # ------------------------------------------------------------------
     # Messages
     # ------------------------------------------------------------------

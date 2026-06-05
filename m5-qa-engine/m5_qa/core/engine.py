@@ -419,3 +419,14 @@ class QAEngine:
         return await self._conversations.delete_conversation(
             conversation_id=conversation_id
         )
+
+    async def rename_conversation(
+        self, conversation_id: str, title: str
+    ) -> bool:
+        """
+        WHAT: Rename a conversation by updating its title.
+        WHY: Delegates to ConversationManager.rename_conversation().
+        """
+        return await self._conversations.rename_conversation(
+            conversation_id=conversation_id, title=title
+        )

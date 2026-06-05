@@ -130,6 +130,10 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
     # Admin API key management endpoints
     app.include_router(keys.router)
 
+    # Conversation management endpoints (M5-backed, replaces Mock Server)
+    from m8_gateway.routes import conversations
+    app.include_router(conversations.router)
+
     # ------------------------------------------------------------------
     # Health check
     # ------------------------------------------------------------------

@@ -143,6 +143,20 @@ class TestDeleteConversation:
         deleted = await manager.delete_conversation("nonexistent_id")
         assert deleted is False
 
+    async def test_rename_conversation(self, manager):
+        """Create a conversation, rename it, verify title changed."""
+        cid = await manager.create_conversation("test-user", "Original")
+        ok = await manager.rename_conversation(cid, "Renamed")
+        assert ok is True
+        convos = await manager.list_conversations("test-user")
+        renamed = next(c for c in convos if c.conversation_id == cid)
+        assert renamed.title == "Renamed"
+
+    async def test_rename_nonexistent(self, manager):
+        """Rename a nonexistent conversation → returns False."""
+        ok = await manager.rename_conversation("nonexistent_id", "X")
+        assert ok is False
+
 
 class TestQuotaConsume:
     """Tests for quota management via consume_premium()."""
