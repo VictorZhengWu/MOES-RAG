@@ -63,6 +63,15 @@ def fuse_context(
     parts: list[str] = []
     token_budget = max_retrieval_tokens
 
+    # --- Step 0: Surface retrieval errors as warnings ---
+    # If M3/M4 encountered errors, the LLM should know so it can provide
+    # a more helpful response (e.g., "I can answer from my knowledge but
+    # the document search is currently unavailable").
+    if retrieval_ctx.errors:
+        parts.append("## Retrieval Warnings\n" + "\n".join(
+            f"- {e}" for e in retrieval_ctx.errors
+        ))
+
     # --- Step 1: Format M3 semantic search chunks ---
     # Chunks are added in order (highest score first) until the token
     # budget is exhausted. Each chunk is prefixed with its citation
