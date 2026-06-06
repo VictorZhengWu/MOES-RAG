@@ -18,6 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   Loader2, CheckCircle2, XCircle, AlertCircle,
   MessageSquare, Brain, Layers, ArrowUpDown, ScanText, Eye, FileText,
+  Globe,
 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -134,6 +135,19 @@ export default function LLMConfigPage() {
   const [statuses, setStatuses] = useState<Record<string, ConnectionStatus>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+
+  // Web search engine config
+  const [webSearchEngine, setWebSearchEngine] = useState('duckduckgo');
+  const [webSearchApiKey, setWebSearchApiKey] = useState('');
+  const [webSearchSearxngUrl, setWebSearchSearxngUrl] = useState('http://localhost:8888');
+
+  const saveWebSearchConfig = () => {
+    // Phase 2: save to M5 config via API
+    // For now, localStorage persistence for demo
+    localStorage.setItem('m7-web-search-engine', webSearchEngine);
+    localStorage.setItem('m7-web-search-api-key', webSearchApiKey);
+    localStorage.setItem('m7-web-search-searxng-url', webSearchSearxngUrl);
+  };
 
   // Init form state with defaults. Phase 1: always starts fresh.
   // Phase 2: load saved configs from relational DB.
@@ -390,6 +404,66 @@ export default function LLMConfigPage() {
           );
         })}
       </div>
+
+      {/* ── Web Search Engine Configuration ── */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Globe className="h-4 w-4" /> Web Search Engine
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Engine</label>
+              <select
+                value={webSearchEngine}
+                onChange={(e) => setWebSearchEngine(e.target.value)}
+                className="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm"
+              >
+                <option value="duckduckgo">DuckDuckGo (Free, default)</option>
+                <option value="searxng">SearXNG (Self-hosted, Baidu/Bing)</option>
+                <option value="tavily">Tavily (Paid, AI-optimized)</option>
+                <option value="brave">Brave Search (Free 2000/mo)</option>
+              </select>
+            </div>
+            {(webSearchEngine === 'tavily' || webSearchEngine === 'brave') && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">API Key</label>
+                <Input
+                  type="password"
+                  value={webSearchApiKey}
+                  onChange={(e) => setWebSearchApiKey(e.target.value)}
+                  placeholder={webSearchEngine === 'tavily' ? 'tvly-...' : 'BSA-...'}
+                  className="mt-1 h-9 text-sm"
+                />
+              </div>
+            )}
+            {webSearchEngine === 'searxng' && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">SearXNG URL</label>
+                <Input
+                  value={webSearchSearxngUrl}
+                  onChange={(e) => setWebSearchSearxngUrl(e.target.value)}
+                  placeholder="http://localhost:8888"
+                  className="mt-1 h-9 text-sm"
+                />
+              </div>
+            )}
+          </div>
+          <div className="flex justify-between items-center">
+            <p className="text-xs text-muted-foreground">
+              {webSearchEngine === 'duckduckgo' && 'Free, no setup. May be unreliable in some regions.'}
+              {webSearchEngine === 'searxng' && 'Self-hosted. Configure Baidu + Bing in SearXNG settings.yml.'}
+              {webSearchEngine === 'tavily' && 'Best for RAG. $0.01/query. 1000 free/month.'}
+              {webSearchEngine === 'brave' && 'Independent index. 2000 free/month, then $5/1000.'}
+            </p>
+            <Button size="sm" onClick={saveWebSearchConfig}>
+              Save
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
