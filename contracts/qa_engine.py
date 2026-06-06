@@ -45,6 +45,7 @@ class ChatRequest:
     # RAG-specific extensions
     domain_filter: str | None = None
     vessel_type_filter: str | None = None
+    web_search_enabled: bool = False  # Enable live web search via DuckDuckGo
 
 
 @dataclass

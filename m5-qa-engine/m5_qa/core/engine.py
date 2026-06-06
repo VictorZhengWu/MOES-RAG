@@ -177,7 +177,22 @@ class QAEngine:
             if premium_ok:
                 mode = "self_rag"
 
-        # Step 4: Execute the selected pipeline mode.
+        # Step 4: If web search is enabled, fetch web results to supplement
+        # the retrieval context. Web results are appended to the user's query
+        # so the LLM sees them alongside M3/M4 retrieved chunks.
+        web_context: str = ""
+        if getattr(request, "web_search_enabled", False):
+            try:
+                from m5_qa.context.web_search import search_web, format_web_results
+                web_results = await search_web(user_msg)
+                web_context = format_web_results(web_results)
+            except Exception:
+                pass  # Web search is supplementary — never block the pipeline
+
+        if web_context:
+            user_msg = f"{user_msg}\n\n[Web Search Results]\n{web_context}"
+
+        # Step 5: Execute the selected pipeline mode.
         # Each pipeline function is an async function that takes query, llm_client,
         # retriever, prompt_manager, tier, and optional parameters.
         if mode == "simple":
