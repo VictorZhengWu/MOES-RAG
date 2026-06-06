@@ -142,6 +142,10 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
     from m8_gateway.routes import documents
     app.include_router(documents.router)
 
+    # Admin config endpoints (runtime M5 config update)
+    from m8_gateway.routes import admin
+    app.include_router(admin.router)
+
     # ------------------------------------------------------------------
     # Health check
     # ------------------------------------------------------------------

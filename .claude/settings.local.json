@@ -333,7 +333,15 @@
       "Bash(python -m pytest m8-api-gateway/tests/ -v)",
       "Bash(python -m pytest m5-qa-engine/tests/ m8-api-gateway/tests/ -q)",
       "Bash(python -m pytest m8-api-gateway/tests/ -q)",
-      "Bash(python -m pytest m5-qa-engine/tests/test_conversation_manager.py -q)"
+      "Bash(python -m pytest m5-qa-engine/tests/test_conversation_manager.py -q)",
+      "Bash(python -m pytest m8-api-gateway/tests/test_conversations.py -v)",
+      "Bash(python -m pytest m5-qa-engine/tests/ contracts/tests/ -q)",
+      "Bash(python -m pytest m5-qa-engine/tests/test_conversation_manager.py::TestDeleteConversation::test_rename_conversation -v)",
+      "Bash(python -m pytest m5-qa-engine/tests/test_conversation_manager.py::TestDeleteConversation::test_rename_conversation -v --tb=short)",
+      "Bash(python -m pytest m8-api-gateway/tests/ -q --tb=line)",
+      "Bash(python -c \"from m8_gateway.routes import admin; print\\('OK'\\)\")",
+      "Bash(python -m pytest tests/ -q)",
+      "Bash(python -m pytest tests/test_chat.py -v --tb=long)"
     ]
   }
 }

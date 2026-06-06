@@ -53,6 +53,7 @@ class ChatCompletionRequest(BaseModel):
     # RAG-specific extensions (not part of OpenAI spec)
     domain_filter: str | None = None
     vessel_type_filter: str | None = None
+    web_search: bool = False  # Enable live web search (DuckDuckGo/SearXNG/Tavily/Brave)
 
 
 # ---------------------------------------------------------------------------

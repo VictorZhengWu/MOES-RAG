@@ -140,13 +140,25 @@ export default function LLMConfigPage() {
   const [webSearchEngine, setWebSearchEngine] = useState('duckduckgo');
   const [webSearchApiKey, setWebSearchApiKey] = useState('');
   const [webSearchSearxngUrl, setWebSearchSearxngUrl] = useState('http://localhost:8888');
+  const [webSearchGoogleCx, setWebSearchGoogleCx] = useState('');
 
-  const saveWebSearchConfig = () => {
-    // Phase 2: save to M5 config via API
-    // For now, localStorage persistence for demo
-    localStorage.setItem('m7-web-search-engine', webSearchEngine);
-    localStorage.setItem('m7-web-search-api-key', webSearchApiKey);
-    localStorage.setItem('m7-web-search-searxng-url', webSearchSearxngUrl);
+  const saveWebSearchConfig = async () => {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      await fetch(`${baseUrl}/admin/config/web-search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          engine: webSearchEngine,
+          api_key: webSearchApiKey || null,
+          searxng_url: webSearchSearxngUrl,
+          google_cx: webSearchGoogleCx || null,
+        }),
+      });
+    } catch {
+      // Fallback: localStorage if M8 unreachable
+      localStorage.setItem('m7-web-search-engine', webSearchEngine);
+    }
   };
 
   // Init form state with defaults. Phase 1: always starts fresh.
@@ -425,16 +437,28 @@ export default function LLMConfigPage() {
                 <option value="searxng">SearXNG (Self-hosted, Baidu/Bing)</option>
                 <option value="tavily">Tavily (Paid, AI-optimized)</option>
                 <option value="brave">Brave Search (Free 2000/mo)</option>
+                <option value="google">Google Custom Search (Free 100/day)</option>
               </select>
             </div>
-            {(webSearchEngine === 'tavily' || webSearchEngine === 'brave') && (
+            {(webSearchEngine === 'tavily' || webSearchEngine === 'brave' || webSearchEngine === 'google') && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground">API Key</label>
                 <Input
                   type="password"
                   value={webSearchApiKey}
                   onChange={(e) => setWebSearchApiKey(e.target.value)}
-                  placeholder={webSearchEngine === 'tavily' ? 'tvly-...' : 'BSA-...'}
+                  placeholder={webSearchEngine === 'tavily' ? 'tvly-...' : webSearchEngine === 'google' ? 'AIza...' : 'BSA-...'}
+                  className="mt-1 h-9 text-sm"
+                />
+              </div>
+            )}
+            {webSearchEngine === 'google' && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Search Engine ID (cx)</label>
+                <Input
+                  value={webSearchGoogleCx}
+                  onChange={(e) => setWebSearchGoogleCx(e.target.value)}
+                  placeholder="Google CSE ID"
                   className="mt-1 h-9 text-sm"
                 />
               </div>
@@ -457,6 +481,7 @@ export default function LLMConfigPage() {
               {webSearchEngine === 'searxng' && 'Self-hosted. Configure Baidu + Bing in SearXNG settings.yml.'}
               {webSearchEngine === 'tavily' && 'Best for RAG. $0.01/query. 1000 free/month.'}
               {webSearchEngine === 'brave' && 'Independent index. 2000 free/month, then $5/1000.'}
+              {webSearchEngine === 'google' && 'Best results. 100 free/day. Requires API key + Search Engine ID.'}
             </p>
             <Button size="sm" onClick={saveWebSearchConfig}>
               Save

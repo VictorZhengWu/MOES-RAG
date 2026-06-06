@@ -59,6 +59,7 @@ def _to_contract_request(schema: ChatCompletionRequest) -> ChatRequest:
         conversation_id=schema.conversation_id,
         domain_filter=schema.domain_filter,
         vessel_type_filter=schema.vessel_type_filter,
+        web_search_enabled=schema.web_search,
     )
 
 

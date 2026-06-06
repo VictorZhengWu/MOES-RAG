@@ -74,6 +74,9 @@ class QAConfig:
     web_search_searxng_url: str = "http://localhost:8888"
     """SearXNG instance URL when engine='searxng'."""
 
+    web_search_google_cx: str | None = None
+    """Google Custom Search Engine ID (cx). Required when engine='google'."""
+
     retrieval_score_threshold: float = 0.5
     """Minimum cosine similarity score for M3 retrieval chunks in Self-RAG mode.
     Chunks below this threshold trigger a re-query with rewritten search terms."""

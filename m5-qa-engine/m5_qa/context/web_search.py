@@ -263,6 +263,56 @@ class BraveEngine:
             return []
 
 
+class GoogleCustomSearchEngine:
+    """
+    Google Custom Search JSON API — 100 free queries/day.
+
+    WHAT: Uses Google's Custom Search API. Requires a Google API key
+          AND a Custom Search Engine ID (cx). The cx determines which
+          sites are searched — configure it to search the entire web
+          or limit to specific domains (e.g., dnv.com, eagle.org).
+
+    WHY: Highest-quality search results. Google's index is the most
+         comprehensive and its ranking is the best for technical queries.
+         The 100 free/day quota is sufficient for personal use.
+
+    Setup: https://developers.google.com/custom-search/v1/overview
+    """
+
+    name: str = "google"
+
+    def __init__(self, api_key: str, cx: str):
+        self._api_key = api_key
+        self._cx = cx
+
+    async def search(self, query: str, max_results: int = 5) -> list[WebResult]:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    "https://www.googleapis.com/customsearch/v1",
+                    params={
+                        "key": self._api_key,
+                        "cx": self._cx,
+                        "q": query,
+                        "num": min(max_results, 10),
+                    },
+                )
+                if resp.status_code != 200:
+                    return []
+                data = resp.json()
+
+            results: list[WebResult] = []
+            for entry in data.get("items", [])[:max_results]:
+                results.append(WebResult(
+                    title=entry.get("title", ""),
+                    url=entry.get("link", ""),
+                    snippet=entry.get("snippet", ""),
+                ))
+            return results
+        except Exception:
+            return []
+
+
 # ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
@@ -272,6 +322,7 @@ def create_web_search_engine(
     engine: str = "duckduckgo",
     api_key: str | None = None,
     searxng_url: str = "http://localhost:8888",
+    google_cx: str | None = None,
 ) -> WebSearchEngine:
     """
     Factory function — creates the configured web search engine.
@@ -280,6 +331,11 @@ def create_web_search_engine(
          pipeline works with the protocol, never the concrete class.
          Switching engines is a config change, not a code change.
     """
+    if engine == "google":
+        if not api_key or not google_cx:
+            raise ValueError("Google Custom Search requires both api_key and cx (Search Engine ID)")
+        return GoogleCustomSearchEngine(api_key, google_cx)
+
     if engine == "tavily":
         if not api_key:
             raise ValueError("Tavily requires an API key")
