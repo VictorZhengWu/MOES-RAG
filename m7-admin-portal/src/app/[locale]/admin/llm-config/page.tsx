@@ -142,6 +142,9 @@ export default function LLMConfigPage() {
   const [webSearchSearxngUrl, setWebSearchSearxngUrl] = useState('http://localhost:8888');
   const [webSearchGoogleCx, setWebSearchGoogleCx] = useState('');
 
+  const [webSearchStatus, setWebSearchStatus] = useState<string | null>(null);
+  const [webSearchTesting, setWebSearchTesting] = useState(false);
+
   const saveWebSearchConfig = async () => {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
@@ -155,9 +158,25 @@ export default function LLMConfigPage() {
           google_cx: webSearchGoogleCx || null,
         }),
       });
+      setWebSearchStatus('saved');
     } catch {
-      // Fallback: localStorage if M8 unreachable
       localStorage.setItem('m7-web-search-engine', webSearchEngine);
+      setWebSearchStatus('error');
+    }
+  };
+
+  const testWebSearchConnection = async () => {
+    setWebSearchTesting(true);
+    setWebSearchStatus(null);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const resp = await fetch(`${baseUrl}/admin/config/web-search/test`, { method: 'POST' });
+      const result = await resp.json();
+      setWebSearchStatus(result.ok ? 'connected' : `failed: ${result.error}`);
+    } catch {
+      setWebSearchStatus('M8 unreachable');
+    } finally {
+      setWebSearchTesting(false);
     }
   };
 
@@ -476,16 +495,31 @@ export default function LLMConfigPage() {
             )}
           </div>
           <div className="flex justify-between items-center">
-            <p className="text-xs text-muted-foreground">
-              {webSearchEngine === 'duckduckgo' && 'Free, no setup. May be unreliable in some regions.'}
-              {webSearchEngine === 'searxng' && 'Self-hosted. Configure Baidu + Bing in SearXNG settings.yml.'}
-              {webSearchEngine === 'tavily' && 'Best for RAG. $0.01/query. 1000 free/month.'}
-              {webSearchEngine === 'brave' && 'Independent index. 2000 free/month, then $5/1000.'}
-              {webSearchEngine === 'google' && 'Best results. 100 free/day. Requires API key + Search Engine ID.'}
-            </p>
-            <Button size="sm" onClick={saveWebSearchConfig}>
-              Save
-            </Button>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-muted-foreground">
+                {webSearchEngine === 'duckduckgo' && 'Free, no setup. May be unreliable in some regions.'}
+                {webSearchEngine === 'searxng' && 'Self-hosted. Configure Baidu + Bing in SearXNG settings.yml.'}
+                {webSearchEngine === 'tavily' && 'Best for RAG. $0.01/query. 1000 free/month.'}
+                {webSearchEngine === 'brave' && 'Independent index. 2000 free/month, then $5/1000.'}
+                {webSearchEngine === 'google' && 'Best results. 100 free/day. Requires API key + Search Engine ID.'}
+              </p>
+              {webSearchStatus && (
+                <Badge variant={webSearchStatus === 'connected' ? 'default' : webSearchStatus === 'saved' ? 'secondary' : 'destructive'}
+                  className="text-[10px]">
+                  {webSearchStatus === 'connected' && '✓ Connected'}
+                  {webSearchStatus === 'saved' && 'Saved'}
+                  {webSearchStatus === 'error' && 'Save failed'}
+                  {webSearchStatus.startsWith('failed:') && webSearchStatus.slice(8)}
+                  {webSearchStatus === 'M8 unreachable' && 'M8 unreachable'}
+                </Badge>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={testWebSearchConnection} disabled={webSearchTesting}>
+                {webSearchTesting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Test Connection'}
+              </Button>
+              <Button size="sm" onClick={saveWebSearchConfig}>Save</Button>
+            </div>
           </div>
         </CardContent>
       </Card>

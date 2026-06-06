@@ -69,9 +69,7 @@ async def get_web_search_config(
     request: Request,
     api_key: APIKey = Depends(get_api_key),
 ):
-    """
-    GET /admin/config/web-search — Read current web search config.
-    """
+    """GET /admin/config/web-search — Read current web search config."""
     engine = request.app.state.qa_engine
     if engine is None:
         raise HTTPException(503, "QA Engine not initialized")
@@ -81,3 +79,37 @@ async def get_web_search_config(
         "has_api_key": bool(engine._config.web_search_api_key),
         "searxng_url": engine._config.web_search_searxng_url,
     }
+
+
+@router.post("/web-search/test")
+async def test_web_search_connection(
+    request: Request,
+    api_key: APIKey = Depends(get_api_key),
+):
+    """
+    POST /admin/config/web-search/test — Test the current web search engine.
+
+    WHAT: Creates the configured engine and calls health_check() to verify
+          the API key is valid, the engine is reachable, and quotas are OK.
+
+    WHY: M7 admin UI's "Test Connection" button calls this to give
+         immediate feedback after changing engine settings.
+         Returns structured result with ok, error message, and recoverable flag.
+    """
+    engine = request.app.state.qa_engine
+    if engine is None:
+        raise HTTPException(503, "QA Engine not initialized")
+
+    from m5_qa.context.web_search import create_web_search_engine
+
+    try:
+        ws_engine = create_web_search_engine(
+            engine=engine._config.web_search_engine,
+            api_key=engine._config.web_search_api_key,
+            searxng_url=engine._config.web_search_searxng_url,
+            google_cx=engine._config.web_search_google_cx,
+        )
+        result = await ws_engine.health_check()
+        return result
+    except Exception as exc:
+        return {"ok": False, "error": str(exc), "recoverable": False}

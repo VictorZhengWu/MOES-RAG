@@ -183,7 +183,11 @@ class QAEngine:
         web_context: str = ""
         if getattr(request, "web_search_enabled", False):
             try:
-                from m5_qa.context.web_search import create_web_search_engine, format_web_results
+                from m5_qa.context.web_search import (
+                    create_web_search_engine, format_web_results,
+                    WebSearchConfigError, WebSearchQuotaError,
+                    WebSearchAuthError, WebSearchNetworkError,
+                )
 
                 engine = create_web_search_engine(
                     engine=self._config.web_search_engine,
@@ -193,8 +197,16 @@ class QAEngine:
                 )
                 web_results = await engine.search(user_msg)
                 web_context = format_web_results(web_results)
-            except Exception:
-                pass  # Web search is supplementary — never block the pipeline
+            except WebSearchConfigError as e:
+                web_context = f"[Web search unavailable: {e}. Configure in Admin → LLM Config.]"
+            except WebSearchAuthError as e:
+                web_context = f"[Web search unavailable: {e}. Update API key in Admin → LLM Config.]"
+            except WebSearchQuotaError as e:
+                web_context = f"[Web search unavailable: {e}. Consider switching engines or upgrading.]"
+            except WebSearchNetworkError as e:
+                web_context = f"[Web search temporarily unavailable: {e}. Try again shortly.]"
+            except Exception as e:
+                web_context = f"[Web search unavailable: {e}]"
 
         if web_context:
             user_msg = f"{user_msg}\n\n[Web Search Results]\n{web_context}"
