@@ -13,6 +13,7 @@
 
 import { useCallback } from 'react';
 import { useChatStore } from '@/lib/stores/chat-store';
+import { useAuthStore } from '@/lib/stores/auth-store';
 import { streamChat } from '@/lib/api/chat';
 import type { ChatRequest, Citation } from '@/types';
 
@@ -48,7 +49,8 @@ export function useChatStream() {
       sharedAbortRef.current = controller;
 
       try {
-        const body = await streamChat(request, controller.signal);
+        const token = useAuthStore.getState().token ?? undefined;
+        const body = await streamChat(request, token, controller.signal);
         const reader = body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';

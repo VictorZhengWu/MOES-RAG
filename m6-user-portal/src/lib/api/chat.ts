@@ -22,14 +22,22 @@ export async function sendMessage(request: ChatRequest): Promise<ChatResponse> {
 
 export async function streamChat(
   request: ChatRequest,
+  token?: string,
   signal?: AbortSignal,
 ): Promise<ReadableStream<Uint8Array>> {
   const baseUrl =
     process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${baseUrl}/v1/chat/completions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ ...request, stream: true }),
     signal,
   });
