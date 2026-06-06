@@ -13,7 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { SocialButtons } from './social-buttons';
-import { ArrowLeft } from 'lucide-react';
+import { authRegister } from '@/lib/api/auth';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export function RegisterForm() {
@@ -28,21 +29,27 @@ export function RegisterForm() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (!username.trim()) { setError('Username is required.'); return; }
     if (!email.includes('@')) { setError(t('auth.errors.invalidEmail')); return; }
-    if (password.length < 8) { setError(t('auth.errors.passwordLength')); return; }
+    if (password.length < 6) { setError(t('auth.errors.passwordLength')); return; }
     if (password !== confirmPassword) { setError(t('auth.errors.passwordsMatch')); return; }
 
-    login(
-      { user_id: 'user_mock_02', username, email, role: 'viewer' },
-      'mock-token',
-    );
-    router.push(redirectTo);
+    setSubmitting(true);
+    try {
+      const result = await authRegister(username, email, password);
+      login(result.user, result.token);
+      router.push(redirectTo);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -76,7 +83,9 @@ export function RegisterForm() {
             onChange={(e) => setPassword(e.target.value)} required />
           <Input type="password" placeholder={t('auth.register.confirmPassword')} value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)} required />
-          <Button type="submit" className="w-full">{t('auth.register.submit')}</Button>
+          <Button type="submit" className="w-full" disabled={submitting}>
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : t('auth.register.submit')}
+          </Button>
         </form>
 
         {/* Social sign-up — secondary, below the main form */}

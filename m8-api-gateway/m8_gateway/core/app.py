@@ -121,6 +121,10 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
     # Register routers
     # ------------------------------------------------------------------
 
+    # Authentication endpoints (register/login — no auth required)
+    from m8_gateway.routes import auth
+    app.include_router(auth.router)
+
     # OpenAI-compatible chat completions endpoint
     app.include_router(chat.router)
 
