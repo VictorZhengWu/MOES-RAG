@@ -62,6 +62,8 @@ from m3_retrieval.stages.query_analyzer import (
     _is_exact_match,
     _is_keyword_query,
     analyze_query,
+    strip_section,
+    build_fallback_chain,
 )
 
 if TYPE_CHECKING:
@@ -257,6 +259,58 @@ class RetrievalPipeline:
         self._cache_order: list[str] = []
 
     # =========================================================================
+    # Hierarchical Chapter Fallback
+    # =========================================================================
+
+    async def _execute_path(
+        self, query: str, qa: QueryAnalysis, filters: dict | None
+    ) -> list[ScoredChunk]:
+        """Execute the appropriate retrieval path for the current filter level."""
+        if _is_exact_match(query):
+            return await self._bm25_only(qa.keywords, filters)
+        elif _is_keyword_query(query):
+            return await self._hybrid_no_rerank(qa.semantic_query, qa.keywords, filters)
+        else:
+            return await self._full_pipeline(qa.semantic_query, qa.keywords, filters)
+
+    async def _retrieve_with_chapter_fallback(
+        self, query: str, qa: QueryAnalysis
+    ) -> list[ScoredChunk]:
+        """
+        Retrieve with progressive broadening of chapter filter.
+
+        WHAT: Builds a fallback chain from the chapter_section (e.g.,
+        ["Pt.4 Ch.3 §2.1", "Pt.4 Ch.3", "Pt.4", None]) and tries each
+        filter level until enough results are found.
+
+        WHY: Prevent zero-result queries when the user's section reference
+        doesn't exactly match the extracted metadata. Falls back one level
+        at a time: section → chapter → part → no filter.
+        """
+        min_results: int = 3
+
+        if qa.chapter_section:
+            fallback_chain: list[str | None] = build_fallback_chain(qa.chapter_section)
+        else:
+            fallback_chain = [None]
+
+        best_chunks: list[ScoredChunk] = []
+
+        for level in fallback_chain:
+            if level:
+                qa.chapter_section = level
+            else:
+                qa.chapter_section = None
+            filters = _build_filters(qa, self.cfg.default_year_range)
+            level_chunks = await self._execute_path(query, qa, filters)
+            if level_chunks:
+                best_chunks = level_chunks
+                if len(best_chunks) >= min_results:
+                    break
+
+        return best_chunks
+
+    # =========================================================================
     # Public API
     # =========================================================================
 
@@ -308,53 +362,21 @@ class RetrievalPipeline:
         # goes to the embedding model; keywords go to BM25.
         qa: QueryAnalysis = analyze_query(request.query)
 
-        # WHAT: build metadata filters from extracted fields.
-        # WHY: filters narrow the search space before ranking, improving
-        # precision for structured queries (e.g. "DNV Pt.3 Ch.2 hull").
-        filters: dict | None = _build_filters(qa, self.cfg.default_year_range)
-
-        # ---- Stage 1.5: HyDE hypothesis generation (if enabled) ----
-        # WHAT: when enable_hyde=True, generate a hypothetical ideal
-        # answer to the query and use THAT for embedding rather than
-        # the raw query text.
-        # WHY: short technical queries (e.g. "EH36 preheat") have poor
-        # semantic overlap with full-sentence documents. The hypothesis
-        # bridges this gap by expanding into document-like language.
-        # This replaces qa.semantic_query so all downstream embedding
-        # paths (medium + full) automatically use the hypothesis.
+        # ---- Stage 1a: HyDE hypothesis generation (if enabled) ----
         if request.enable_hyde and self.cfg.hyde_enabled:
             hypothesis: str = await self._generate_hyde_hypothesis(request.query)
             if hypothesis and hypothesis != request.query:
                 qa.semantic_query = hypothesis
 
-        # ---- Adaptive Path Selection ----
-        # WHAT: choose the retrieval path based on query characteristics.
-        # WHY: not all queries need the full 7-stage pipeline. Exact
-        # match queries (e.g. "DNV-ST-N001") only need BM25. Short
-        # keyword queries skip the expensive cross-encoder reranker.
-        # This saves 1-3 seconds per query without quality loss.
-
-        if _is_exact_match(request.query):
-            # Fast path: regulation identifier -> BM25 only.
-            # No embedding model loading, no fusion, no reranking.
-            # Latency: ~50-100ms (Meilisearch round-trip).
-            chunks: list[ScoredChunk] = await self._bm25_only(
-                qa.keywords, filters
-            )
-        elif _is_keyword_query(request.query):
-            # Medium path: short keyword query -> hybrid without rerank.
-            # Dense + sparse + fusion. Skip reranker to save ~1s.
-            # Latency: ~100-300ms.
-            chunks = await self._hybrid_no_rerank(
-                qa.semantic_query, qa.keywords, filters
-            )
-        else:
-            # Full path: natural language query -> all 7 stages.
-            # Dense + sparse + fusion + rerank + dedup.
-            # Latency: ~500-2000ms (includes cross-encoder time).
-            chunks = await self._full_pipeline(
-                qa.semantic_query, qa.keywords, filters
-            )
+        # ---- Stage 1b: Hierarchical Chapter Fallback Retrieval ----
+        # WHAT: Try progressively broader chapter filters. If the query
+        # mentions "Pt.4 Ch.3 §2.1" but §2.1 yields too few results,
+        # retry with "Pt.4 Ch.3", then "Pt.4", then no chapter filter.
+        # WHY: Chapter-based queries in marine domain must not return empty
+        # just because section numbering doesn't match perfectly.
+        chunks: list[ScoredChunk] = await self._retrieve_with_chapter_fallback(
+            request.query, qa
+        )
 
         # ---- Stage 6: Deduplication ----
         # WHAT: remove near-duplicate adjacent chunks using Jaccard.

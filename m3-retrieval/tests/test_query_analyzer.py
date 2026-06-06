@@ -228,9 +228,40 @@ class TestIsKeywordQuery:
         )
 
     def test_short_generic_not_keyword(self) -> None:
-        """
-        WHAT: Short query with only generic words and no proper nouns.
-
-        Expected: False (short but not specific enough).
-        """
+        """Short query with only generic words → not keyword."""
         assert not _is_keyword_query("hello world test")
+
+
+class TestStripSection:
+    """Tests for hierarchical chapter filter fallback."""
+
+    def test_strip_section(self) -> None:
+        """Pt.4 Ch.3 §2.1 → Pt.4 Ch.3"""
+        from m3_retrieval.stages.query_analyzer import strip_section
+        assert strip_section("Pt.4 Ch.3 §2.1") == "Pt.4 Ch.3"
+        assert strip_section("Pt.4 Ch.3 §2") == "Pt.4 Ch.3"
+
+    def test_strip_chapter(self) -> None:
+        """Pt.4 Ch.3 → Pt.4"""
+        from m3_retrieval.stages.query_analyzer import strip_section
+        assert strip_section("Pt.4 Ch.3") == "Pt.4"
+
+    def test_strip_none(self) -> None:
+        """Pt.4 → None (top level)"""
+        from m3_retrieval.stages.query_analyzer import strip_section
+        assert strip_section("Pt.4") is None
+        assert strip_section("Ch.3") is None
+        assert strip_section("") is None
+        assert strip_section(None) is None
+
+    def test_build_fallback_chain(self) -> None:
+        """Full chain: [Pt.4 Ch.3 §2.1, Pt.4 Ch.3, Pt.4, None]"""
+        from m3_retrieval.stages.query_analyzer import build_fallback_chain
+        chain = build_fallback_chain("Pt.4 Ch.3 §2.1")
+        assert chain == ["Pt.4 Ch.3 §2.1", "Pt.4 Ch.3", "Pt.4", None]
+
+    def test_build_fallback_chain_simple(self) -> None:
+        """Short chain: [Ch.3, None]"""
+        from m3_retrieval.stages.query_analyzer import build_fallback_chain
+        chain = build_fallback_chain("Ch.3")
+        assert chain == ["Ch.3", None]

@@ -348,3 +348,80 @@ def analyze_query(query: str) -> QueryAnalysis:
         keywords=keywords,
         semantic_query=semantic_query,
     )
+
+
+def strip_section(chapter_section: str) -> str | None:
+    """
+    Strip the most specific part of a hierarchical chapter reference.
+
+    WHAT: Removes the rightmost section/subsection from a chapter string
+          to broaden the filter scope. Used by the hierarchical fallback
+          in retrieval — if "Pt.4 Ch.3 §2.1" returns too few results,
+          retry with "Pt.4 Ch.3", then "Pt.4", then None.
+
+    WHY: Classification society documents have a tree structure. A query
+         for "Ch.3 §2.1" that yields 0 results should not fail — it should
+         fall back to the chapter level first. This is especially common
+         when the section numbering in the user's query doesn't perfectly
+         match the extracted metadata.
+
+    Examples:
+        "Pt.4 Ch.3 §2.1" → "Pt.4 Ch.3"
+        "Pt.4 Ch.3"      → "Pt.4"
+        "Ch.3 §2.1"      → "Ch.3"
+        "Ch.3"           → None
+        "Pt.4"           → None
+    """
+    if not chapter_section:
+        return None
+
+    import re
+
+    # Try stripping a section (e.g., "§2.1" or "Section 2.1")
+    # Pattern: §\d+(\.\d+)? optionally preceded by a space
+    section_match = re.search(r"\s*§\s*\d+(?:\.\d+)?$", chapter_section)
+    if section_match:
+        stripped = chapter_section[:section_match.start()].strip()
+        return stripped if stripped else None
+
+    # Try stripping "Section X.Y" or "Sec. X.Y"
+    section_match = re.search(r"\s*S(?:ec(?:tion)?)?\.?\s*\d+(?:\.\d+)?$", chapter_section, re.IGNORECASE)
+    if section_match:
+        stripped = chapter_section[:section_match.start()].strip()
+        return stripped if stripped else None
+
+    # Try stripping a chapter (e.g., "Ch.3" or "Chapter 3")
+    # Only strip if there's something before it (i.e., a Part)
+    chapter_match = re.search(r"\s*Ch(?:apter)?\.?\s*\d+$", chapter_section, re.IGNORECASE)
+    if chapter_match and chapter_match.start() > 0:
+        stripped = chapter_section[:chapter_match.start()].strip()
+        return stripped if stripped else None
+
+    # Try stripping "Pt.X" or "Part X"
+    part_match = re.search(r"\s*P(?:t|art)\.?\s*\d+$", chapter_section, re.IGNORECASE)
+    if part_match and chapter_section[:part_match.start()].strip():
+        return chapter_section[:part_match.start()].strip()
+
+    # Already at the top level
+    return None
+
+
+def build_fallback_chain(chapter_section: str) -> list[str | None]:
+    """
+    Build a list of progressively broader chapter filters for fallback retrieval.
+
+    WHAT: Starting from the full chapter_section, repeatedly call strip_section()
+          to generate [full, chapter, part, None] filter chain.
+
+    WHY: The retrieval pipeline can iterate over this chain, trying each filter
+         level until enough results are found. The last element (None) means
+         "no chapter filter" — search the entire document corpus.
+    """
+    chain = [chapter_section]
+    current = chapter_section
+    while current:
+        current = strip_section(current)
+        if current:
+            chain.append(current)
+    chain.append(None)
+    return chain
