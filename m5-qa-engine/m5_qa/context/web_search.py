@@ -1,71 +1,100 @@
 """
-M5 QA Engine — Web Search Retriever.
+M5 QA Engine — Web Search (Pluggable Engines).
 
-WHAT: DuckDuckGo-based web search as a supplementary retrieval source.
-      When the M6 frontend's web_search toggle is enabled, this fetches
-      up-to-date web results to complement M3 (vector) and M4 (graph).
+WHAT: Multi-engine web search as a supplementary retrieval source.
+      Supports DuckDuckGo (free), SearXNG (self-hosted, Baidu/Bing),
+      Tavily (paid, AI-optimized), and Brave Search (free tier).
 
-WHY: Marine engineering knowledge is not static — new regulations, incident
-     reports, and industry updates appear online. Web search provides the
-     "fresh knowledge" that a static document corpus cannot.
-     90%+ of marine engineering Q&A can be answered from the document base
-     alone, but the remaining 10% (e.g. "latest IMO regulation on ballast
-     water", "recent offshore incident") need live search.
+WHY: Different deployments need different search engines:
+      - Personal: DuckDuckGo (free, no setup) or SearXNG (Baidu for China)
+      - Enterprise: Tavily (highest precision, $0.01/query)
+      - SaaS: Brave Search (2000 free/month, then $5/1000)
 
-Free tier: DuckDuckGo Instant Answer API (no key required). Phase 3 can
-           upgrade to Brave Search API or Google Custom Search.
+      All engines return the same list[WebResult] format so the rest of
+      the pipeline (formatting, context injection) is engine-agnostic.
 """
 
-from dataclasses import dataclass
-from typing import Any
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Protocol
 
 import httpx
 
 
+# ---------------------------------------------------------------------------
+# Data model
+# ---------------------------------------------------------------------------
+
+
 @dataclass
 class WebResult:
-    """A single web search result."""
+    """A single web search result — engine-agnostic format."""
     title: str
     url: str
-    snippet: str      # Brief description/summary
+    snippet: str
     source: str = "web"
 
 
-async def search_web(query: str, max_results: int = 5) -> list[WebResult]:
+# ---------------------------------------------------------------------------
+# Engine Protocol
+# ---------------------------------------------------------------------------
+
+
+class WebSearchEngine(Protocol):
+    """Interface for pluggable web search backends."""
+
+    @property
+    def name(self) -> str:
+        """Engine identifier: 'duckduckgo', 'searxng', 'tavily', 'brave'."""
+        ...
+
+    async def search(self, query: str, max_results: int = 5) -> list[WebResult]:
+        """Execute a web search and return normalized results."""
+        ...
+
+
+# ---------------------------------------------------------------------------
+# Engine Implementations
+# ---------------------------------------------------------------------------
+
+
+class DuckDuckGoEngine:
     """
-    Search the web using DuckDuckGo's free API.
+    DuckDuckGo Instant Answer API — free, no API key required.
 
-    WHAT: Sends a query to DuckDuckGo, parses the response, and returns
-          up to max_results of title+url+snippet.
+    WHAT: Uses DuckDuckGo's JSON API for instant answers and related topics.
+          No authentication, no rate limit for personal use.
 
-    WHY: DuckDuckGo's API is free, requires no registration, and returns
-         relevant results for technical queries. The snippet field provides
-         enough context to verify relevance before fetching full pages.
-
-    Falls back gracefully: returns empty list on any error (network timeout,
-    API change, rate limiting) so the main RAG pipeline is never blocked.
+    WHY: Default engine for personal mode — zero setup, zero cost.
+         Best for English-language technical queries.
+         Limitation: may be blocked/unreliable in some regions.
     """
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(
-                "https://api.duckduckgo.com/",
-                params={
-                    "q": query,
-                    "format": "json",
-                    "no_html": "1",
-                    "skip_disambig": "1",
-                },
-                headers={"User-Agent": "MarineExpertSystem/0.1"},
-            )
-            if resp.status_code != 200:
-                return []
 
-            data: dict[str, Any] = resp.json()
+    name: str = "duckduckgo"
+
+    async def search(self, query: str, max_results: int = 5) -> list[WebResult]:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    "https://api.duckduckgo.com/",
+                    params={
+                        "q": query,
+                        "format": "json",
+                        "no_html": "1",
+                        "skip_disambig": "1",
+                    },
+                    headers={"User-Agent": "MarineExpertSystem/0.1"},
+                )
+                if resp.status_code != 200:
+                    return []
+                data = resp.json()
+
             results: list[WebResult] = []
 
-            # DuckDuckGo abstract (primary answer)
-            abstract: str = data.get("AbstractText", "")
-            abstract_url: str = data.get("AbstractURL", "")
+            # Primary abstract
+            abstract = data.get("AbstractText", "")
+            abstract_url = data.get("AbstractURL", "")
             if abstract:
                 results.append(WebResult(
                     title=data.get("Heading", query),
@@ -83,10 +112,194 @@ async def search_web(query: str, max_results: int = 5) -> list[WebResult]:
                     ))
 
             return results[:max_results]
+        except Exception:
+            return []
 
-    except Exception:
-        # DuckDuckGo is a secondary source — never block the main pipeline
-        return []
+
+class SearXNEngine:
+    """
+    SearXNG — self-hosted privacy-respecting meta-search engine.
+
+    WHAT: Queries a SearXNG instance. The instance can be configured to
+          use Baidu, Bing, Google, or any combination of upstream engines.
+          Default endpoint: http://localhost:8888/search?format=json
+
+    WHY: Best option for Chinese users — self-host SearXNG with Baidu + Bing
+         as upstream engines. Full control over search sources.
+         Also great for enterprise deployments that require data privacy
+         (no queries sent to third-party APIs).
+
+    Setup: docker run -d -p 8888:8080 searxng/searxng
+           Configure engines in /etc/searxng/settings.yml
+    """
+
+    name: str = "searxng"
+
+    def __init__(self, base_url: str = "http://localhost:8888"):
+        self._base_url = base_url.rstrip("/")
+
+    async def search(self, query: str, max_results: int = 5) -> list[WebResult]:
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(
+                    f"{self._base_url}/search",
+                    params={
+                        "q": query,
+                        "format": "json",
+                        "engines": "bing,baidu,google",
+                        "language": "zh-CN",
+                    },
+                    headers={"User-Agent": "MarineExpertSystem/0.1"},
+                )
+                if resp.status_code != 200:
+                    return []
+                data = resp.json()
+
+            results: list[WebResult] = []
+            for entry in data.get("results", [])[:max_results]:
+                results.append(WebResult(
+                    title=entry.get("title", ""),
+                    url=entry.get("url", ""),
+                    snippet=entry.get("content", entry.get("snippet", "")),
+                ))
+            return results
+        except Exception:
+            return []
+
+
+class TavilyEngine:
+    """
+    Tavily Search API — AI-optimized for RAG applications.
+
+    WHAT: Tavily is purpose-built for AI agent web search. It returns
+          cleaned, relevant snippets optimized for LLM consumption.
+          Requires an API key (free tier: 1000 queries/month).
+
+    WHY: Highest precision for RAG — results are pre-filtered for relevance
+         and formatted for LLM context windows. Recommended for enterprise
+         deployments where search quality directly impacts answer quality.
+
+    API: https://tavily.com
+    """
+
+    name: str = "tavily"
+
+    def __init__(self, api_key: str):
+        self._api_key = api_key
+
+    async def search(self, query: str, max_results: int = 5) -> list[WebResult]:
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(
+                    "https://api.tavily.com/search",
+                    json={
+                        "query": query,
+                        "max_results": max_results,
+                        "search_depth": "basic",
+                    },
+                    headers={
+                        "Authorization": f"Bearer {self._api_key}",
+                        "Content-Type": "application/json",
+                    },
+                )
+                if resp.status_code != 200:
+                    return []
+                data = resp.json()
+
+            results: list[WebResult] = []
+            for entry in data.get("results", [])[:max_results]:
+                results.append(WebResult(
+                    title=entry.get("title", ""),
+                    url=entry.get("url", ""),
+                    snippet=entry.get("content", ""),
+                ))
+            return results
+        except Exception:
+            return []
+
+
+class BraveEngine:
+    """
+    Brave Search API — independent search index, generous free tier.
+
+    WHAT: Brave's web search API with 2000 free queries/month.
+          Requires a free API key from https://brave.com/search/api/
+
+    WHY: Good middle-ground between free DuckDuckGo and paid Tavily.
+         Brave has its own index (not Bing/Google proxy), so results
+         complement other engines.
+    """
+
+    name: str = "brave"
+
+    def __init__(self, api_key: str):
+        self._api_key = api_key
+
+    async def search(self, query: str, max_results: int = 5) -> list[WebResult]:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    "https://api.search.brave.com/res/v1/web/search",
+                    params={"q": query, "count": min(max_results, 20)},
+                    headers={
+                        "Accept": "application/json",
+                        "Accept-Encoding": "gzip",
+                        "X-Subscription-Token": self._api_key,
+                    },
+                )
+                if resp.status_code != 200:
+                    return []
+                data = resp.json()
+
+            results: list[WebResult] = []
+            for entry in data.get("web", {}).get("results", [])[:max_results]:
+                results.append(WebResult(
+                    title=entry.get("title", ""),
+                    url=entry.get("url", ""),
+                    snippet=entry.get("description", ""),
+                ))
+            return results
+        except Exception:
+            return []
+
+
+# ---------------------------------------------------------------------------
+# Factory
+# ---------------------------------------------------------------------------
+
+
+def create_web_search_engine(
+    engine: str = "duckduckgo",
+    api_key: str | None = None,
+    searxng_url: str = "http://localhost:8888",
+) -> WebSearchEngine:
+    """
+    Factory function — creates the configured web search engine.
+
+    WHY: Same pattern as M2's storage backend factory — the rest of the
+         pipeline works with the protocol, never the concrete class.
+         Switching engines is a config change, not a code change.
+    """
+    if engine == "tavily":
+        if not api_key:
+            raise ValueError("Tavily requires an API key")
+        return TavilyEngine(api_key)
+
+    if engine == "brave":
+        if not api_key:
+            raise ValueError("Brave Search requires an API key")
+        return BraveEngine(api_key)
+
+    if engine == "searxng":
+        return SearXNEngine(searxng_url)
+
+    # Default: DuckDuckGo (free, no key)
+    return DuckDuckGoEngine()
+
+
+# ---------------------------------------------------------------------------
+# Formatting
+# ---------------------------------------------------------------------------
 
 
 def format_web_results(results: list[WebResult]) -> str:

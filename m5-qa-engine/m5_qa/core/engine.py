@@ -183,8 +183,14 @@ class QAEngine:
         web_context: str = ""
         if getattr(request, "web_search_enabled", False):
             try:
-                from m5_qa.context.web_search import search_web, format_web_results
-                web_results = await search_web(user_msg)
+                from m5_qa.context.web_search import create_web_search_engine, format_web_results
+
+                engine = create_web_search_engine(
+                    engine=self._config.web_search_engine,
+                    api_key=self._config.web_search_api_key,
+                    searxng_url=self._config.web_search_searxng_url,
+                )
+                web_results = await engine.search(user_msg)
                 web_context = format_web_results(web_results)
             except Exception:
                 pass  # Web search is supplementary — never block the pipeline

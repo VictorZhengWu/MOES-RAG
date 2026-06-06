@@ -63,6 +63,17 @@ class QAConfig:
     """Default user tier: 'basic' | 'pro' | 'enterprise'.
     Overridden by request.tier if present (future: M8 API gateway passes it)."""
 
+    # ---- Web Search -------------------------------------------------------
+    web_search_engine: str = "duckduckgo"
+    """Web search backend: 'duckduckgo' | 'searxng' | 'tavily' | 'brave'.
+    Personal mode defaults to duckduckgo (free). Enterprise can use tavily."""
+
+    web_search_api_key: str | None = None
+    """API key for paid search engines (tavily, brave). None for free engines."""
+
+    web_search_searxng_url: str = "http://localhost:8888"
+    """SearXNG instance URL when engine='searxng'."""
+
     retrieval_score_threshold: float = 0.5
     """Minimum cosine similarity score for M3 retrieval chunks in Self-RAG mode.
     Chunks below this threshold trigger a re-query with rewritten search terms."""
