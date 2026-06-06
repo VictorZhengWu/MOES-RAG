@@ -1,0 +1,129 @@
+# ============================================================================
+# Marine & Offshore Expert System — Docker Compose
+# ============================================================================
+# Start:  docker compose up -d
+# Stop:   docker compose down
+# Logs:   docker compose logs -f
+#
+# Services:
+#   m8     (8000) — API Gateway + QA Engine + Retrieval + KG + Storage
+#   m1     (8007) — Document Parsing Engine (docling, OCR, heavy deps)
+#   meilisearch (7700) — Full-text search (BM25)
+#   searxng      (8888) — Optional web search proxy (Baidu/Bing/Google)
+#   ollama      (11434) — Optional local LLM
+# ============================================================================
+
+version: "3.9"
+
+services:
+  # ── Core: API Gateway + QA Engine + Retrieval + KG ──────────────────
+  # Bundles M8+M5+M3+M4+M2 into one container. ChromaDB is embedded.
+  # The QA engine imports M3/M4/M5 directly — no cross-container HTTP.
+  m8:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: m8
+    container_name: marine-m8
+    ports:
+      - "${M8_PORT:-8000}:8000"
+    environment:
+      - M1_PARSE_URL=http://m1:8007/parse
+      - M5_DB_PATH=/data/m5_qa.db
+      - M3_CHROMADB_DIR=/data/chromadb
+      - M4_KUZU_DIR=/data/graph
+      - DEPLOYMENT_MODE=${DEPLOYMENT_MODE:-personal}
+    volumes:
+      - marine_data:/data
+      - ../m8-api-gateway:/app/m8-api-gateway
+      - ../m5-qa-engine:/app/m5-qa-engine
+      - ../m3-retrieval:/app/m3-retrieval
+      - ../m4-knowledge-graph:/app/m4-knowledge-graph
+      - ../m2-storage:/app/m2-storage
+      - ../contracts:/app/contracts
+    depends_on:
+      meilisearch:
+        condition: service_started
+    restart: unless-stopped
+
+  # ── Document Parsing Engine ─────────────────────────────────────────
+  # Heavy container: docling + paddleocr + transformers (4-8GB RAM).
+  # Separated from M8 so parsing doesn't affect QA latency.
+  m1:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: m1
+    container_name: marine-m1
+    ports:
+      - "${M1_PORT:-8007}:8007"
+    environment:
+      - M1_OUTPUT_DIR=/data/output
+      - M1_DEPLOY_YAML=/app/deploy.yaml
+    volumes:
+      - marine_data:/data
+      - ../m1-doc-parsing:/app/m1-doc-parsing
+      - ../m2-storage:/app/m2-storage
+      - ../contracts:/app/contracts
+      - ../deploy.yaml:/app/deploy.yaml
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+
+  # ── Full-text search engine ─────────────────────────────────────────
+  meilisearch:
+    image: getmeili/meilisearch:v1.10
+    container_name: marine-meilisearch
+    ports:
+      - "${MEILI_PORT:-7700}:7700"
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-}
+      - MEILI_NO_ANALYTICS=true
+    volumes:
+      - meili_data:/meili_data
+    restart: unless-stopped
+
+  # ── Optional: Self-hosted web search proxy ───────────────────────────
+  # Start with: docker compose --profile search up
+  searxng:
+    image: searxng/searxng:latest
+    container_name: marine-searxng
+    profiles: ["search"]
+    ports:
+      - "${SEARXNG_PORT:-8888}:8080"
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:${SEARXNG_PORT:-8888}/
+    volumes:
+      - searxng_data:/etc/searxng
+    restart: unless-stopped
+
+  # ── Optional: Local LLM (Ollama) ────────────────────────────────────
+  # Start with: docker compose --profile llm up
+  # After start: docker exec -it marine-ollama ollama pull deepseek-r1:7b
+  ollama:
+    image: ollama/ollama:latest
+    container_name: marine-ollama
+    profiles: ["llm"]
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_HOST=0.0.0.0
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  marine_data:
+  meili_data:
+  searxng_data:
+  ollama_data:

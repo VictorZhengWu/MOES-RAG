@@ -1248,6 +1248,16 @@ def test_openai_python_sdk_chat():
 
 00100-02 和 00100-03 可并行。
 
-### 🔲 00110 — deploy/ 部署配置
+### ✅ 00110 — deploy/ 部署配置
 
-（详细设计将在开发本模块时制定）
+**功能描述：**
+- `deploy/docker-compose.yml`：6 个服务（m8, m1, meilisearch, searxng, ollama）
+- `deploy/Dockerfile`：multi-stage（m8 轻量 ~2GB, m1 重量 ~8GB）
+- `deploy/.env.example`：LLM/API Key/端口配置模板
+- `deploy/start.ps1` + `deploy/start.sh`：一键启动脚本
+- M8 打包 M3+M4+M5 同容器（ChromaDB 嵌入式，无额外服务）
+- M1 独立容器（docling+OCR 重量依赖隔离）
+
+**验证方法：** `docker compose -f deploy/docker-compose.yml up -d --build` → 4 个服务健康
+**Task 类型：** 集成/跨模块类
+**依赖：** 全部模块
