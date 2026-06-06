@@ -500,6 +500,19 @@ def create_app() -> "FastAPI":
     async def root():
         return HTMLResponse(content=build_page())
 
+    @app.get("/health")
+    async def health():
+        """Health check endpoint for Docker / load balancer.
+
+        WHAT: Returns a simple {"status": "healthy"} response.
+              Used by docker-compose healthcheck and Kubernetes liveness probes.
+
+        WHY: The /health endpoint must be the FASTEST possible response —
+             no component detection, no imports. /status does full component
+             detection which is too slow for a health check.
+        """
+        return {"status": "healthy"}
+
     @app.get("/status")
     async def status():
         return _COMPONENTS
