@@ -431,12 +431,17 @@ class KGEngine:
         #      request a shallower depth but never exceed the tier limit.
         effective_depth = depth if depth is not None else self._tier.traversal_depth
 
-        return await graph_search_fn(
-            self._store,
-            topic,
-            depth=effective_depth,
-            max_entities=self._tier.max_entities,
-        )
+        try:
+            return await graph_search_fn(
+                self._store, topic, depth=effective_depth,
+                max_entities=self._tier.max_entities,
+            )
+        except Exception as exc:
+            logger.error("graph_search failed topic=%s error=%s", topic, exc)
+            return Subgraph(
+                entities=[], relations=[],
+                query_context=f"Graph search error: {exc}",
+            )
 
     # =====================================================================
     # Cross Reference (called by M5 QA Engine)
@@ -494,13 +499,14 @@ class KGEngine:
 
         # Delegate to the search module's cross_reference function.
         # It handles graph lookup, LLM fallback, and result caching.
-        return await cross_ref_fn(
-            self._store,
-            source_clause,
-            source_society,
-            target_society,
-            llm_backend=self._config.llm,
-        )
+        try:
+            return await cross_ref_fn(
+                self._store, source_clause, source_society, target_society,
+                llm_backend=self._config.llm,
+            )
+        except Exception as exc:
+            logger.error("cross_reference failed clause=%s error=%s", source_clause, exc)
+            return None
 
     # =====================================================================
     # Health Check (called by monitoring / admin dashboard)

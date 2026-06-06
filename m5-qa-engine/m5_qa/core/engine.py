@@ -21,8 +21,11 @@ WHY: The QA engine is the "brain" of the system — all user-facing chat request
 from __future__ import annotations
 
 import datetime
+import logging
 import time
 import uuid
+
+logger = logging.getLogger(__name__)
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -211,35 +214,52 @@ class QAEngine:
         if web_context:
             user_msg = f"{user_msg}\n\n[Web Search Results]\n{web_context}"
 
-        # Step 5: Execute the selected pipeline mode.
+        # Step 5: Execute the selected pipeline mode with full error guard.
         # Each pipeline function is an async function that takes query, llm_client,
         # retriever, prompt_manager, tier, and optional parameters.
-        if mode == "simple":
-            result = await execute_simple(
-                query=user_msg,
-                llm_client=self._llm_client,
-                retriever=self._retriever,
-                prompt_manager=self._prompt_manager,
-                tier=tier_level,
+        # All exceptions are caught and returned as a friendly error message
+        # to the user — no tracebacks in user-facing responses.
+        pipeline_error: str | None = None
+        try:
+            if mode == "simple":
+                result = await execute_simple(
+                    query=user_msg,
+                    llm_client=self._llm_client,
+                    retriever=self._retriever,
+                    prompt_manager=self._prompt_manager,
+                    tier=tier_level,
+                )
+            elif mode == "pipeline":
+                result = await execute_pipeline(
+                    query=user_msg,
+                    llm_client=self._llm_client,
+                    retriever=self._retriever,
+                    prompt_manager=self._prompt_manager,
+                    tier=tier_level,
+                )
+            else:  # self_rag
+                result = await execute_self_rag(
+                    query=user_msg,
+                    llm_client=self._llm_client,
+                    retriever=self._retriever,
+                    prompt_manager=self._prompt_manager,
+                    tier=tier_level,
+                    score_threshold=self._config.retrieval_score_threshold,
+                    max_iterations=self._config.max_self_rag_iterations,
+                )
+        except Exception as exc:
+            # Log the full error for admin debugging
+            import traceback
+            logger.error(
+                "pipeline_error mode=%s query=%s error=%s\n%s",
+                mode, user_msg[:100], exc, traceback.format_exc(),
             )
-        elif mode == "pipeline":
-            result = await execute_pipeline(
-                query=user_msg,
-                llm_client=self._llm_client,
-                retriever=self._retriever,
-                prompt_manager=self._prompt_manager,
-                tier=tier_level,
+            pipeline_error = (
+                f"I'm sorry, I encountered an error processing your question. "
+                f"Please try again or contact support.\n\n"
+                f"[Error: {exc}]"
             )
-        else:  # self_rag
-            result = await execute_self_rag(
-                query=user_msg,
-                llm_client=self._llm_client,
-                retriever=self._retriever,
-                prompt_manager=self._prompt_manager,
-                tier=tier_level,
-                score_threshold=self._config.retrieval_score_threshold,
-                max_iterations=self._config.max_self_rag_iterations,
-            )
+            result = {"answer": pipeline_error, "citations": []}
 
         # Step 5: Build the OpenAI-compatible ChatResponse.
         # The response format matches the OpenAI /v1/chat/completions schema
@@ -350,10 +370,16 @@ class QAEngine:
             {"role": "user", "content": user_msg},
         ]
 
-        # Step 4: Stream tokens from the LLM
-        async for content in self._llm_client.complete_stream(messages):
-            chunk = await sse_chunk(content)
-            yield chunk
+        # Step 4: Stream tokens from the LLM (with error guard)
+        try:
+            async for content in self._llm_client.complete_stream(messages):
+                chunk = await sse_chunk(content)
+                yield chunk
+        except Exception as exc:
+            import traceback
+            logger.error("stream_error query=%s error=%s\n%s", user_msg[:100], exc, traceback.format_exc())
+            error_msg = f"I'm sorry, an error occurred: {exc}. Please try again."
+            yield await sse_chunk(error_msg, finish_reason="error")
 
         # Step 5: Push citations as final SSE event before [DONE]
         from m5_qa.context.citation_builder import build_citations

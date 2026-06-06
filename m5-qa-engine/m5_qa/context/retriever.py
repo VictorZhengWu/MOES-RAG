@@ -16,8 +16,11 @@ WHY: M5 pipelines need different retrieval strategies depending on the
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass, field
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from contracts.knowledge_graph import CrossReferenceResult, Subgraph
 from contracts.retrieval import RetrievedContext, RetrievalRequest, ScoredChunk
@@ -39,6 +42,8 @@ class RetrievalContext:
     """
     chunks: list[ScoredChunk]
     graph: Subgraph | None = None
+    errors: list[str] = field(default_factory=list)
+    """Non-fatal errors encountered during retrieval (e.g., M4 unavailable)."""
     cross_refs: list[CrossReferenceResult] = field(default_factory=list)
 
 
@@ -98,9 +103,9 @@ class RetrievalClient:
                 RetrievalRequest(query=query, top_k=top_k)
             )
             return RetrievalContext(chunks=result.chunks, graph=None)
-        except Exception:
-            # Graceful degradation: return empty context on M3 failure
-            return RetrievalContext(chunks=[], graph=None)
+        except Exception as exc:
+            logger.error("M3 retrieval failed: %s. Returning empty context.", exc)
+            return RetrievalContext(chunks=[], graph=None, errors=[f"M3 retrieval failed: {exc}"])
 
     async def parallel_retrieve(
         self, query: str, top_k: int = 20, kg_depth: int = 1
@@ -140,19 +145,20 @@ class RetrievalClient:
         chunks: list[ScoredChunk] = []
         graph: Subgraph | None = None
 
+        errors: list[str] = []
         if m3_task:
             try:
                 result: RetrievedContext = await m3_task
                 chunks = result.chunks
-            except Exception:
-                # M3 failure: continue with empty chunks, M4 may still provide value
-                pass
+            except Exception as exc:
+                logger.error("M3 retrieval failed: %s", exc)
+                errors.append(f"M3: {exc}")
 
         if m4_task:
             try:
                 graph = await m4_task
-            except Exception:
-                # M4 failure is non-fatal: graph enhancement is optional
-                pass
+            except Exception as exc:
+                logger.error("M4 graph search failed: %s", exc)
+                errors.append(f"M4: {exc}")
 
-        return RetrievalContext(chunks=chunks, graph=graph)
+        return RetrievalContext(chunks=chunks, graph=graph, errors=errors)

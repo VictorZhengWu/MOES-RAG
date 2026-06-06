@@ -147,6 +147,35 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
     app.include_router(admin.router)
 
     # ------------------------------------------------------------------
+    # Global error handler — catches all unhandled exceptions
+    # ------------------------------------------------------------------
+
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        """Return JSON error instead of HTML traceback for unhandled errors.
+
+        WHY: In production, a 500 error with a traceback leaks internal
+             code paths to external users. This handler logs the full
+             traceback for the admin and returns a clean JSON error.
+             In personal mode, the detail is included for debugging.
+        """
+        import logging, traceback
+        logging.getLogger("m8_gateway").error(
+            "unhandled_error path=%s error=%s\n%s",
+            request.url.path, exc, traceback.format_exc(),
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Internal server error",
+                "detail": str(exc) if cfg.deployment_mode == "personal" else "Please contact support.",
+            },
+        )
+
+    # ------------------------------------------------------------------
     # Health check
     # ------------------------------------------------------------------
 
