@@ -343,7 +343,15 @@
       "Bash(python -m pytest tests/ -q)",
       "Bash(python -m pytest tests/test_chat.py -v --tb=long)",
       "Bash(python -m pytest m5-qa-engine/tests/test_retriever.py::TestM4GracefulFailure::test_m4_failure_still_returns_m3_results -v --tb=short)",
-      "Bash(python -m pytest m2-storage/tests/ m3-retrieval/tests/ m4-knowledge-graph/tests/ m5-qa-engine/tests/ -q)"
+      "Bash(python -m pytest m2-storage/tests/ m3-retrieval/tests/ m4-knowledge-graph/tests/ m5-qa-engine/tests/ -q)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(f'  {m[\\\\\"name\\\\\"]} \\({m[\\\\\"size\\\\\"]//1024//1024}MB\\)'\\) for m in d.get\\('models',[]\\)]\")",
+      "Bash(python -m pytest tests/e2e/ -v -s)",
+      "Bash(PYTHONPATH=. python -m pytest tests/e2e/test_full_pipeline.py -v -s -p no:cacheprovider --no-header)",
+      "Bash(PYTHONPATH=. python tests/e2e/run_e2e.py)",
+      "Bash(PYTHONPATH=. timeout 180 python tests/e2e/run_e2e.py)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('m8-api-gateway/m8_gateway/routes/auth.py', encoding='utf-8'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")",
+      "Bash(python -c \"from contracts.document import Domain; from m4_kg.graph.kuzu_store import KuzuStore; print\\('Imports OK'\\)\")",
+      "Bash(python -c \"from m4_kg.graph.kuzu_store import KuzuStore; print\\('M4 import OK'\\)\")"
     ]
   }
 }

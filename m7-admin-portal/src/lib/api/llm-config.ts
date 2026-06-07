@@ -1,22 +1,98 @@
+/**
+ * LLM & Web Search configuration API functions.
+ *
+ * WHAT: Real API calls to M8's /admin/config endpoints for LLM backend
+ *       and web search engine configuration. Replaces Phase 1 mock calls.
+ *
+ * WHY: M8 now has a unified config store in SQLite with hot-reload.
+ *      Changes take effect immediately on the running M5 QAEngine.
+ */
+
 import type { LLMBackend } from '@/types';
-import { apiGet, apiPost, apiDelete } from './client';
+import { apiGet, apiPost } from './client';
+
+// ── LLM Backend ──────────────────────────────────────────────────────
 
 export async function listBackends(): Promise<{ backends: LLMBackend[]; total: number }> {
-  return apiGet('/api/v1/admin/llm/backends');
+  // M5 currently has ONE LLM backend — return as singleton list
+  try {
+    const data = await apiGet<Record<string, string>>('/admin/config/llm');
+    return {
+      backends: [{
+        purpose: 'chat',
+        provider: data.provider || 'deepseek',
+        model: data.model || 'deepseek-chat',
+        base_url: data.base_url || 'https://api.deepseek.com/v1',
+        api_key: data.api_key || '',
+        is_default: true,
+      }],
+      total: 1,
+    };
+  } catch {
+    return { backends: [], total: 0 };
+  }
 }
 
 export async function createBackend(data: Partial<LLMBackend>): Promise<LLMBackend> {
-  return apiPost('/api/v1/admin/llm/backends', data);
-}
-
-export async function updateBackend(id: string, data: Partial<LLMBackend>): Promise<{ updated: boolean }> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/admin/llm/backends/${id}`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  return apiPost('/admin/config/llm', {
+    provider: data.provider || 'deepseek',
+    model: data.model || 'deepseek-chat',
+    api_key: data.api_key || '',
+    base_url: data.base_url || 'https://api.deepseek.com/v1',
   });
-  if (!res.ok) throw new Error(`Update failed: ${res.status}`);
-  return res.json();
 }
 
-export async function deleteBackend(id: string): Promise<{ deleted: boolean }> {
-  return apiDelete(`/api/v1/admin/llm/backends/${id}`);
+export async function updateBackend(
+  _id: string, data: Partial<LLMBackend>,
+): Promise<{ updated: boolean }> {
+  await apiPost('/admin/config/llm', {
+    provider: data.provider,
+    model: data.model,
+    api_key: data.api_key || '',
+    base_url: data.base_url || '',
+  });
+  return { updated: true };
+}
+
+export async function deleteBackend(_id: string): Promise<{ deleted: boolean }> {
+  return { deleted: true };  // Single backend — no deletion needed
+}
+
+// ── Web Search ────────────────────────────────────────────────────────
+
+export async function getWebSearchConfig(): Promise<Record<string, string>> {
+  return apiGet('/admin/config/web-search');
+}
+
+export async function updateWebSearchConfig(engine: string, apiKey?: string, searxngUrl?: string, googleCx?: string) {
+  return apiPost('/admin/config/web-search', {
+    engine,
+    api_key: apiKey || null,
+    searxng_url: searxngUrl || 'http://localhost:8888',
+    google_cx: googleCx || null,
+  });
+}
+
+export async function testWebSearchConnection(): Promise<{ ok: boolean; error?: string }> {
+  return apiPost('/admin/config/web-search/test', {});
+}
+
+// ── Features ──────────────────────────────────────────────────────────
+
+export async function getFeatures(): Promise<Record<string, string>> {
+  return apiGet('/admin/config/features');
+}
+
+export async function updateFeatures(features: Record<string, boolean>) {
+  return apiPost('/admin/config/features', features);
+}
+
+// ── SMTP ──────────────────────────────────────────────────────────────
+
+export async function getSMTPConfig(): Promise<Record<string, string>> {
+  return apiGet('/admin/config/smtp');
+}
+
+export async function updateSMTPConfig(smtp: Record<string, string | number>) {
+  return apiPost('/admin/config/smtp', smtp);
 }
