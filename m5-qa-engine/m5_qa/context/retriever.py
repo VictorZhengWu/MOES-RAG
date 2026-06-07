@@ -143,9 +143,17 @@ class RetrievalClient:
                 self._m4.graph_search(topic=query, depth=kg_depth)
             )
 
+        # Phase 3: propositional index retrieval (atomic facts)
+        prop_task = None
+        if self._m3:
+            prop_task = asyncio.create_task(
+                self._m3.retrieve_propositions(query, top_k=top_k)
+            )
+
         # Collect results — each engine failure is isolated
         chunks: list[ScoredChunk] = []
         graph: Subgraph | None = None
+        propositions: list[ScoredChunk] = []
 
         errors: list[str] = []
         if m3_task:
@@ -156,6 +164,13 @@ class RetrievalClient:
                 logger.error("M3 retrieval failed: %s", exc)
                 errors.append(f"M3: {exc}")
 
+        if prop_task:
+            try:
+                propositions = await prop_task
+            except Exception as exc:
+                logger.error("Proposition retrieval failed: %s", exc)
+                # Non-fatal — chunks + graph still available
+
         if m4_task:
             try:
                 graph = await m4_task
@@ -163,4 +178,6 @@ class RetrievalClient:
                 logger.error("M4 graph search failed: %s", exc)
                 errors.append(f"M4: {exc}")
 
-        return RetrievalContext(chunks=chunks, graph=graph, errors=errors)
+        return RetrievalContext(
+            chunks=chunks, graph=graph, propositions=propositions, errors=errors,
+        )

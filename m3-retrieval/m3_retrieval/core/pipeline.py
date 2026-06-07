@@ -287,10 +287,13 @@ class RetrievalPipeline:
         doesn't exactly match the extracted metadata. Falls back one level
         at a time: section → chapter → part → no filter.
         """
-        min_results: int = 3
+        min_results: int = getattr(self.cfg, "chapter_fallback_min_results", 3)
+        max_levels: int = getattr(self.cfg, "chapter_fallback_max_levels", 3)
 
         if qa.chapter_section:
             fallback_chain: list[str | None] = build_fallback_chain(qa.chapter_section)
+            # Cap levels to prevent worst-case full-scan
+            fallback_chain = fallback_chain[:max_levels]
         else:
             fallback_chain = [None]
 

@@ -132,7 +132,25 @@ class RetrievalConfig:
     (Pt.→Ch.→Section→Clause) for 5-10x precision improvement on
     chapter-specific queries."""
 
+    # ---- Hierarchical Navigation ---------------------------------------
+
+    chapter_fallback_min_results: int = 3
+    """Minimum results at a chapter filter level before accepting and
+    not falling back to a broader level. Higher = more precise but
+    more retries."""
+
+    chapter_fallback_max_levels: int = 3
+    """Maximum number of chapter fallback levels to try. Prevents
+    worst-case fallback from section to full corpus for every query."""
+
     # ---- Propositional Indexing -----------------------------------------
+
+    enable_propositions: bool = True
+    """Whether to search the propositions collection alongside chunks."""
+
+    propositions_top_k: int = 15
+    """Max number of propositions to return per query."""
+
     propositions_collection: str = "marine_rag_propositions"
     """ChromaDB collection name for extracted atomic fact propositions.
     Separate from the main chunks collection so chunk retrieval and
