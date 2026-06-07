@@ -411,6 +411,45 @@ class RetrievalPipeline:
 
         return result
 
+    async def retrieve_propositions(
+        self, query: str, top_k: int = 20, filters: dict | None = None
+    ) -> list[ScoredChunk]:
+        """
+        Search the propositions collection for atomic facts.
+
+        WHAT: Embeds the query and searches the dedicated propositions
+              ChromaDB collection (separate from chunks). Returns the
+              top-K matching atomic facts.
+
+        WHY: Propositions are self-contained facts extracted by LLM at
+             index time. Searching them directly means the LLM gets
+             precise answers ("EH36 preheat = 150°C") instead of scanning
+             200-word paragraphs.
+        """
+        if self._dense is None:
+            return []
+
+        try:
+            from m3_retrieval.embeddings.embedder import Embedder
+            embedder = Embedder(self.cfg.embedding_model)
+            query_vec = embedder.encode_query(query)
+
+            # Search propositions collection (not the default chunks collection)
+            results = await self._dense._sm.vector_store.search(
+                query_vector=query_vec,
+                top_k=top_k,
+                filters=filters,
+                collection_name=getattr(
+                    self.cfg, "propositions_collection", "marine_rag_propositions"
+                ),
+            )
+            return [
+                ScoredChunk(chunk=c, score=s, source="proposition", citation=_build_citation(c))
+                for c, s in results
+            ]
+        except Exception:
+            return []
+
     # =========================================================================
     # Adaptive retrieval paths
     # =========================================================================

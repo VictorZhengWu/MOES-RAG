@@ -91,6 +91,17 @@ def fuse_context(
     if chunk_texts:
         parts.append("## Document Context\n" + "\n\n".join(chunk_texts))
 
+    # --- Step 1.5: Format propositional index facts ---
+    # Propositions are atomic, self-contained facts extracted by LLM at
+    # index time. They are the most precise retrieval unit and are
+    # presented before broader document context.
+    if retrieval_ctx.propositions:
+        prop_texts: list[str] = []
+        for sc in retrieval_ctx.propositions[:15]:  # Cap at 15 facts
+            prop_texts.append(f"- {sc.chunk.text}")
+        if prop_texts:
+            parts.insert(0, "## Key Facts\n" + "\n".join(prop_texts))
+
     # --- Step 2: Format M4 knowledge graph ---
     # Graph entities and relations are formatted as bullet-point lists.
     # Limits are applied to prevent the graph section from dominating

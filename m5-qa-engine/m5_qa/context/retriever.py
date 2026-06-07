@@ -42,6 +42,8 @@ class RetrievalContext:
     """
     chunks: list[ScoredChunk]
     graph: Subgraph | None = None
+    propositions: list[ScoredChunk] = field(default_factory=list)
+    """Atomic facts from propositional index (new in Phase 3)."""
     errors: list[str] = field(default_factory=list)
     """Non-fatal errors encountered during retrieval (e.g., M4 unavailable)."""
     cross_refs: list[CrossReferenceResult] = field(default_factory=list)

@@ -132,6 +132,12 @@ class RetrievalConfig:
     (Pt.→Ch.→Section→Clause) for 5-10x precision improvement on
     chapter-specific queries."""
 
+    # ---- Propositional Indexing -----------------------------------------
+    propositions_collection: str = "marine_rag_propositions"
+    """ChromaDB collection name for extracted atomic fact propositions.
+    Separate from the main chunks collection so chunk retrieval and
+    proposition retrieval are independent queries that can be fused."""
+
     def __post_init__(self) -> None:
         """
         Validate config invariants after dataclass __init__.
