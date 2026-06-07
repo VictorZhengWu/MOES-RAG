@@ -275,6 +275,30 @@ async def get_monitoring(request: Request, api_key: APIKey = Depends(get_api_key
 # ---------------------------------------------------------------------------
 
 
+@router.get("/retrieval")
+async def get_retrieval_config(request, api_key=Depends(get_api_key)):
+    """GET /admin/config/retrieval — M3 retrieval parameters."""
+    data = await _get_section("retrieval")
+    if not data:
+        return {"dense_top_k": 50, "sparse_top_k": 20, "fusion_k": 60,
+                "rerank_top_k": 20, "dedup_threshold": 0.85}
+    return data
+
+@router.post("/retrieval")
+async def set_retrieval_config(body: RetrievalConfig, request, api_key=Depends(get_api_key)):
+    """POST /admin/config/retrieval — Update M3 retrieval params (hot-reload)."""
+    data = body.model_dump()
+    await _set_section("retrieval", {k: str(v) for k, v in data.items()})
+    engine = request.app.state.qa_engine
+    if engine and engine._retriever._m3:
+        cfg = engine._retriever._m3._pipeline.cfg
+        cfg.dense_top_k = data["dense_top_k"]
+        cfg.sparse_top_k = data["sparse_top_k"]
+        cfg.fusion_k = data["fusion_k"]
+        cfg.rerank_top_k = data["rerank_top_k"]
+        cfg.dedup_threshold = data["dedup_threshold"]
+    return {"updated": True, "data": data}
+
 def _apply_config_to_m5(engine, section: str, data: dict) -> None:
     """Apply config changes to the running M5 instance immediately."""
     cfg = engine._config
