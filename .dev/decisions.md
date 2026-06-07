@@ -499,6 +499,98 @@ New sessions recover context by reading L1 → L2 → L3 files in order.
 
 ---
 
+### D039: Phase 3 — Hierarchical Navigation RAG (Tiered Chapter Fallback)
+
+**Date**: 2026-06-06 | **Status**: ✅ Implemented
+
+**Decision**: M3 retrieval uses tiered chapter filter fallback. If "Pt.4 Ch.3 S2.1" yields too few results, retry with "Pt.4 Ch.3", then "Pt.4", then no filter. Query analyzer's `strip_section()` and `build_fallback_chain()` generate the fallback levels. Minimum results and max fallback levels are configurable via admin UI.
+
+**Why**: Classification society documents have a tree structure. Users often use precise section references that may not match extracted metadata exactly. Fallback ensures queries succeed at the nearest matching level.
+
+---
+
+### D040: Phase 3 — Propositional Indexing (Atomic Facts)
+
+**Date**: 2026-06-07 | **Status**: ✅ Implemented
+
+**Decision**: Documents are decomposed into atomic facts at index time via LLM (DeepSeek). Propositions are stored in a separate ChromaDB collection (`marine_rag_propositions`) and searched in parallel with regular chunks. The `PropositionExtractor` uses batched LLM calls with concurrent control and deduplication.
+
+**Why**: Current chunk-based retrieval returns 200-word paragraphs that the LLM must scan. Propositions are pre-extracted into self-contained facts — retrieval directly returns the relevant fact instead of making the LLM search for it. Shifts LLM cost from query time to index time.
+
+**Impact**: M3 has `proposition_extractor.py`. M5's `RetrievalClient.parallel_retrieve()` searches chunks + propositions + graph in parallel. M1's `/parse` triggers proposition extraction after chunk storage.
+
+---
+
+### D041: Phase 3 — OAuth 2.0 Social Login (6 Providers)
+
+**Date**: 2026-06-07 | **Status**: ✅ Implemented
+
+**Decision**: M8 supports 6 OAuth providers: Google, Microsoft, Apple, Facebook, X (Twitter), WeChat. Standard authorization code flow. OAuth accounts linked to local users via `oauth_accounts` table. API keys generated on first OAuth login. CSRF state stored in SQLite (not memory) for persistence across restarts.
+
+**Why**: Users expect social login. OAuth eliminates password management friction while maintaining API key authentication for all subsequent API calls.
+
+---
+
+### D042: Phase 3 — bcrypt Password Hashing Upgrade
+
+**Date**: 2026-06-07 | **Status**: ✅ Implemented
+
+**Decision**: Password hashing upgraded from SHA-256 to bcrypt. Legacy SHA-256 accounts auto-upgrade on next successful login. Password reset via email with 24h single-use tokens.
+
+**Why**: SHA-256 is not suitable for password storage. bcrypt is the industry standard with built-in salt and work factor.
+
+---
+
+### D043: Phase 3 — Unified Config Store (All Settings via Admin UI)
+
+**Date**: 2026-06-07 | **Status**: ✅ Implemented
+
+**Decision**: All system configuration stored in M8 SQLite `system_config` table as key-value JSON. M7 admin UI provides tabs for every config section (LLM, Features, SMTP, Retrieval, Storage, Deploy, OAuth). Changes hot-reload into running engines without restart. No hardcoded defaults — everything configured through UI.
+
+**Why**: Eliminates deploy.yaml editing for operations teams. Provides validation, immediate feedback, and persistence across restarts.
+
+---
+
+### D044: Phase 3 — Multi-Profile Deploy (Personal/Enterprise/SaaS)
+
+**Date**: 2026-06-07 | **Status**: ✅ Implemented
+
+**Decision**: Three deploy profiles with mode-specific `deploy.yaml`: `deploy/personal/` (ChromaDB+SQLite), `deploy/enterprise/` (Milvus+optional PG), `deploy/saas/` (Qdrant+PG+S3). Docker Compose mounts the correct file based on `DEPLOYMENT_MODE` env var. M7 Deploy tab hot-switches mode at runtime.
+
+**Why**: Different deployment scenarios need different storage backends and resource limits. One codebase, three configs, no code changes to switch.
+
+---
+
+### D045: Phase 3 — VectorStore Backend Expansion (4 Backends)
+
+**Date**: 2026-06-07 | **Status**: ✅ Implemented
+
+**Decision**: M2 VectorStore now supports 4 backends: ChromaDB (embedded, personal default), FAISS (embedded, lightest), Qdrant (standalone, single container), Milvus (standalone, distributed). All implement the same `BaseVectorStore` interface. Factory dispatches based on `deploy.yaml` `backend` field.
+
+**Why**: Different deployments need different vector stores. Personal mode = embedded. Enterprise = standalone with scaling. SAAS = distributed for multi-tenant.
+
+---
+
+### D046: Phase 3 — Error Hardening Across All Modules
+
+**Date**: 2026-06-06 | **Status**: ✅ Implemented
+
+**Decision**: All user-facing code paths catch exceptions and return friendly error messages — never tracebacks. Full tracebacks logged for admin debugging. M5 engine wraps pipeline execution in try/except. M3 retriever logs and propagates errors via `RetrievalContext.errors`. M8 has global exception handler returning JSON 500. M4 graph search returns empty Subgraph on failure.
+
+**Why**: Production systems must degrade gracefully. Users never see Python tracebacks.
+
+---
+
+### D047: Phase 3 — M6/M7 Backend Integration (17 Placeholders Unlocked)
+
+**Date**: 2026-06-04 | **Status**: ✅ Complete
+
+**Decision**: M6 and M7 frontends connect to M8 on port 8000. M8 routes added for: conversation CRUD (P4/P5/P6), file upload (P10), auth (P1/P2), share (P7), pin (P9), projects (P8/P15), account deletion (P17), avatar upload (P11), conversation search (P14). M7 pages added for: API key management, LLM config, system config (Features/Retrieval/Storage/Deploy/OAuth/SMTP), monitoring, admin auth guard.
+
+**Why**: Phase 1 frontend was built against Mock Server. Phase 2 backend completed. Phase 3 wired them together.
+
+---
+
 ## Pending Decisions
 
 > *No pending cross-module decisions at this time.*
