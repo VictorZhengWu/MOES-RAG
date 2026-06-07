@@ -116,6 +116,20 @@ class SMTPConfig(BaseModel):
     password: str = ""
 
 
+class StorageConfig(BaseModel):
+    vector_backend: str = "chromadb"  # chromadb | qdrant | milvus | faiss
+    relational_backend: str = "sqlite"  # sqlite | postgresql | mariadb
+    doc_index_backend: str = "meilisearch"  # meilisearch | elasticsearch
+    file_backend: str = "local_fs"  # local_fs | minio | s3
+
+class DeployConfig(BaseModel):
+    deployment_mode: str = "personal"  # personal | enterprise | saas
+
+class OAuthProviderConfig(BaseModel):
+    provider: str  # google | microsoft | apple | facebook | x | wechat
+    client_id: str = ""
+    client_secret: str = ""
+
 # ---------------------------------------------------------------------------
 # Generic CRUD
 # ---------------------------------------------------------------------------
@@ -271,6 +285,47 @@ async def get_monitoring(request: Request, api_key: APIKey = Depends(get_api_key
         return {"total_queries": 0, "avg_latency_ms": 0, "by_mode": {}}
     return engine._metrics.get_summary()
 
+
+@router.get("/storage")
+async def get_storage_config(request, api_key=Depends(get_api_key)):
+    data = await _get_section("storage")
+    return data or {"vector_backend": "chromadb", "relational_backend": "sqlite", "doc_index_backend": "meilisearch", "file_backend": "local_fs"}
+
+@router.post("/storage")
+async def set_storage_config(body: StorageConfig, request, api_key=Depends(get_api_key)):
+    data = body.model_dump()
+    await _set_section("storage", data)
+    return {"updated": True, "note": "Storage backend change requires restart for some backends"}
+
+@router.get("/deploy")
+async def get_deploy_config(request, api_key=Depends(get_api_key)):
+    data = await _get_section("deploy")
+    return data or {"deployment_mode": "personal"}
+
+@router.post("/deploy")
+async def set_deploy_config(body: DeployConfig, request, api_key=Depends(get_api_key)):
+    data = body.model_dump()
+    await _set_section("deploy", data)
+    cfg = request.app.state.config
+    cfg.deployment_mode = data["deployment_mode"]
+    return {"updated": True, "deployment_mode": data["deployment_mode"]}
+
+@router.get("/oauth")
+async def get_oauth_config(request, api_key=Depends(get_api_key)):
+    data = await _get_section("oauth")
+    return data or {}
+
+@router.post("/oauth")
+async def set_oauth_config(body: OAuthProviderConfig, request, api_key=Depends(get_api_key)):
+    data = body.model_dump()
+    await _set_section("oauth", {**await _get_section("oauth"), data["provider"]: json.dumps({"client_id": data["client_id"], "client_secret": data["client_secret"]})})
+    # Update env vars for running auth module
+    prefix = data["provider"].upper()
+    if data["client_id"]:
+        os.environ[f"OAUTH_{prefix}_CLIENT_ID"] = data["client_id"]
+    if data["client_secret"]:
+        os.environ[f"OAUTH_{prefix}_CLIENT_SECRET"] = data["client_secret"]
+    return {"updated": True, "provider": data["provider"]}
 
 # ---------------------------------------------------------------------------
 # Hot-reload helper

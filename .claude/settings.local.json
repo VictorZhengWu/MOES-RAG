@@ -351,7 +351,10 @@
       "Bash(PYTHONPATH=. timeout 180 python tests/e2e/run_e2e.py)",
       "Bash(python -c \"import ast; ast.parse\\(open\\('m8-api-gateway/m8_gateway/routes/auth.py', encoding='utf-8'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")",
       "Bash(python -c \"from contracts.document import Domain; from m4_kg.graph.kuzu_store import KuzuStore; print\\('Imports OK'\\)\")",
-      "Bash(python -c \"from m4_kg.graph.kuzu_store import KuzuStore; print\\('M4 import OK'\\)\")"
+      "Bash(python -c \"from m4_kg.graph.kuzu_store import KuzuStore; print\\('M4 import OK'\\)\")",
+      "Bash(python -c \"exec\\(open\\('tools/add_config_tabs.py'\\).read\\(\\)\\)\")",
+      "Bash(cat)",
+      "Bash(python tools/add_config_tabs.py)"
     ]
   }
 }
