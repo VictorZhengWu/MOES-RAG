@@ -38,6 +38,10 @@ MAX_LOGIN_ATTEMPTS = 5
 LOGIN_LOCKOUT_SECONDS = 900  # 15 minutes
 _login_attempts: dict[str, list[float]] = {}  # key → timestamps of failed attempts
 
+# OAuth CSRF protection: in-memory state store (Phase 3: upgrade to DB for HA)
+# Maps state → (provider, created_at). Auto-expires after 10 minutes.
+_oauth_states: dict[str, tuple[str, float]] = {}
+
 # Email regex — RFC 5322 simplified
 _EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
@@ -120,7 +124,7 @@ class RegisterRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     email: str
-    password: str
+    password: str = Field(..., min_length=1, max_length=200)
 
     @field_validator("email")
     @classmethod
@@ -182,6 +186,14 @@ def _record_failed_attempt(email: str) -> None:
     if email not in _login_attempts:
         _login_attempts[email] = []
     _login_attempts[email].append(time.time())
+
+
+def _clean_expired_oauth_states() -> None:
+    """Remove OAuth state entries older than 10 minutes."""
+    cutoff = time.time() - 600
+    expired = [s for s, (_, t) in _oauth_states.items() if t <= cutoff]
+    for s in expired:
+        del _oauth_states[s]
 
 
 def _clean_expired_attempts(email: str) -> None:
@@ -283,19 +295,19 @@ async def register(body: RegisterRequest):
 
     async with aiosqlite.connect(DB_PATH) as conn:
         await _ensure_users_table(conn)
-        cursor = await conn.execute(
-            "SELECT 1 FROM users WHERE username = ? OR email = ?",
-            (body.username, body.email),
-        )
-        if await cursor.fetchone():
-            raise HTTPException(409, "Username or email already exists")
 
-        await conn.execute(
-            "INSERT INTO users (user_id, username, email, password_hash, tier, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (user_id, body.username, body.email, pw_hash, body.tier, time.time()),
-        )
-        await conn.commit()
+        # Atomic insert with duplicate check — prevents TOCTOU race condition
+        # where two concurrent registers with same email both pass the SELECT
+        # check. SQLite UNIQUE constraint is the ultimate arbiter.
+        try:
+            await conn.execute(
+                "INSERT INTO users (user_id, username, email, password_hash, tier, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (user_id, body.username, body.email, pw_hash, body.tier, time.time()),
+            )
+            await conn.commit()
+        except aiosqlite.IntegrityError:
+            raise HTTPException(409, "Username or email already exists")
 
     raw_key, prefix = await _generate_api_key(user_id, body.tier)
 
@@ -530,11 +542,16 @@ async def oauth_login(provider: str = Query(...)):
          fake localStorage login.
     """
     cfg = OAUTH_PROVIDERS.get(provider)
-    if not cfg or not cfg["client_id"]:
+    if not cfg or not cfg.get("client_id", ""):
         raise HTTPException(400, f"OAuth provider '{provider}' is not configured")
+
+    _clean_expired_oauth_states()
 
     redirect_uri = f"{OAUTH_REDIRECT_BASE}/auth/oauth/callback?provider={provider}"
     state = secrets.token_urlsafe(16)
+
+    # Store state for CSRF validation in callback (10-minute expiry)
+    _oauth_states[state] = (provider, time.time())
 
     params = {
         "client_id": cfg["client_id"],
@@ -574,6 +591,17 @@ async def oauth_callback(
     if not cfg or not cfg["client_id"]:
         return RedirectResponse(
             url=f"{M6_BASE_URL}/login?error=provider_not_configured"
+        )
+
+    # Validate CSRF state parameter to prevent login forgery attacks
+    if state not in _oauth_states:
+        return RedirectResponse(
+            url=f"{M6_BASE_URL}/login?error=invalid_state"
+        )
+    stored_provider, created_at = _oauth_states.pop(state)
+    if stored_provider != provider or time.time() - created_at > 600:
+        return RedirectResponse(
+            url=f"{M6_BASE_URL}/login?error=state_mismatch"
         )
 
     redirect_uri = f"{OAUTH_REDIRECT_BASE}/auth/oauth/callback?provider={provider}"
