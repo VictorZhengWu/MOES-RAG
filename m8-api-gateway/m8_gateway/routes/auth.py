@@ -237,6 +237,7 @@ async def _ensure_users_table(conn):
             password_hash TEXT NOT NULL,
             password_salt TEXT NOT NULL DEFAULT '',
             tier TEXT NOT NULL DEFAULT 'basic',
+            is_admin INTEGER NOT NULL DEFAULT 0,
             created_at REAL NOT NULL
         )
     """)
@@ -287,6 +288,56 @@ async def _generate_api_key(user_id: str, tier: str) -> tuple[str, str]:
     km = KeyManager(DB_PATH)
     raw = await km.generate_key(user_id, tier)
     return raw, raw[:10]
+
+
+# ---------------------------------------------------------------------------
+# Admin login (API key + admin role check)
+# ---------------------------------------------------------------------------
+
+
+class AdminLoginRequest(BaseModel):
+    api_key: str = Field(..., min_length=19)
+
+
+@router.post("/admin-login")
+async def admin_login(body: AdminLoginRequest):
+    """POST /auth/admin-login — Validate API key + check admin role."""
+    km = KeyManager(DB_PATH)
+    api_key_obj = await km.validate_key(body.api_key)
+    if api_key_obj is None:
+        raise HTTPException(401, "Invalid API key")
+
+    async with aiosqlite.connect(DB_PATH) as conn:
+        await _ensure_users_table(conn)
+        # Add is_admin column if not exists (migration)
+        try:
+            await conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
+            await conn.commit()
+        except aiosqlite.OperationalError:
+            pass
+
+        cursor = await conn.execute(
+            "SELECT username, email, tier, is_admin FROM users WHERE user_id = ?",
+            (api_key_obj.user_id,),
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            raise HTTPException(401, "User not found")
+
+        username, email, tier, is_admin = row
+        if not is_admin and tier not in ("admin", "editor"):
+            raise HTTPException(403, "Admin access required. Your tier: " + tier)
+
+        km.touch_key(api_key_obj.key_prefix)
+
+    return {
+        "user_id": api_key_obj.user_id,
+        "username": username,
+        "email": email,
+        "tier": tier,
+        "api_key": body.api_key,
+        "key_prefix": api_key_obj.key_prefix,
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -342,7 +342,8 @@
       "Bash(python -c \"from m8_gateway.routes import admin; print\\('OK'\\)\")",
       "Bash(python -m pytest tests/ -q)",
       "Bash(python -m pytest tests/test_chat.py -v --tb=long)",
-      "Bash(python -m pytest m5-qa-engine/tests/test_retriever.py::TestM4GracefulFailure::test_m4_failure_still_returns_m3_results -v --tb=short)"
+      "Bash(python -m pytest m5-qa-engine/tests/test_retriever.py::TestM4GracefulFailure::test_m4_failure_still_returns_m3_results -v --tb=short)",
+      "Bash(python -m pytest m2-storage/tests/ m3-retrieval/tests/ m4-knowledge-graph/tests/ m5-qa-engine/tests/ -q)"
     ]
   }
 }

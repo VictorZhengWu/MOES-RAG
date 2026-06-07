@@ -1,7 +1,12 @@
 /**
  * Auth Guard for M7 admin pages.
- * Phase 1: simple username+password lookup against mock database.
- * Phase 2: real JWT/OAuth admin authentication.
+ *
+ * WHAT: Replaces mock username/password login with real M8 API key
+ *       validation. Only users with admin/editor role can access.
+ *
+ * WHY: Phase 1 used hardcoded credentials. Phase 3 uses the same M8
+ *      auth system as M6 — the API key is validated against the real
+ *      user database and the is_admin flag is checked.
  */
 
 'use client';
@@ -11,55 +16,57 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Shield } from 'lucide-react';
 
-const AUTH_KEY = 'm7-admin-auth';
-const USER_KEY = 'm7-admin-user';
-
-/**
- * Mock admin user database — configurable.
- * Phase 2: replace with API call to M5 Auth.
- */
-const ADMIN_USERS: { username: string; password: string; role: string }[] = [
-  { username: 'admin',  password: 'admin123',  role: 'admin' },
-  { username: 'editor', password: 'editor123', role: 'editor' },
-  { username: 'victor', password: 'victor123', role: 'admin' },
-];
+const AUTH_KEY_STORAGE = 'm7-admin-auth';
+const USER_KEY_STORAGE = 'm7-admin-user';
+const TOKEN_KEY_STORAGE = 'm7-admin-token';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState<boolean | null>(null);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState('');
 
   useEffect(() => {
-    const stored = sessionStorage.getItem(AUTH_KEY);
-    const user = sessionStorage.getItem(USER_KEY) || '';
+    const stored = sessionStorage.getItem(AUTH_KEY_STORAGE);
+    const user = sessionStorage.getItem(USER_KEY_STORAGE) || '';
     setAuthed(stored === 'true');
     setCurrentUser(user);
   }, []);
 
-  const handleLogin = () => {
-    const user = ADMIN_USERS.find(
-      (u) => u.username === username && u.password === password,
-    );
-    if (user) {
-      sessionStorage.setItem(AUTH_KEY, 'true');
-      sessionStorage.setItem(USER_KEY, user.username);
-      setAuthed(true);
-      setCurrentUser(user.username);
-      setError('');
-    } else {
-      setError('Invalid username or password.');
+  const handleLogin = async () => {
+    if (!apiKey.trim()) {
+      setError('Please enter your API key.');
+      return;
     }
-  };
+    setLoading(true);
+    setError('');
 
-  const handleLogout = () => {
-    sessionStorage.removeItem(AUTH_KEY);
-    sessionStorage.removeItem(USER_KEY);
-    setAuthed(false);
-    setCurrentUser('');
-    setUsername('');
-    setPassword('');
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const res = await fetch(`${baseUrl}/auth/admin-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKey.trim() }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.detail || `Login failed (${res.status})`);
+        return;
+      }
+
+      const data = await res.json();
+      sessionStorage.setItem(AUTH_KEY_STORAGE, 'true');
+      sessionStorage.setItem(USER_KEY_STORAGE, data.username);
+      sessionStorage.setItem(TOKEN_KEY_STORAGE, data.api_key);
+      setAuthed(true);
+      setCurrentUser(data.username);
+    } catch {
+      setError('Cannot reach the server. Is M8 running on port 8000?');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (authed === null) return null;
@@ -71,28 +78,28 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           <div className="text-center">
             <Shield className="mx-auto h-10 w-10 text-primary mb-2" />
             <h1 className="text-xl font-bold">Admin Login</h1>
-            <p className="text-sm text-muted-foreground mt-1">Sign in to access the admin panel.</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Enter your M8 API key to access the admin panel.
+            </p>
           </div>
           <Input
-            value={username}
-            onChange={(e) => { setUsername(e.target.value); setError(''); }}
+            value={apiKey}
+            onChange={(e) => { setApiKey(e.target.value); setError(''); }}
             onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-            placeholder="Username"
-          />
-          <Input
+            placeholder="sk-m8-xxxxxxxxxxxxxxxx"
             type="password"
-            value={password}
-            onChange={(e) => { setPassword(e.target.value); setError(''); }}
-            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-            placeholder="Password"
           />
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button className="w-full" onClick={handleLogin}>Sign In</Button>
+          <Button className="w-full" onClick={handleLogin} disabled={loading}>
+            {loading ? 'Verifying...' : 'Sign In'}
+          </Button>
+          <p className="text-xs text-muted-foreground text-center">
+            Use the same API key from your M6 account. Admin/editor role required.
+          </p>
         </div>
       </div>
     );
   }
 
-  // Sidebar handles user display + logout
   return <>{children}</>;
 }
