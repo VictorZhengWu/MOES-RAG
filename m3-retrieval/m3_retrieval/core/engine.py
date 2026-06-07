@@ -37,7 +37,7 @@ Key design decisions:
 
 from __future__ import annotations
 
-from contracts.retrieval import RetrievedContext, RetrievalRequest
+from contracts.retrieval import RetrievedContext, RetrievalRequest, ScoredChunk
 
 from m3_retrieval.core.config import RetrievalConfig
 
@@ -225,6 +225,32 @@ class RetrievalEngine:
         # WHY: the engine is a thin wrapper. All retrieval stages are
         # in pipeline.py for single-responsibility.
         return await self._pipeline.retrieve(request)
+
+    async def retrieve_propositions(
+        self, query: str, top_k: int = 20, filters: dict | None = None
+    ) -> list[ScoredChunk]:
+        """
+        Search the propositional index for atomic facts.
+
+        WHAT: Public API method exposed to M5's RetrievalClient. Delegates
+        to pipeline.retrieve_propositions() which searches the dedicated
+        ChromaDB propositions collection.
+
+        Phase 3: Propositional indexing extracts atomic facts at document
+        parse time. This method retrieves them at query time alongside
+        regular chunks and knowledge graph data.
+
+        Args:
+            query: The user's natural language question.
+            top_k: Max number of propositions to return (default 20).
+            filters: Optional metadata filters (society, chapter, etc.).
+
+        Returns:
+            List of ScoredChunk from the propositions collection.
+            Empty list if pipeline or proposition index is unavailable.
+        """
+        await self._ensure_pipeline()
+        return await self._pipeline.retrieve_propositions(query, top_k, filters)
 
     async def health_check(self) -> dict:
         """
