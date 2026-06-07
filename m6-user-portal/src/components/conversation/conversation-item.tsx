@@ -70,9 +70,16 @@ export function ConversationItem({ conversation, isActive, onSelect }: Props) {
     setIsEditing(false);
   };
 
-  const handleShare = () => {
-    // Phase 2: actual share logic
-    alert(`Share link: https://mo-expert.com/share/${conversation.conversation_id}`);
+  const handleShare = async () => {
+    try {
+      const { shareConversation: shareApi } = await import('@/lib/api/conversations');
+      const token = (await import('@/lib/stores/auth-store')).useAuthStore.getState().token ?? undefined;
+      const result = await shareApi(conversation.conversation_id, token);
+      await navigator.clipboard.writeText(result.share_url);
+      alert(`Share link copied to clipboard: ${result.share_url}`);
+    } catch {
+      alert('Failed to generate share link. Please try again.');
+    }
   };
 
   const handleMoveToProject = (project: string) => {

@@ -168,6 +168,10 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
     from m8_gateway.routes import admin
     app.include_router(admin.router)
 
+    # Share, pin, account deletion, projects (Phase 3 extras)
+    from m8_gateway.routes import extras
+    app.include_router(extras.router)
+
     # ------------------------------------------------------------------
     # Global error handler — catches all unhandled exceptions
     # ------------------------------------------------------------------

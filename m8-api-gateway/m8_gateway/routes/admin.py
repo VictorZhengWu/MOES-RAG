@@ -21,6 +21,27 @@ from m8_gateway.auth.middleware import get_api_key
 router = APIRouter(prefix="/admin/config", tags=["admin-config"])
 
 
+@router.get("/monitoring")
+async def get_monitoring(
+    request: Request,
+    api_key: APIKey = Depends(get_api_key),
+):
+    """
+    GET /admin/monitoring — Expose M5 query metrics for M7 dashboard.
+
+    WHAT: Returns aggregated stats from M5's MetricsCollector:
+          total_queries, avg_latency_ms, and breakdown by pipeline mode.
+
+    WHY: M7 admin dashboard has a monitoring page that previously showed
+         mock data. This endpoint provides real operational metrics.
+    """
+    engine = request.app.state.qa_engine
+    if engine is None:
+        return {"total_queries": 0, "avg_latency_ms": 0, "by_mode": {}, "note": "QA Engine not initialized"}
+
+    return engine._metrics.get_summary()
+
+
 class WebSearchConfigUpdate(BaseModel):
     """Request body for updating web search engine configuration."""
     engine: str = "duckduckgo"       # duckduckgo | searxng | tavily | brave | google
