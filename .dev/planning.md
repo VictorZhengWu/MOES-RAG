@@ -71,8 +71,36 @@
 
 ### 3.1 开发阶段
 
-| 阶段 | 内容 | 模块 |
-|------|------|------|
-| Phase 1 | 前端骨架 + Mock Server + i18n 基础设施 | contracts → Mock Server → M6 → M7 |
-| Phase 2 | 后端核心 | M2 → M1 → M3 → M4 → M5 |
-| Phase 3 | 对外服务与部署 | M8 → deploy/ |
+| 阶段 | 内容 | 模块 | 状态 |
+|------|------|------|:--:|
+| Phase 1 | 前端骨架 + Mock Server + i18n | contracts → Mock Server → M6 → M7 | ✅ |
+| Phase 2 | 后端核心管线 | M2 → M1 → M3 → M4 → M5 → M8 → deploy | ✅ |
+| Phase 3 | RAG 增强 + 安全 + 配置 UI | 命题式索引, 层级化导航, OAuth, bcrypt, 统一配置, 4 向量库, 3 部署模式 | ✅ |
+
+### 3.2 Phase 3 实际完成内容
+
+| 轨道 | 内容 |
+|------|------|
+| 3-A | 命题式索引 — LLM 拆原子事实，独立 ChromaDB collection |
+| 3-B | 层级化导航 — 章节过滤器逐级回退 |
+| 3-C | OAuth (6 provider) + bcrypt + 密码重置 |
+| 3-D | M6/M7 占位解锁 (17/28) — 分享/Pin/项目/头像/搜索/系统配置 |
+| 3-E | 统一配置存储 — 所有设置通过 M7 管理 UI |
+| 3-F | 4 向量库 — ChromaDB/FAISS/Qdrant/Milvus |
+| 3-G | 3 部署模式 — personal/enterprise/saas deploy.yaml |
+| 3-H | 全模块容错加固 — engine 级 try/except + 友好错误 |
+| 3-I | E2E 集成测试 — 18 tests, M1→M5→M8 全链路 |
+
+### 3.3 测试覆盖
+
+| 模块 | 测试数 |
+|------|:--:|
+| contracts/ | 23 |
+| M2 | 42 |
+| M1 | 118 |
+| M3 | 70 |
+| M4 | 73 |
+| M5 | 85 |
+| M8 | 27 |
+| E2E | 18 |
+| **总计** | **456** |
