@@ -587,7 +587,8 @@ def create_app() -> "FastAPI":
                     from contracts.document import Chunk, DocumentMetadata, Domain, ClassificationSociety
                     import hashlib
 
-                    mgr = create_storage_manager("deploy.yaml")
+                    deploy_path = os.environ.get("M1_DEPLOY_YAML", "deploy.yaml")
+                    mgr = create_storage_manager(deploy_path)
                     await mgr.initialize()
 
                     # Create chunks from parsed markdown

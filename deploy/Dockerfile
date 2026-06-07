@@ -56,10 +56,11 @@ RUN pip install FlagEmbedding sentence-transformers
 EXPOSE 8000
 
 CMD ["python", "-c", "\
-import uvicorn; \
+import os, uvicorn; \
 from m8_gateway.core.app import create_app; \
 from m8_gateway.core.config import GatewayConfig; \
-config = GatewayConfig(); \
+mode = os.environ.get('DEPLOYMENT_MODE', 'personal'); \
+config = GatewayConfig(deployment_mode=mode); \
 uvicorn.run(create_app(config), host='0.0.0.0', port=8000)\
 "]
 
