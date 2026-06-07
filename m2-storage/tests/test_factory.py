@@ -58,7 +58,7 @@ def test_create_backends_correct_types():
 
 
 @pytest.mark.parametrize("factory_fn, config_cls, bad_backend", [
-    (_create_vector_store, VectorStoreConfig, "qdrant"),
+    (_create_vector_store, VectorStoreConfig, "weaviate"),
     (_create_document_index, DocumentIndexConfig, "elasticsearch"),
     (_create_relational_db, RelationalDBConfig, "postgresql"),
     (_create_file_store, FileStoreConfig, "s3"),

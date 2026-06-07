@@ -26,6 +26,33 @@ import yaml
 
 @dataclass
 @dataclass
+class QdrantConfig:
+    """Qdrant vector store connection parameters.
+
+    Qdrant is a lightweight, Rust-based vector database. Single Docker
+    container (no etcd/minio dependency unlike Milvus). Recommended for
+    enterprise deployments that want simplicity.
+    """
+    host: str = "localhost"
+    port: int = 6333
+    collection_name: str = "marine_rag"
+    vector_dim: int = 1024
+    api_key: str = ""  # Optional, for Qdrant Cloud
+
+    @classmethod
+    def from_dict(cls, d: dict | None = None) -> "QdrantConfig":
+        if d is None:
+            return cls()
+        return cls(
+            host=d.get("host", "localhost"),
+            port=d.get("port", 6333),
+            collection_name=d.get("collection_name", "marine_rag"),
+            vector_dim=d.get("vector_dim", 1024),
+            api_key=d.get("api_key", ""),
+        )
+
+
+@dataclass
 class MilvusConfig:
     """Milvus vector store connection parameters.
 
@@ -144,6 +171,7 @@ class VectorStoreConfig:
 
     backend: str = "chromadb"
     chromadb: ChromaDBConfig = field(default_factory=ChromaDBConfig)
+    qdrant: QdrantConfig = field(default_factory=QdrantConfig)
     milvus: MilvusConfig = field(default_factory=MilvusConfig)
 
     @classmethod
@@ -151,11 +179,13 @@ class VectorStoreConfig:
         backend = d.get("backend", "chromadb")
         if backend == "chromadb":
             return cls(backend=backend, chromadb=ChromaDBConfig.from_dict(d.get("chromadb", {})))
+        if backend == "qdrant":
+            return cls(backend=backend, qdrant=QdrantConfig.from_dict(d.get("qdrant", {})))
         if backend == "milvus":
             return cls(backend=backend, milvus=MilvusConfig.from_dict(d.get("milvus", {})))
         raise ValueError(
             f"Unsupported vector store backend: {backend}. "
-            f"Supported: chromadb, milvus"
+            f"Supported: chromadb, qdrant, milvus"
         )
         return cls(
             backend=backend,

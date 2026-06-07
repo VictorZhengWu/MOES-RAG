@@ -107,6 +107,15 @@ def _create_vector_store(cfg: VectorStoreConfig) -> BaseVectorStore:
 
     if cfg.backend == "chromadb":
         return ChromaDBStore(cfg.chromadb)
+    if cfg.backend == "qdrant":
+        from .vector_store.qdrant_store import QdrantStore
+        return QdrantStore(
+            host=cfg.qdrant.host,
+            port=cfg.qdrant.port,
+            collection_name=cfg.qdrant.collection_name,
+            vector_dim=cfg.qdrant.vector_dim,
+            api_key=cfg.qdrant.api_key,
+        )
     if cfg.backend == "milvus":
         from .vector_store.milvus_store import MilvusStore
         return MilvusStore(
@@ -117,7 +126,7 @@ def _create_vector_store(cfg: VectorStoreConfig) -> BaseVectorStore:
         )
     raise ValueError(
         f"Unsupported vector store backend: {cfg.backend}. "
-        f"Supported: chromadb, milvus"
+        f"Supported: chromadb, qdrant, milvus"
     )
 
 
