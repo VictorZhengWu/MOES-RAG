@@ -437,19 +437,39 @@ class RetrievalPipeline:
             embedder = Embedder(self.cfg.embedding_model)
             query_vec = embedder.encode_query(query)
 
-            # Search propositions collection (not the default chunks collection)
-            results = await self._dense._sm.vector_store.search(
-                query_vector=query_vec,
-                top_k=top_k,
-                filters=filters,
-                collection_name=getattr(
-                    self.cfg, "propositions_collection", "marine_rag_propositions"
-                ),
+            # Direct ChromaDB access for propositions collection
+            # (M2's VectorStore protocol is abstracted for the main collection
+            #  — propositions use a separate collection via direct API)
+            import chromadb
+            client = chromadb.PersistentClient(path="./data/chromadb")
+            collection = client.get_or_create_collection(
+                name=self.cfg.propositions_collection
             )
-            return [
-                ScoredChunk(chunk=c, score=s, source="proposition", citation=_build_citation(c))
-                for c, s in results
-            ]
+            results = collection.query(
+                query_embeddings=[query_vec],
+                n_results=top_k,
+                include=["documents", "metadatas", "distances"],
+            )
+
+            chunks: list[ScoredChunk] = []
+            if results["ids"] and results["ids"][0]:
+                for i, doc_id in enumerate(results["ids"][0]):
+                    text = results["documents"][0][i] if results["documents"] else ""
+                    score = 1.0 - results["distances"][0][i] if results["distances"] else 0.0
+                    # Build a minimal chunk for the proposition
+                    from contracts.document import Chunk, DocumentMetadata, Domain
+                    from contracts.retrieval import ScoredChunk
+                    chunks.append(ScoredChunk(
+                        chunk=Chunk(
+                            chunk_id=doc_id, text=text,
+                            metadata=DocumentMetadata(source_filename="proposition"),
+                            chunk_type="proposition", position_in_document=i,
+                        ),
+                        score=round(score, 4),
+                        source="proposition",
+                        citation=f"Fact #{i+1}",
+                    ))
+            return chunks
         except Exception:
             return []
 

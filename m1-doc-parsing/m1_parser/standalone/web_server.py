@@ -620,6 +620,43 @@ def create_app() -> "FastAPI":
                 except Exception as e2:
                     m2_status = f"M2 unavailable: {e2}"
 
+                # Phase 3: Propositional index extraction
+                # Uses a separate ChromaDB collection ('marine_rag_propositions')
+                # via direct client — M2's VectorStore protocol doesn't expose
+                # collection management (it's storage abstraction, not app logic).
+                prop_status = "not extracted"
+                if chunks:
+                    try:
+                        from m3_retrieval.embeddings.proposition_extractor import (
+                            PropositionExtractor,
+                        )
+                        extractor = PropositionExtractor()
+                        props = await extractor.extract(
+                            [c.text for c in chunks]
+                        )
+                        if props:
+                            import chromadb
+                            prop_client = chromadb.PersistentClient(
+                                path="./data/chromadb"
+                            )
+                            prop_collection = prop_client.get_or_create_collection(
+                                name="marine_rag_propositions"
+                            )
+                            ids = []
+                            texts = []
+                            embeds = []
+                            for j, prop_text in enumerate(props):
+                                cid = hashlib.md5(prop_text.encode()).hexdigest()[:12]
+                                ids.append(f"prop-{cid}")
+                                texts.append(prop_text)
+                                embeds.append(_embed(prop_text))
+                            prop_collection.add(
+                                ids=ids, documents=texts, embeddings=embeds,
+                            )
+                            prop_status = f"extracted {len(props)} propositions"
+                    except Exception as e3:
+                        prop_status = f"Proposition extraction skipped: {e3}"
+
                 return {
                     "success": True, "doc_id": result.doc_id,
                     "markdown": result.markdown, "html": result.html,
@@ -632,6 +669,7 @@ def create_app() -> "FastAPI":
                     "parse_time_sec": result.parse_time_sec,
                     "tables_csv": result.tables_csv,
                     "m2_status": m2_status,
+                    "prop_status": prop_status,
                 }
             return {"success": False, "error": result.error or "Unknown error"}
         except Exception as e:
