@@ -750,7 +750,7 @@ async def oauth_callback(
 
     # Step 3: Find or create user
     provider_user_id = str(
-        user_json.get("id", user_json.get("sub", user_json.get("openid", ""))
+        user_json.get("id", user_json.get("sub", user_json.get("openid", "")))
     )
 
     # Extract email (provider-specific field names)
