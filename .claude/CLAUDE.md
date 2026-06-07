@@ -114,11 +114,35 @@ See design spec Section 8 for full details.
 ### 3.3 When Encountering Bugs or Test Failures
 Invoke `superpowers:systematic-debugging` skill before proposing fixes.
 
-### 3.4 Session-End Protocol
+### 3.4 Pre-Commit Verification (Hard Gate)
+
+**Before ANY `git commit`, run these checks. If any fail, fix before committing.**
+
+```
+# 1. Syntax check (Python)
+git diff --name-only HEAD | grep '\.py$' | while read f; do
+  python -c "import ast; ast.parse(open('$f', encoding='utf-8').read())" || exit 1
+done
+
+# 2. Tests (if the change is in a module with tests)
+python -m pytest <module>/tests/ -q
+
+# 3. Spec completeness
+test $(ls .dev/specs/m*-design-*.md 2>/dev/null | wc -l) -ge 8
+```
+
+**DO NOT commit if:**
+
+- Python syntax check fails (missing parentheses, duplicate decorators, etc.)
+- Tests fail or have new errors
+- Writing code via `python -c` to modify files blindly — use `Write`/`Edit` tools instead so you can see the result
+
+### 3.5 Session-End Protocol
 Before ending a session (context full, task complete, or user requests):
 1. Ensure all decisions and progress are written to the appropriate memory files.
-2. Git commit all changes.
-3. The next session will recover all context from files.
+2. Run the Pre-Commit Verification checks above.
+3. Git commit all changes.
+4. The next session will recover all context from files.
 
 ---
 
