@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useAuthStore } from '@/lib/stores/auth-store';
 
 export function ProfileTab() {
   const t = useTranslations();
@@ -53,9 +54,25 @@ export function ProfileTab() {
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(e) => {
-              // Phase 2: upload to server. Phase 1: placeholder
-              console.log('Avatar file selected:', e.target.files?.[0]?.name);
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const token = useAuthStore.getState().token;
+              const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+              const form = new FormData();
+              form.append('file', file);
+              try {
+                const res = await fetch(`${baseUrl}/api/v1/user/avatar`, {
+                  method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form,
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  useAuthStore.getState().login(
+                    { ...useAuthStore.getState().user!, avatar_url: data.avatar_url },
+                    token || '',
+                  );
+                }
+              } catch { /* M8 not running */ }
             }}
           />
         </label>

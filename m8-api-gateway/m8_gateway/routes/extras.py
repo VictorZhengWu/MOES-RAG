@@ -21,7 +21,7 @@ import secrets
 import time
 import aiosqlite
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from m8_gateway.auth.key_manager import APIKey
@@ -353,6 +353,47 @@ async def delete_account(
         await conn.commit()
 
     return {"deleted": True, "user_id": user_id}
+
+
+# ---------------------------------------------------------------------------
+# Avatar upload
+# ---------------------------------------------------------------------------
+
+AVATAR_DIR = __import__("os").environ.get("AVATAR_DIR", "./data/avatars")
+AVATAR_MAX_SIZE = 5 * 1024 * 1024  # 5MB
+
+
+@router.post("/api/v1/user/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    request: Request = None,
+    api_key: APIKey = Depends(get_api_key),
+):
+    """
+    POST /api/v1/user/avatar — Upload a profile avatar image.
+
+    WHAT: Saves the uploaded image (PNG/JPG, max 5MB) to the avatars
+          directory, named by user_id. Overwrites any previous avatar.
+
+    WHY: M6 Profile settings has a file selector for avatars. Previously
+         it only console.log'd the file. This endpoint makes it functional.
+    """
+    suffix = (file.filename or "avatar.png").rsplit(".", 1)[-1].lower()
+    if suffix not in ("png", "jpg", "jpeg", "gif", "webp"):
+        raise HTTPException(400, "Only PNG, JPG, GIF, or WebP images are allowed")
+
+    content = await file.read()
+    if len(content) > AVATAR_MAX_SIZE:
+        raise HTTPException(413, f"Avatar too large. Maximum: {AVATAR_MAX_SIZE // (1024*1024)}MB")
+
+    import os as _os
+    _os.makedirs(AVATAR_DIR, exist_ok=True)
+    avatar_path = _os.path.join(AVATAR_DIR, f"{api_key.user_id}.{suffix}")
+    with open(avatar_path, "wb") as f:
+        f.write(content)
+
+    avatar_url = f"/avatars/{api_key.user_id}.{suffix}"
+    return {"avatar_url": avatar_url}
 
 
 # ---------------------------------------------------------------------------
