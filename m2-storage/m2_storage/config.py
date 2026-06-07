@@ -25,7 +25,6 @@ import yaml
 
 
 @dataclass
-@dataclass
 class QdrantConfig:
     """Qdrant vector store connection parameters.
 
@@ -53,7 +52,6 @@ class QdrantConfig:
 
 
 @dataclass
-@dataclass
 class FAISSConfig:
     """FAISS vector index config. Pure library, no server."""
     index_dir: str = "./data/faiss"
@@ -71,6 +69,7 @@ class FAISSConfig:
         )
 
 
+@dataclass
 class MilvusConfig:
     """Milvus vector store connection parameters.
 
@@ -207,10 +206,6 @@ class VectorStoreConfig:
         raise ValueError(
             f"Unsupported vector store backend: {backend}. "
             f"Supported: chromadb, qdrant, milvus, faiss"
-        )
-        return cls(
-            backend=backend,
-            chromadb=ChromaDBConfig.from_dict(d.get("chromadb")),
         )
 
 
