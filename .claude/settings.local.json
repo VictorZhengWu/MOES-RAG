@@ -354,7 +354,9 @@
       "Bash(python -c \"from m4_kg.graph.kuzu_store import KuzuStore; print\\('M4 import OK'\\)\")",
       "Bash(python -c \"exec\\(open\\('tools/add_config_tabs.py'\\).read\\(\\)\\)\")",
       "Bash(cat)",
-      "Bash(python tools/add_config_tabs.py)"
+      "Bash(python tools/add_config_tabs.py)",
+      "Bash(python -m pytest m2-storage/tests/ -q --tb=line)",
+      "Bash(python -m pytest m2-storage/tests/test_config.py::test_invalid_backend_raises -v --tb=short)"
     ]
   }
 }

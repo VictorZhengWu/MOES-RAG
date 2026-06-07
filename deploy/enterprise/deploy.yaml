@@ -8,13 +8,14 @@ deployment_mode: enterprise
 
 storage:
   vector_store:
-    backend: chromadb  # Change to qdrant or milvus for scale
+    backend: milvus  # Enterprise-grade vector store
+    milvus:
+      host: milvus.enterprise.local  # or localhost:19530
+      port: 19530
+      collection_name: marine_rag
+      vector_dim: 1024
     chromadb:
       persist_dir: /data/marine/chromadb
-      collection_name: marine_rag
-    qdrant:
-      host: qdrant.enterprise.local
-      port: 6333
       collection_name: marine_rag
   document_index:
     backend: meilisearch  # Change to elasticsearch for scale

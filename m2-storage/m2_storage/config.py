@@ -25,19 +25,37 @@ import yaml
 
 
 @dataclass
-class ChromaDBConfig:
-    """Configuration for the ChromaDB vector store backend.
+@dataclass
+class MilvusConfig:
+    """Milvus vector store connection parameters.
 
-    WHY separate from VectorStoreConfig: when we add Qdrant/Milvus in Phase 3,
-    each backend will have its own config dataclass with different fields.
-    This keeps backend-specific parameters namespaced and type-safe.
+    WHAT: Holds host/port/collection/dimension for Milvus gRPC connection.
+    Milvus runs as a separate service (not embedded like ChromaDB).
     """
+    host: str = "localhost"
+    port: int = 19530
+    collection_name: str = "marine_rag"
+    vector_dim: int = 1024
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "MilvusConfig":
+        return cls(
+            host=d.get("host", "localhost"),
+            port=d.get("port", 19530),
+            collection_name=d.get("collection_name", "marine_rag"),
+            vector_dim=d.get("vector_dim", 1024),
+        )
+
+
+@dataclass
+class ChromaDBConfig:
+    """Configuration for the ChromaDB vector store backend."""
 
     persist_dir: str = "./data/chromadb"
     collection_name: str = "marine_rag"
 
     @classmethod
-    def from_dict(cls, d: dict | None) -> ChromaDBConfig:
+    def from_dict(cls, d: dict | None = None) -> "ChromaDBConfig":
         if d is None:
             return cls()
         return cls(
@@ -126,15 +144,19 @@ class VectorStoreConfig:
 
     backend: str = "chromadb"
     chromadb: ChromaDBConfig = field(default_factory=ChromaDBConfig)
+    milvus: MilvusConfig = field(default_factory=MilvusConfig)
 
     @classmethod
     def from_dict(cls, d: dict) -> VectorStoreConfig:
         backend = d.get("backend", "chromadb")
-        if backend != "chromadb":
-            raise ValueError(
-                f"Unsupported vector store backend: {backend}. "
-                f"Supported: chromadb"
-            )
+        if backend == "chromadb":
+            return cls(backend=backend, chromadb=ChromaDBConfig.from_dict(d.get("chromadb", {})))
+        if backend == "milvus":
+            return cls(backend=backend, milvus=MilvusConfig.from_dict(d.get("milvus", {})))
+        raise ValueError(
+            f"Unsupported vector store backend: {backend}. "
+            f"Supported: chromadb, milvus"
+        )
         return cls(
             backend=backend,
             chromadb=ChromaDBConfig.from_dict(d.get("chromadb")),
