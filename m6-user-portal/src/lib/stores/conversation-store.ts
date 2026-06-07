@@ -19,7 +19,7 @@ interface ConversationState {
   isLoading: boolean;
 
   setActiveId: (id: string | null) => void;
-  fetchConversations: () => Promise<void>;
+  fetchConversations: (search?: string) => Promise<void>;
   removeConversation: (id: string) => Promise<void>;
   renameConversation: (id: string, title: string) => Promise<void>;
 }
@@ -31,11 +31,11 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
   setActiveId: (id) => set({ activeId: id }),
 
-  fetchConversations: async () => {
+  fetchConversations: async (search?: string) => {
     const token = useAuthStore.getState().token ?? undefined;
     set({ isLoading: true });
     try {
-      const res = await convApi.listConversations(token);
+      const res = await convApi.listConversations(token, search);
       set({ conversations: res.conversations });
     } finally {
       set({ isLoading: false });

@@ -57,6 +57,12 @@ export function ProfileTab() {
             onChange={async (e) => {
               const file = e.target.files?.[0];
               if (!file) return;
+              // Validate file type
+              const allowed = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
+              const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+              if (!allowed.includes(ext)) { alert('Only PNG, JPG, GIF, WebP images are allowed.'); return; }
+              // Validate file size (5MB max)
+              if (file.size > 5 * 1024 * 1024) { alert('Avatar too large. Maximum: 5MB.'); return; }
               const token = useAuthStore.getState().token;
               const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
               const form = new FormData();

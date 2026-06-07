@@ -20,7 +20,7 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { useAuthStore } from '@/lib/stores/auth-store';
@@ -57,9 +57,15 @@ export function ConversationSidebar() {
   const clearMessages = useChatStore((s) => s.clearMessages);
   const isLoggedIn = authStatus === 'authenticated';
 
+  const [searchQuery, setSearchQuery] = useState('');
+
   useEffect(() => {
-    if (isLoggedIn) fetchConversations();
-  }, [isLoggedIn, fetchConversations]);
+    if (isLoggedIn) fetchConversations(searchQuery);
+  }, [isLoggedIn, fetchConversations, searchQuery]);
+
+  const handleSearch = useCallback((q: string) => {
+    setSearchQuery(q);
+  }, []);
 
   const handleNewChat = () => {
     clearMessages();
@@ -126,7 +132,7 @@ export function ConversationSidebar() {
       {isLoggedIn ? (
         <>
           <div className="px-3 pt-2">
-            <ConversationSearch />
+            <ConversationSearch onSearch={handleSearch} />
           </div>
           <ScrollArea className="flex-1">
             <div className="space-y-0.5 px-2">

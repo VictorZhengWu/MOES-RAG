@@ -101,5 +101,22 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  // Pass logout + currentUser to children (sidebar uses them)
+  return (
+    <AdminAuthContext.Provider value={{ currentUser, logout: () => {
+      sessionStorage.removeItem(AUTH_KEY_STORAGE);
+      sessionStorage.removeItem(USER_KEY_STORAGE);
+      sessionStorage.removeItem(TOKEN_KEY_STORAGE);
+      setAuthed(false);
+      setCurrentUser('');
+    }}}>
+      {children}
+    </AdminAuthContext.Provider>
+  );
 }
+
+import { createContext, useContext } from 'react';
+export const AdminAuthContext = createContext<{
+  currentUser: string; logout: () => void;
+}>({ currentUser: '', logout: () => {} });
+export const useAdminAuth = () => useContext(AdminAuthContext);

@@ -14,8 +14,12 @@ import { apiGet, apiDelete, apiPatch } from './client';
 
 export async function listConversations(
   token?: string,
+  search?: string,
 ): Promise<ConversationListResponse> {
-  return apiGet<ConversationListResponse>('/api/v1/conversations', token);
+  const path = search
+    ? `/api/v1/conversations?search=${encodeURIComponent(search)}`
+    : '/api/v1/conversations';
+  return apiGet<ConversationListResponse>(path, token);
 }
 
 export async function getConversation(
