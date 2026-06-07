@@ -124,9 +124,16 @@ def _create_vector_store(cfg: VectorStoreConfig) -> BaseVectorStore:
             collection_name=cfg.milvus.collection_name,
             vector_dim=cfg.milvus.vector_dim,
         )
+    if cfg.backend == "faiss":
+        from .vector_store.faiss_store import FAISSStore
+        return FAISSStore(
+            index_dir=cfg.faiss.index_dir,
+            index_type=cfg.faiss.index_type,
+            nlist=cfg.faiss.nlist,
+        )
     raise ValueError(
         f"Unsupported vector store backend: {cfg.backend}. "
-        f"Supported: chromadb, qdrant, milvus"
+        f"Supported: chromadb, qdrant, milvus, faiss"
     )
 
 

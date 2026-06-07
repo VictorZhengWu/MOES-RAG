@@ -53,6 +53,24 @@ class QdrantConfig:
 
 
 @dataclass
+@dataclass
+class FAISSConfig:
+    """FAISS vector index config. Pure library, no server."""
+    index_dir: str = "./data/faiss"
+    index_type: str = "IVFFlat"
+    nlist: int = 100
+
+    @classmethod
+    def from_dict(cls, d: dict | None = None) -> "FAISSConfig":
+        if d is None:
+            return cls()
+        return cls(
+            index_dir=d.get("index_dir", "./data/faiss"),
+            index_type=d.get("index_type", "IVFFlat"),
+            nlist=d.get("nlist", 100),
+        )
+
+
 class MilvusConfig:
     """Milvus vector store connection parameters.
 
@@ -173,6 +191,7 @@ class VectorStoreConfig:
     chromadb: ChromaDBConfig = field(default_factory=ChromaDBConfig)
     qdrant: QdrantConfig = field(default_factory=QdrantConfig)
     milvus: MilvusConfig = field(default_factory=MilvusConfig)
+    faiss: FAISSConfig = field(default_factory=FAISSConfig)
 
     @classmethod
     def from_dict(cls, d: dict) -> VectorStoreConfig:
@@ -183,9 +202,11 @@ class VectorStoreConfig:
             return cls(backend=backend, qdrant=QdrantConfig.from_dict(d.get("qdrant", {})))
         if backend == "milvus":
             return cls(backend=backend, milvus=MilvusConfig.from_dict(d.get("milvus", {})))
+        if backend == "faiss":
+            return cls(backend=backend, faiss=FAISSConfig.from_dict(d.get("faiss", {})))
         raise ValueError(
             f"Unsupported vector store backend: {backend}. "
-            f"Supported: chromadb, qdrant, milvus"
+            f"Supported: chromadb, qdrant, milvus, faiss"
         )
         return cls(
             backend=backend,
