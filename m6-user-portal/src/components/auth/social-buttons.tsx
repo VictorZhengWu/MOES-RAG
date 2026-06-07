@@ -71,8 +71,8 @@ const SOCIAL_PROVIDERS: SocialProvider[] = [
 
 export function SocialButtons() {
   const handleSocialLogin = (provider: string) => {
-    // Phase 2: redirect to OAuth flow
-    console.log(`Social login: ${provider}`);
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+    window.location.href = `${apiBase}/auth/oauth/login?provider=${provider}`;
   };
 
   return (

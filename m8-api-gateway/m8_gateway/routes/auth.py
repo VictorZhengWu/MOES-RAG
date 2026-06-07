@@ -1,24 +1,30 @@
 """
 M8 API Gateway — Authentication Routes.
 
-WHAT: User registration and login endpoints. On success, an M8 API key
-      (sk-m8-xxx) is generated and returned for use as a Bearer token.
+WHAT: User registration, login (email+password + OAuth), password reset.
+      On success, an M8 API key (sk-m8-xxx) is returned for Bearer auth.
 
-WHY: M6 frontend's login/register UI currently uses localStorage-based
-     fake login. These endpoints provide real authentication — a valid
-     API key is returned that can be used for all subsequent API calls
-     (chat, conversations, document upload, etc.).
+WHY: M6 frontend needs real authentication — email/password (Phase 2),
+     OAuth (Phase 3), and password reset (Phase 3). All return the same
+     API key format so the M6 auth store works identically regardless
+     of login method.
 
-Security: Passwords are hashed with SHA-256 (salt+password). This is
-          appropriate for Phase 2 personal mode. Phase 3 SaaS should
-          upgrade to bcrypt/argon2 with proper salt generation.
+Security: bcrypt for password hashing (upgraded from SHA-256 in Phase 3).
+          OAuth uses standard authorization code flow. Reset tokens are
+          single-use, 24h expiry, SHA-256 hashed in DB.
 """
 
+from __future__ import annotations
+
 import hashlib
+import os
 import secrets
 import time
+import aiosqlite
+import httpx
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 from m8_gateway.auth.key_manager import KeyManager
@@ -26,12 +32,29 @@ from m8_gateway.auth.key_manager import KeyManager
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
 # ---------------------------------------------------------------------------
+# Configuration (from environment)
+# ---------------------------------------------------------------------------
+
+SMTP_HOST = os.environ.get("SMTP_HOST", "")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+OAUTH_REDIRECT_BASE = os.environ.get("OAUTH_REDIRECT_BASE", "http://localhost:8000")
+OAUTH_GOOGLE_CLIENT_ID = os.environ.get("OAUTH_GOOGLE_CLIENT_ID", "")
+OAUTH_GOOGLE_CLIENT_SECRET = os.environ.get("OAUTH_GOOGLE_CLIENT_SECRET", "")
+OAUTH_MICROSOFT_CLIENT_ID = os.environ.get("OAUTH_MICROSOFT_CLIENT_ID", "")
+OAUTH_MICROSOFT_CLIENT_SECRET = os.environ.get("OAUTH_MICROSOFT_CLIENT_SECRET", "")
+OAUTH_WECHAT_APP_ID = os.environ.get("OAUTH_WECHAT_APP_ID", "")
+OAUTH_WECHAT_APP_SECRET = os.environ.get("OAUTH_WECHAT_APP_SECRET", "")
+DB_PATH = os.environ.get("M8_DB_PATH", "./data/m8_gateway.db")
+M6_BASE_URL = os.environ.get("M6_BASE_URL", "http://localhost:3000")
+
+# ---------------------------------------------------------------------------
 # Pydantic models
 # ---------------------------------------------------------------------------
 
 
 class RegisterRequest(BaseModel):
-    """Request body for user registration."""
     username: str = Field(..., min_length=2, max_length=50)
     email: str = Field(..., min_length=3, max_length=200)
     password: str = Field(..., min_length=6, max_length=200)
@@ -39,19 +62,72 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    """Request body for user login."""
     email: str
     password: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=6, max_length=200)
+
+
 class AuthResponse(BaseModel):
-    """Response returned on successful register/login."""
     user_id: str
     username: str
     email: str
     tier: str
-    api_key: str        # Full key — store this for Bearer auth
-    key_prefix: str      # "sk-m8-xxxx" for display
+    api_key: str
+    key_prefix: str
+
+
+# ---------------------------------------------------------------------------
+# Password hashing (bcrypt with SHA-256 backward compatibility)
+# ---------------------------------------------------------------------------
+
+
+def _hash_password(password: str) -> str:
+    """Hash password with bcrypt. Returns bcrypt hash string."""
+    import bcrypt
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def _verify_password(password: str, stored_hash: str) -> bool:
+    """Verify password against stored hash (bcrypt or legacy SHA-256)."""
+    import bcrypt
+
+    # bcrypt hashes start with $2b$ or $2a$
+    if stored_hash.startswith("$2"):
+        return bcrypt.checkpw(password.encode(), stored_hash.encode())
+
+    # Legacy SHA-256 (Phase 2 accounts): verify, then auto-upgrade
+    # Stored format: "salt:hash" (48 chars salt + ":" + 64 chars hex)
+    if ":" in stored_hash:
+        salt, pw_hash = stored_hash.split(":", 1)
+        computed = hashlib.sha256((salt + password).encode()).hexdigest()
+        return computed == pw_hash
+
+    return False
+
+
+def _maybe_upgrade_password(user_id: str, password: str, stored_hash: str) -> None:
+    """If the stored hash is legacy SHA-256, upgrade it to bcrypt in-place."""
+    if stored_hash.startswith("$2"):
+        return  # Already bcrypt
+
+    import asyncio
+    async def _upgrade():
+        new_hash = _hash_password(password)
+        async with aiosqlite.connect(DB_PATH) as conn:
+            await conn.execute(
+                "UPDATE users SET password_hash = ?, password_salt = '' WHERE user_id = ?",
+                (new_hash, user_id),
+            )
+            await conn.commit()
+    asyncio.create_task(_upgrade())  # Fire-and-forget upgrade
 
 
 # ---------------------------------------------------------------------------
@@ -59,67 +135,72 @@ class AuthResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _hash_password(password: str, salt: str = "") -> tuple[str, str]:
-    """
-    Hash a password with SHA-256 and a random salt.
-    Returns (salt, hash_hex).
-    Phase 2: SHA-256 is sufficient for personal mode single-user.
-    Phase 3: upgrade to bcrypt or argon2id for SaaS multi-tenant.
-    """
-    if not salt:
-        salt = secrets.token_hex(16)
-    combined = salt + password
-    hash_hex = hashlib.sha256(combined.encode()).hexdigest()
-    return salt, hash_hex
+async def _ensure_users_table(conn):
+    """Create users table if not exists."""
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id TEXT PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            password_salt TEXT NOT NULL DEFAULT '',
+            tier TEXT NOT NULL DEFAULT 'basic',
+            created_at REAL NOT NULL
+        )
+    """)
+    await conn.commit()
+
+
+async def _ensure_oauth_table(conn):
+    """Create OAuth accounts table if not exists."""
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS oauth_accounts (
+            provider TEXT NOT NULL,
+            provider_user_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            email TEXT,
+            name TEXT,
+            created_at REAL NOT NULL,
+            PRIMARY KEY (provider, provider_user_id)
+        )
+    """)
+    await conn.commit()
+
+
+async def _ensure_reset_tokens_table(conn):
+    """Create password reset tokens table if not exists."""
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            token_hash TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            expires_at REAL NOT NULL,
+            used INTEGER NOT NULL DEFAULT 0,
+            created_at REAL NOT NULL
+        )
+    """)
+    await conn.commit()
+
+
+async def _generate_api_key(user_id: str, tier: str) -> tuple[str, str]:
+    """Generate an M8 API key and return (raw_key, key_prefix)."""
+    km = KeyManager(DB_PATH)
+    raw = await km.generate_key(user_id, tier)
+    return raw, raw[:10]
 
 
 # ---------------------------------------------------------------------------
-# Routes
+# Email/Password routes
 # ---------------------------------------------------------------------------
 
 
 @router.post("/register", response_model=AuthResponse)
 async def register(body: RegisterRequest):
-    """
-    POST /auth/register — Create a new user account.
-
-    WHAT:
-      1. Checks username/email uniqueness.
-      2. Hashes password with random salt.
-      3. Creates user in M8's SQLite users table.
-      4. Generates an M8 API key with the chosen tier.
-      5. Returns the API key — the client should store it immediately.
-
-    WHY: M6 frontend Sign Up form needs a real backend. Previously
-         registration was client-side only with no server state.
-    """
-    import aiosqlite
-    from m8_gateway.core.config import GatewayConfig
-
-    # Get KeyManager from app state (accessible via dependency injection,
-    # but for auth routes that don't have auth middleware, we create one)
-    db_path = "./data/m8_gateway.db"
-    km = KeyManager(db_path)
-
+    """POST /auth/register — Create a new user account with bcrypt password."""
     user_id = f"user-{secrets.token_hex(8)}"
-    salt, pw_hash = _hash_password(body.password)
+    pw_hash = _hash_password(body.password)
 
-    async with aiosqlite.connect(db_path) as conn:
-        # Ensure tables exist
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                user_id TEXT PRIMARY KEY,
-                username TEXT UNIQUE NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                password_salt TEXT NOT NULL,
-                tier TEXT NOT NULL DEFAULT 'basic',
-                created_at REAL NOT NULL
-            )
-        """)
-        await conn.commit()
-
-        # Check uniqueness
+    async with aiosqlite.connect(DB_PATH) as conn:
+        await _ensure_users_table(conn)
         cursor = await conn.execute(
             "SELECT 1 FROM users WHERE username = ? OR email = ?",
             (body.username, body.email),
@@ -127,86 +208,420 @@ async def register(body: RegisterRequest):
         if await cursor.fetchone():
             raise HTTPException(409, "Username or email already exists")
 
-        # Insert user
         await conn.execute(
-            "INSERT INTO users (user_id, username, email, password_hash, password_salt, tier, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (user_id, body.username, body.email, pw_hash, salt, body.tier, time.time()),
+            "INSERT INTO users (user_id, username, email, password_hash, tier, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (user_id, body.username, body.email, pw_hash, body.tier, time.time()),
         )
         await conn.commit()
 
-    # Generate API key for the new user
-    raw_key = await km.generate_key(user_id, body.tier)
+    raw_key, prefix = await _generate_api_key(user_id, body.tier)
 
     return AuthResponse(
-        user_id=user_id,
-        username=body.username,
-        email=body.email,
-        tier=body.tier,
-        api_key=raw_key,
-        key_prefix=raw_key[:10],
+        user_id=user_id, username=body.username, email=body.email,
+        tier=body.tier, api_key=raw_key, key_prefix=prefix,
     )
 
 
 @router.post("/login", response_model=AuthResponse)
 async def login(body: LoginRequest):
-    """
-    POST /auth/login — Authenticate and return an API key.
-
-    WHAT:
-      1. Looks up user by email.
-      2. Validates password against stored hash.
-      3. Generates a new API key for this session.
-      4. Returns the key for Bearer auth on subsequent requests.
-
-    WHY: M6 frontend Sign In form needs real credential validation.
-         On success the client stores the API key and uses it for all
-         API calls via the Authorization header.
-    """
-    import aiosqlite
-
-    db_path = "./data/m8_gateway.db"
-    km = KeyManager(db_path)
-
-    async with aiosqlite.connect(db_path) as conn:
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                user_id TEXT PRIMARY KEY,
-                username TEXT UNIQUE NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                password_salt TEXT NOT NULL,
-                tier TEXT NOT NULL DEFAULT 'basic',
-                created_at REAL NOT NULL
-            )
-        """)
-        await conn.commit()
-
+    """POST /auth/login — Authenticate with email+password. Returns API key."""
+    async with aiosqlite.connect(DB_PATH) as conn:
+        await _ensure_users_table(conn)
         cursor = await conn.execute(
-            "SELECT user_id, username, email, password_hash, password_salt, tier "
+            "SELECT user_id, username, email, password_hash, tier "
             "FROM users WHERE email = ?",
             (body.email,),
         )
         row = await cursor.fetchone()
-
         if row is None:
             raise HTTPException(401, "Invalid email or password")
 
-        user_id, username, email, stored_hash, salt, tier = row
+        user_id, username, email, stored_hash, tier = row
 
-        # Verify password
-        _, computed_hash = _hash_password(body.password, salt)
-        if computed_hash != stored_hash:
+        if not _verify_password(body.password, stored_hash):
             raise HTTPException(401, "Invalid email or password")
 
-    # Generate a new API key for this login session
-    raw_key = await km.generate_key(user_id, tier)
+        # Auto-upgrade legacy SHA-256 accounts to bcrypt
+        _maybe_upgrade_password(user_id, body.password, stored_hash)
+
+    raw_key, prefix = await _generate_api_key(user_id, tier)
 
     return AuthResponse(
-        user_id=user_id,
-        username=username,
-        email=email,
-        tier=tier,
-        api_key=raw_key,
-        key_prefix=raw_key[:10],
+        user_id=user_id, username=username, email=email,
+        tier=tier, api_key=raw_key, key_prefix=prefix,
     )
+
+
+# ---------------------------------------------------------------------------
+# Password Reset routes
+# ---------------------------------------------------------------------------
+
+
+@router.post("/forgot-password")
+async def forgot_password(body: ForgotPasswordRequest):
+    """
+    POST /auth/forgot-password — Send password reset email.
+
+    WHAT: Generates a single-use reset token (24h expiry), stores its
+          SHA-256 hash, and sends an email with a reset link to the user.
+
+    WHY: Always returns 200 {"ok": True} even if the email doesn't exist —
+         prevents email enumeration attacks. The actual email send only
+         happens if a matching user is found.
+    """
+    async with aiosqlite.connect(DB_PATH) as conn:
+        await _ensure_users_table(conn)
+        cursor = await conn.execute(
+            "SELECT user_id, username, email FROM users WHERE email = ?",
+            (body.email,),
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            return {"ok": True}  # Don't reveal email doesn't exist
+
+        user_id, username, email = row
+
+        # Generate reset token
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        expires_at = time.time() + 86400  # 24 hours
+
+        await _ensure_reset_tokens_table(conn)
+        # Invalidate old tokens for this user
+        await conn.execute(
+            "UPDATE password_reset_tokens SET used = 1 WHERE user_id = ?",
+            (user_id,),
+        )
+        await conn.execute(
+            "INSERT INTO password_reset_tokens (token_hash, user_id, expires_at, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            (token_hash, user_id, expires_at, time.time()),
+        )
+        await conn.commit()
+
+    # Send email (non-blocking — fire-and-forget)
+    if SMTP_HOST:
+        _send_reset_email.background(email, username, raw_token)
+    else:
+        import logging
+        logging.getLogger("m8_gateway").warning(
+            "SMTP not configured. Reset token for %s: %s (first 8 chars shown for dev)",
+            email, raw_token[:8],
+        )
+
+    return {"ok": True}
+
+
+@router.post("/reset-password")
+async def reset_password(body: ResetPasswordRequest):
+    """
+    POST /auth/reset-password — Reset password with a valid token.
+
+    WHAT: Validates the reset token (hash match + not expired + not used),
+          updates the user's password to bcrypt, and marks the token as used.
+
+    WHY: Token is single-use and time-limited to prevent replay attacks.
+    """
+    token_hash = hashlib.sha256(body.token.encode()).hexdigest()
+
+    async with aiosqlite.connect(DB_PATH) as conn:
+        await _ensure_reset_tokens_table(conn)
+        cursor = await conn.execute(
+            "SELECT user_id, expires_at, used FROM password_reset_tokens "
+            "WHERE token_hash = ?",
+            (token_hash,),
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            raise HTTPException(400, "Invalid or expired reset token")
+
+        user_id, expires_at, used = row
+        if used:
+            raise HTTPException(400, "This reset link has already been used")
+        if time.time() > expires_at:
+            raise HTTPException(400, "This reset link has expired (24h limit)")
+
+        # Update password
+        pw_hash = _hash_password(body.new_password)
+        await _ensure_users_table(conn)
+        await conn.execute(
+            "UPDATE users SET password_hash = ?, password_salt = '' WHERE user_id = ?",
+            (pw_hash, user_id),
+        )
+        # Mark token used
+        await conn.execute(
+            "UPDATE password_reset_tokens SET used = 1 WHERE token_hash = ?",
+            (token_hash,),
+        )
+        await conn.commit()
+
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# OAuth routes
+# ---------------------------------------------------------------------------
+
+OAUTH_PROVIDERS = {
+    "google": {
+        "auth_url": "https://accounts.google.com/o/oauth2/v2/auth",
+        "token_url": "https://oauth2.googleapis.com/token",
+        "userinfo_url": "https://www.googleapis.com/oauth2/v2/userinfo",
+        "client_id": OAUTH_GOOGLE_CLIENT_ID,
+        "client_secret": OAUTH_GOOGLE_CLIENT_SECRET,
+        "scope": "openid email profile",
+    },
+    "microsoft": {
+        "auth_url": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+        "token_url": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+        "userinfo_url": "https://graph.microsoft.com/v1.0/me",
+        "client_id": OAUTH_MICROSOFT_CLIENT_ID,
+        "client_secret": OAUTH_MICROSOFT_CLIENT_SECRET,
+        "scope": "openid email profile",
+    },
+    "wechat": {
+        "auth_url": "https://open.weixin.qq.com/connect/qrconnect",
+        "token_url": "https://api.weixin.qq.com/sns/oauth2/access_token",
+        "userinfo_url": "https://api.weixin.qq.com/sns/userinfo",
+        "client_id": OAUTH_WECHAT_APP_ID,
+        "client_secret": OAUTH_WECHAT_APP_SECRET,
+        "scope": "snsapi_login",
+    },
+}
+
+
+@router.get("/oauth/login")
+async def oauth_login(provider: str = Query(...)):
+    """
+    GET /auth/oauth/login?provider=google — Redirect to OAuth provider.
+
+    WHAT: Builds the OAuth authorization URL and redirects the user's
+          browser to the provider's consent screen.
+
+    WHY: M6 SocialButtons component links to this endpoint instead of
+         fake localStorage login.
+    """
+    cfg = OAUTH_PROVIDERS.get(provider)
+    if not cfg or not cfg["client_id"]:
+        raise HTTPException(400, f"OAuth provider '{provider}' is not configured")
+
+    redirect_uri = f"{OAUTH_REDIRECT_BASE}/auth/oauth/callback?provider={provider}"
+    state = secrets.token_urlsafe(16)
+
+    params = {
+        "client_id": cfg["client_id"],
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": cfg["scope"],
+        "state": state,
+    }
+    if provider == "wechat":
+        params["appid"] = params.pop("client_id")
+        del params["response_type"]
+
+    query_string = "&".join(f"{k}={v}" for k, v in params.items())
+    auth_url = f"{cfg['auth_url']}?{query_string}"
+
+    return RedirectResponse(url=auth_url)
+
+
+@router.get("/oauth/callback")
+async def oauth_callback(
+    provider: str = Query(...),
+    code: str = Query(...),
+    state: str = Query(default=""),
+):
+    """
+    GET /auth/oauth/callback?provider=google&code=xxx — Handle OAuth callback.
+
+    WHAT: Exchanges the authorization code for an access token, fetches
+          the user's profile, creates or links a local user account, and
+          redirects to the M6 frontend with the API key.
+
+    WHY: Standard OAuth 2.0 authorization code flow. The final redirect
+         to M6 includes the API key as a query parameter so the frontend
+         can call useAuthStore.login() and store it.
+    """
+    cfg = OAUTH_PROVIDERS.get(provider)
+    if not cfg or not cfg["client_id"]:
+        return RedirectResponse(
+            url=f"{M6_BASE_URL}/login?error=provider_not_configured"
+        )
+
+    redirect_uri = f"{OAUTH_REDIRECT_BASE}/auth/oauth/callback?provider={provider}"
+
+    # Step 1: Exchange code for access token
+    token_data = {
+        "client_id": cfg["client_id"],
+        "client_secret": cfg["client_secret"],
+        "code": code,
+        "redirect_uri": redirect_uri,
+        "grant_type": "authorization_code",
+    }
+    if provider == "wechat":
+        token_data["appid"] = token_data.pop("client_id")
+        token_data["secret"] = token_data.pop("client_secret")
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            token_resp = await client.post(cfg["token_url"], data=token_data)
+            if token_resp.status_code != 200:
+                return RedirectResponse(
+                    url=f"{M6_BASE_URL}/login?error=oauth_token_failed"
+                )
+            token_json = token_resp.json()
+            access_token = token_json.get("access_token", "")
+    except Exception:
+        return RedirectResponse(
+            url=f"{M6_BASE_URL}/login?error=oauth_network_error"
+        )
+
+    if not access_token:
+        return RedirectResponse(
+            url=f"{M6_BASE_URL}/login?error=oauth_no_token"
+        )
+
+    # Step 2: Fetch user info
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            if provider == "wechat":
+                # WeChat: access_token + openid from token response
+                openid = token_json.get("openid", "")
+                user_resp = await client.get(
+                    cfg["userinfo_url"],
+                    params={"access_token": access_token, "openid": openid},
+                )
+            else:
+                user_resp = await client.get(
+                    cfg["userinfo_url"],
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+            if user_resp.status_code != 200:
+                return RedirectResponse(
+                    url=f"{M6_BASE_URL}/login?error=oauth_userinfo_failed"
+                )
+            user_json = user_resp.json()
+    except Exception:
+        return RedirectResponse(
+            url=f"{M6_BASE_URL}/login?error=oauth_network_error"
+        )
+
+    # Step 3: Find or create user
+    provider_user_id = str(
+        user_json.get("id", user_json.get("sub", user_json.get("openid", "")))
+    )
+    email = user_json.get("email", user_json.get("userPrincipalName", ""))
+    name = user_json.get(
+        "name", user_json.get("displayName", user_json.get("nickname", ""))
+    )
+
+    if not provider_user_id:
+        return RedirectResponse(
+            url=f"{M6_BASE_URL}/login?error=oauth_no_user_id"
+        )
+
+    async with aiosqlite.connect(DB_PATH) as conn:
+        await _ensure_oauth_table(conn)
+        await _ensure_users_table(conn)
+
+        # Check existing OAuth link
+        cursor = await conn.execute(
+            "SELECT user_id FROM oauth_accounts WHERE provider = ? AND provider_user_id = ?",
+            (provider, provider_user_id),
+        )
+        row = await cursor.fetchone()
+
+        if row:
+            user_id = row[0]
+        else:
+            # Check if email exists (link accounts)
+            if email:
+                cursor = await conn.execute(
+                    "SELECT user_id, tier FROM users WHERE email = ?", (email,)
+                )
+                row = await cursor.fetchone()
+                if row:
+                    user_id = row[0]
+                else:
+                    # Create new user
+                    user_id = f"user-{secrets.token_hex(8)}"
+                    username = name or f"{provider}_user_{provider_user_id[:8]}"
+                    await conn.execute(
+                        "INSERT INTO users (user_id, username, email, password_hash, tier, created_at) "
+                        "VALUES (?, ?, ?, '', 'basic', ?)",
+                        (user_id, username, email or "", time.time()),
+                    )
+            else:
+                user_id = f"user-{secrets.token_hex(8)}"
+                username = name or f"{provider}_user_{provider_user_id[:8]}"
+                await conn.execute(
+                    "INSERT INTO users (user_id, username, email, password_hash, tier, created_at) "
+                    "VALUES (?, ?, ?, '', 'basic', ?)",
+                    (user_id, username, "", time.time()),
+                )
+
+            # Link OAuth account
+            await conn.execute(
+                "INSERT INTO oauth_accounts (provider, provider_user_id, user_id, email, name, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (provider, provider_user_id, user_id, email, name, time.time()),
+            )
+            await conn.commit()
+
+    # Step 4: Generate API key and redirect to M6
+    raw_key, prefix = await _generate_api_key(user_id, "basic")
+
+    return RedirectResponse(
+        url=(
+            f"{M6_BASE_URL}/auth/callback"
+            f"?token={raw_key}"
+            f"&user_id={user_id}"
+            f"&username={name or 'user'}"
+            f"&email={email or ''}"
+            f"&tier=basic"
+        )
+    )
+
+
+# ---------------------------------------------------------------------------
+# Email helper (fire-and-forget)
+# ---------------------------------------------------------------------------
+
+
+def _send_reset_email(email: str, username: str, raw_token: str) -> None:
+    """Send password reset email via SMTP. Runs synchronously in a thread."""
+    import smtplib
+    from email.mime.text import MIMEText
+
+    reset_link = f"{M6_BASE_URL}/reset-password?token={raw_token}"
+    body = (
+        f"Hi {username},\n\n"
+        f"You requested a password reset for your Marine & Offshore Expert System account.\n\n"
+        f"Click here to reset your password (valid for 24 hours):\n{reset_link}\n\n"
+        f"If you did not request this, please ignore this email.\n"
+    )
+
+    try:
+        msg = MIMEText(body)
+        msg["Subject"] = "Password Reset — Marine & Offshore Expert System"
+        msg["From"] = SMTP_USER
+        msg["To"] = email
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
+    except Exception:
+        import logging
+        logging.getLogger("m8_gateway").warning(
+            "Failed to send reset email to %s", email
+        )
+
+
+# Thread-pool wrapper for fire-and-forget email
+_send_reset_email.background = lambda email, username, token: (
+    __import__("threading").Thread(
+        target=_send_reset_email, args=(email, username, token), daemon=True
+    ).start()
+)
