@@ -38,9 +38,16 @@ MAX_LOGIN_ATTEMPTS = 5
 LOGIN_LOCKOUT_SECONDS = 900  # 15 minutes
 _login_attempts: dict[str, list[float]] = {}  # key → timestamps of failed attempts
 
-# OAuth CSRF protection: in-memory state store (Phase 3: upgrade to DB for HA)
-# Maps state → (provider, created_at). Auto-expires after 10 minutes.
-_oauth_states: dict[str, tuple[str, float]] = {}
+# OAuth CSRF protection: SQLite-backed for persistence across restarts.
+# 10-minute expiry. Auto-cleaned on each oauth_login call.
+OAUTH_STATE_TTL = 600  # 10 minutes
+
+# Reset token brute force protection
+MAX_RESET_ATTEMPTS = 5
+_reset_attempts: dict[str, int] = {}  # token_hash → failed attempts
+
+# Forgot password rate limit (per email, 5-minute cooldown)
+_forgot_password_throttle: dict[str, float] = {}
 
 # Email regex — RFC 5322 simplified
 _EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
@@ -188,14 +195,6 @@ def _record_failed_attempt(email: str) -> None:
     _login_attempts[email].append(time.time())
 
 
-def _clean_expired_oauth_states() -> None:
-    """Remove OAuth state entries older than 10 minutes."""
-    cutoff = time.time() - 600
-    expired = [s for s, (_, t) in _oauth_states.items() if t <= cutoff]
-    for s in expired:
-        del _oauth_states[s]
-
-
 def _clean_expired_attempts(email: str) -> None:
     """Remove expired failed attempt records."""
     if email not in _login_attempts:
@@ -245,7 +244,15 @@ async def _ensure_users_table(conn):
 
 
 async def _ensure_oauth_table(conn):
-    """Create OAuth accounts table if not exists."""
+    """Create OAuth accounts + states tables if not exists."""
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS oauth_states (
+            state TEXT PRIMARY KEY,
+            provider TEXT NOT NULL,
+            created_at REAL NOT NULL,
+            expires_at REAL NOT NULL
+        )
+    """)
     await conn.execute("""
         CREATE TABLE IF NOT EXISTS oauth_accounts (
             provider TEXT NOT NULL,
@@ -383,6 +390,12 @@ async def forgot_password(body: ForgotPasswordRequest):
          prevents email enumeration attacks. The actual email send only
          happens if a matching user is found.
     """
+    # Rate limit: 5-minute cooldown per email
+    now_fp = time.time()
+    last_fp = _forgot_password_throttle.get(body.email, 0)
+    if now_fp - last_fp < 300:
+        raise HTTPException(429, "Too many reset requests. Please wait 5 minutes.")
+    _forgot_password_throttle[body.email] = now_fp
     async with aiosqlite.connect(DB_PATH) as conn:
         await _ensure_users_table(conn)
         cursor = await conn.execute(
@@ -437,6 +450,12 @@ async def reset_password(body: ResetPasswordRequest):
     WHY: Token is single-use and time-limited to prevent replay attacks.
     """
     token_hash = hashlib.sha256(body.token.encode()).hexdigest()
+
+    # Rate limit: max 5 attempts per token
+    attempts = _reset_attempts.get(token_hash, 0)
+    if attempts >= MAX_RESET_ATTEMPTS:
+        raise HTTPException(429, "Too many attempts for this token")
+    _reset_attempts[token_hash] = attempts + 1
 
     async with aiosqlite.connect(DB_PATH) as conn:
         await _ensure_reset_tokens_table(conn)
@@ -545,13 +564,21 @@ async def oauth_login(provider: str = Query(...)):
     if not cfg or not cfg.get("client_id", ""):
         raise HTTPException(400, f"OAuth provider '{provider}' is not configured")
 
-    _clean_expired_oauth_states()
-
     redirect_uri = f"{OAUTH_REDIRECT_BASE}/auth/oauth/callback?provider={provider}"
     state = secrets.token_urlsafe(16)
 
-    # Store state for CSRF validation in callback (10-minute expiry)
-    _oauth_states[state] = (provider, time.time())
+    # Store state in SQLite for CSRF validation (persists across restarts)
+    now = time.time()
+    async with aiosqlite.connect(DB_PATH) as conn:
+        await _ensure_oauth_table(conn)
+        # Clean expired states
+        await conn.execute("DELETE FROM oauth_states WHERE expires_at < ?", (now,))
+        await conn.execute(
+            "INSERT INTO oauth_states (state, provider, created_at, expires_at) "
+            "VALUES (?, ?, ?, ?)",
+            (state, provider, now, now + OAUTH_STATE_TTL),
+        )
+        await conn.commit()
 
     params = {
         "client_id": cfg["client_id"],
@@ -593,16 +620,24 @@ async def oauth_callback(
             url=f"{M6_BASE_URL}/login?error=provider_not_configured"
         )
 
-    # Validate CSRF state parameter to prevent login forgery attacks
-    if state not in _oauth_states:
-        return RedirectResponse(
-            url=f"{M6_BASE_URL}/login?error=invalid_state"
+    # Validate CSRF state from SQLite (persists across restarts)
+    async with aiosqlite.connect(DB_PATH) as conn:
+        await _ensure_oauth_table(conn)
+        cursor = await conn.execute(
+            "SELECT provider, expires_at FROM oauth_states WHERE state = ?",
+            (state,),
         )
-    stored_provider, created_at = _oauth_states.pop(state)
-    if stored_provider != provider or time.time() - created_at > 600:
-        return RedirectResponse(
-            url=f"{M6_BASE_URL}/login?error=state_mismatch"
-        )
+        row = await cursor.fetchone()
+        if row is None:
+            return RedirectResponse(url=f"{M6_BASE_URL}/login?error=invalid_state")
+        stored_provider, expires_at = row
+        if stored_provider != provider or time.time() > expires_at:
+            await conn.execute("DELETE FROM oauth_states WHERE state = ?", (state,))
+            await conn.commit()
+            return RedirectResponse(url=f"{M6_BASE_URL}/login?error=state_mismatch")
+        # One-time use: delete after validation
+        await conn.execute("DELETE FROM oauth_states WHERE state = ?", (state,))
+        await conn.commit()
 
     redirect_uri = f"{OAUTH_REDIRECT_BASE}/auth/oauth/callback?provider={provider}"
 
@@ -795,8 +830,10 @@ def _send_reset_email(email: str, username: str, raw_token: str) -> None:
         msg["From"] = SMTP_USER
         msg["To"] = email
 
+        import ssl
+        context = ssl.create_default_context()
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-            server.starttls()
+            server.starttls(context=context)
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.send_message(msg)
     except Exception:
