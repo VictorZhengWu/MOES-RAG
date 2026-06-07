@@ -53,7 +53,22 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
         title="Marine & Offshore Expert System API",
         version="0.1.0",
         description="OpenAI-compatible API for ship and offshore engineering Q&A",
+        max_request_size=10 * 1024 * 1024,  # 10MB limit (prevents DoS)
     )
+
+    # ------------------------------------------------------------------
+    # Security headers middleware
+    # ------------------------------------------------------------------
+
+    @app.middleware("http")
+    async def add_security_headers(request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Content-Security-Policy"] = "default-src 'self'"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
 
     # ------------------------------------------------------------------
     # Lifecycle: startup
