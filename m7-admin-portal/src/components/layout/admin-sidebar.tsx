@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, FileText, Share2, Cpu, Users, Activity,
   Settings, HelpCircle, ArrowLeft, PanelLeftClose, PanelLeft,
+  SlidersHorizontal,
   LogIn, LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { id: 'llmConfig', href: '/admin/llm-config', icon: Cpu },
   { id: 'users', href: '/admin/users', icon: Users },
   { id: 'monitoring', href: '/admin/monitoring', icon: Activity },
+  { id: 'config', href: '/admin/config', icon: SlidersHorizontal },
 ];
 
 interface Props {
