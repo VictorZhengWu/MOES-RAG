@@ -46,6 +46,14 @@ OAUTH_MICROSOFT_CLIENT_ID = os.environ.get("OAUTH_MICROSOFT_CLIENT_ID", "")
 OAUTH_MICROSOFT_CLIENT_SECRET = os.environ.get("OAUTH_MICROSOFT_CLIENT_SECRET", "")
 OAUTH_WECHAT_APP_ID = os.environ.get("OAUTH_WECHAT_APP_ID", "")
 OAUTH_WECHAT_APP_SECRET = os.environ.get("OAUTH_WECHAT_APP_SECRET", "")
+OAUTH_FACEBOOK_APP_ID = os.environ.get("OAUTH_FACEBOOK_APP_ID", "")
+OAUTH_FACEBOOK_APP_SECRET = os.environ.get("OAUTH_FACEBOOK_APP_SECRET", "")
+OAUTH_X_CLIENT_ID = os.environ.get("OAUTH_X_CLIENT_ID", "")
+OAUTH_X_CLIENT_SECRET = os.environ.get("OAUTH_X_CLIENT_SECRET", "")
+OAUTH_APPLE_CLIENT_ID = os.environ.get("OAUTH_APPLE_CLIENT_ID", "")
+OAUTH_APPLE_TEAM_ID = os.environ.get("OAUTH_APPLE_TEAM_ID", "")
+OAUTH_APPLE_KEY_ID = os.environ.get("OAUTH_APPLE_KEY_ID", "")
+OAUTH_APPLE_PRIVATE_KEY = os.environ.get("OAUTH_APPLE_PRIVATE_KEY", "")
 DB_PATH = os.environ.get("M8_DB_PATH", "./data/m8_gateway.db")
 M6_BASE_URL = os.environ.get("M6_BASE_URL", "http://localhost:3000")
 
@@ -160,6 +168,7 @@ async def _ensure_oauth_table(conn):
             user_id TEXT NOT NULL,
             email TEXT,
             name TEXT,
+            avatar_url TEXT,
             created_at REAL NOT NULL,
             PRIMARY KEY (provider, provider_user_id)
         )
@@ -388,6 +397,32 @@ OAUTH_PROVIDERS = {
         "client_secret": OAUTH_WECHAT_APP_SECRET,
         "scope": "snsapi_login",
     },
+    "facebook": {
+        "auth_url": "https://www.facebook.com/v19.0/dialog/oauth",
+        "token_url": "https://graph.facebook.com/v19.0/oauth/access_token",
+        "userinfo_url": "https://graph.facebook.com/me?fields=id,name,email,picture",
+        "client_id": OAUTH_FACEBOOK_APP_ID,
+        "client_secret": OAUTH_FACEBOOK_APP_SECRET,
+        "scope": "email public_profile",
+    },
+    "x": {
+        "auth_url": "https://x.com/i/oauth2/authorize",
+        "token_url": "https://api.x.com/2/oauth2/token",
+        "userinfo_url": "https://api.x.com/2/users/me",
+        "client_id": OAUTH_X_CLIENT_ID,
+        "client_secret": OAUTH_X_CLIENT_SECRET,
+        "scope": "users.read tweet.read",
+    },
+    "apple": {
+        "auth_url": "https://appleid.apple.com/auth/authorize",
+        "token_url": "https://appleid.apple.com/auth/token",
+        "userinfo_url": "",  # Apple returns user info in the id_token
+        "client_id": OAUTH_APPLE_CLIENT_ID,
+        "client_secret": OAUTH_APPLE_PRIVATE_KEY,  # Apple uses signed JWT, not static secret
+        "scope": "name email",
+        "team_id": OAUTH_APPLE_TEAM_ID,
+        "key_id": OAUTH_APPLE_KEY_ID,
+    },
 }
 
 
@@ -509,12 +544,44 @@ async def oauth_callback(
 
     # Step 3: Find or create user
     provider_user_id = str(
-        user_json.get("id", user_json.get("sub", user_json.get("openid", "")))
+        user_json.get("id", user_json.get("sub", user_json.get("openid", ""))
     )
-    email = user_json.get("email", user_json.get("userPrincipalName", ""))
-    name = user_json.get(
-        "name", user_json.get("displayName", user_json.get("nickname", ""))
+
+    # Extract email (provider-specific field names)
+    email = (
+        user_json.get("email")
+        or user_json.get("userPrincipalName")
+        or user_json.get("mail")
+        or ""
     )
+
+    # Extract display name (provider-specific field names)
+    name = (
+        user_json.get("name")
+        or user_json.get("displayName")
+        or user_json.get("nickname")
+        or ""
+    )
+
+    # Extract avatar URL (provider-specific field names)
+    avatar_url = ""
+    if provider == "facebook":
+        pic = user_json.get("picture", {})
+        if isinstance(pic, dict):
+            data = pic.get("data", {})
+            avatar_url = data.get("url", "")
+    elif provider == "x":
+        data_wrapper = user_json.get("data", {})
+        avatar_url = data_wrapper.get("profile_image_url", "")
+        if not name:
+            name = data_wrapper.get("name", data_wrapper.get("username", ""))
+    else:
+        avatar_url = (
+            user_json.get("picture")
+            or user_json.get("avatar_url")
+            or user_json.get("headimgurl")
+            or ""
+        )
 
     if not provider_user_id:
         return RedirectResponse(
@@ -561,11 +628,11 @@ async def oauth_callback(
                     (user_id, username, "", time.time()),
                 )
 
-            # Link OAuth account
+            # Link OAuth account with avatar
             await conn.execute(
-                "INSERT INTO oauth_accounts (provider, provider_user_id, user_id, email, name, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (provider, provider_user_id, user_id, email, name, time.time()),
+                "INSERT INTO oauth_accounts (provider, provider_user_id, user_id, email, name, avatar_url, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (provider, provider_user_id, user_id, email, name, avatar_url, time.time()),
             )
             await conn.commit()
 
