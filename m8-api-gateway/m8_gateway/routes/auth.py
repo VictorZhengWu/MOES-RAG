@@ -12,12 +12,14 @@ WHY: M6 frontend needs real authentication — email/password (Phase 2),
 Security: bcrypt for password hashing (upgraded from SHA-256 in Phase 3).
           OAuth uses standard authorization code flow. Reset tokens are
           single-use, 24h expiry, SHA-256 hashed in DB.
+          Brute-force protection: 5 failed attempts = 15min lockout.
 """
 
 from __future__ import annotations
 
 import hashlib
 import os
+import re
 import secrets
 import time
 import aiosqlite
@@ -25,11 +27,26 @@ import httpx
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from m8_gateway.auth.key_manager import KeyManager
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+# Brute-force protection
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_LOCKOUT_SECONDS = 900  # 15 minutes
+_login_attempts: dict[str, list[float]] = {}  # key → timestamps of failed attempts
+
+# Email regex — RFC 5322 simplified
+_EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+
+# Banned usernames (prevent impersonation, profanity, system names)
+_BANNED_USERNAMES: set[str] = {
+    "admin", "administrator", "root", "system", "support", "api",
+    "moderator", "mod", "staff", "help", "info", "noreply", "no-reply",
+    "abuse", "security", "postmaster", "webmaster", "hostmaster",
+}
 
 # ---------------------------------------------------------------------------
 # Configuration (from environment)
@@ -65,13 +82,51 @@ M6_BASE_URL = os.environ.get("M6_BASE_URL", "http://localhost:3000")
 class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=2, max_length=50)
     email: str = Field(..., min_length=3, max_length=200)
-    password: str = Field(..., min_length=6, max_length=200)
+    password: str = Field(..., min_length=8, max_length=200)
     tier: str = Field(default="basic", pattern="^(basic|pro|enterprise)$")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        """Validate email format with regex."""
+        if not _EMAIL_RE.match(v):
+            raise ValueError("Invalid email format")
+        return v.lower().strip()
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, v: str) -> str:
+        """Validate username: no banned names, alphanumeric + underscore only."""
+        if v.lower() in _BANNED_USERNAMES:
+            raise ValueError(f"Username '{v}' is reserved")
+        if not re.match(r"^[a-zA-Z0-9_-]+$", v):
+            raise ValueError("Username can only contain letters, numbers, hyphens, and underscores")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        """Enforce minimum password strength: length + character variety."""
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must contain at least one digit")
+        return v
 
 
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        """Normalize email to lowercase for consistent lookup."""
+        return v.lower().strip()
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -119,6 +174,24 @@ def _verify_password(password: str, stored_hash: str) -> bool:
         return computed == pw_hash
 
     return False
+
+
+def _record_failed_attempt(email: str) -> None:
+    """Record a failed login attempt for brute-force tracking."""
+    _clean_expired_attempts(email)
+    if email not in _login_attempts:
+        _login_attempts[email] = []
+    _login_attempts[email].append(time.time())
+
+
+def _clean_expired_attempts(email: str) -> None:
+    """Remove expired failed attempt records."""
+    if email not in _login_attempts:
+        return
+    cutoff = time.time() - LOGIN_LOCKOUT_SECONDS
+    _login_attempts[email] = [t for t in _login_attempts[email] if t > cutoff]
+    if not _login_attempts[email]:
+        del _login_attempts[email]
 
 
 def _maybe_upgrade_password(user_id: str, password: str, stored_hash: str) -> None:
@@ -234,7 +307,21 @@ async def register(body: RegisterRequest):
 
 @router.post("/login", response_model=AuthResponse)
 async def login(body: LoginRequest):
-    """POST /auth/login — Authenticate with email+password. Returns API key."""
+    """POST /auth/login — Authenticate with email+password. Returns API key.
+
+    Brute-force protection: 5 failed attempts = 15-minute lockout per email.
+    Cleared on successful login.
+    """
+    # Check brute-force lockout
+    _clean_expired_attempts(body.email)
+    recent = _login_attempts.get(body.email, [])
+    if len(recent) >= MAX_LOGIN_ATTEMPTS:
+        wait_sec = int(LOGIN_LOCKOUT_SECONDS - (time.time() - min(recent)))
+        raise HTTPException(
+            429,
+            f"Too many login attempts. Please try again in {wait_sec // 60} minutes.",
+        )
+
     async with aiosqlite.connect(DB_PATH) as conn:
         await _ensure_users_table(conn)
         cursor = await conn.execute(
@@ -244,12 +331,17 @@ async def login(body: LoginRequest):
         )
         row = await cursor.fetchone()
         if row is None:
+            _record_failed_attempt(body.email)
             raise HTTPException(401, "Invalid email or password")
 
         user_id, username, email, stored_hash, tier = row
 
         if not _verify_password(body.password, stored_hash):
+            _record_failed_attempt(body.email)
             raise HTTPException(401, "Invalid email or password")
+
+        # Clear failed attempts on successful login
+        _login_attempts.pop(body.email, None)
 
         # Auto-upgrade legacy SHA-256 accounts to bcrypt
         _maybe_upgrade_password(user_id, body.password, stored_hash)
