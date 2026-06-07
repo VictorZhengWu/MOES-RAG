@@ -30,6 +30,7 @@ from m8_gateway.auth.middleware import get_api_key
 router = APIRouter(tags=["extras"])
 
 DB_PATH = __import__("os").environ.get("M8_DB_PATH", "./data/m8_gateway.db")
+M6_BASE_URL = __import__("os").environ.get("M6_BASE_URL", "http://localhost:3000")
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +164,7 @@ async def share_conversation(
         )
         await conn.commit()
 
-    base = request.headers.get("origin", "http://localhost:3000")
+    base = request.headers.get("origin") or M6_BASE_URL
     share_url = f"{base}/shared/{share_token}"
 
     return {"share_token": share_token, "share_url": share_url}

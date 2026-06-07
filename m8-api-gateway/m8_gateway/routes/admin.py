@@ -95,10 +95,12 @@ class RetrievalConfig(BaseModel):
     rerank_top_k: int = 20
     dedup_threshold: float = 0.85
 
+_DEFAULT_SEARXNG_URL = os.environ.get("SEARXNG_URL", "http://localhost:8888")
+
 class WebSearchConfigUpdate(BaseModel):
     engine: str = "duckduckgo"
     api_key: str | None = None
-    searxng_url: str = "http://localhost:8888"
+    searxng_url: str = _DEFAULT_SEARXNG_URL
     google_cx: str | None = None
 
 class FeaturesConfig(BaseModel):
@@ -198,7 +200,7 @@ async def set_web_search_config(body: WebSearchConfigUpdate, request: Request, a
         engine._config.web_search_engine = data["engine"]
         if data.get("api_key"):
             engine._config.web_search_api_key = data["api_key"]
-        engine._config.web_search_searxng_url = data.get("searxng_url", "http://localhost:8888")
+        engine._config.web_search_searxng_url = data.get("searxng_url", _DEFAULT_SEARXNG_URL)
         if data.get("google_cx"):
             engine._config.web_search_google_cx = data["google_cx"]
     return {"updated": True, "engine": data["engine"]}
