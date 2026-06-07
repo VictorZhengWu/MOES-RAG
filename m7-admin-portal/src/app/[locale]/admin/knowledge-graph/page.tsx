@@ -13,9 +13,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { GraphCanvas } from '@/components/knowledge-graph/graph-canvas';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, GitBranch, ArrowRightLeft, Link2, FileText, Tag, Pencil, Trash2, X, Check } from 'lucide-react';
+import { Search, GitBranch, ArrowRightLeft, Link2, FileText, Tag, Pencil, Trash2, X, Check, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
@@ -144,6 +145,9 @@ export default function KnowledgeGraphPage() {
           </TabsTrigger>
           <TabsTrigger value="crossref" className="gap-1.5">
             <ArrowRightLeft className="h-3.5 w-3.5" /> Cross-Reference
+          </TabsTrigger>
+          <TabsTrigger value="graph" className="gap-1.5">
+            <Share2 className="h-3.5 w-3.5" /> Graph View
           </TabsTrigger>
         </TabsList>
 
@@ -318,6 +322,23 @@ export default function KnowledgeGraphPage() {
               </Card>
             ))}
           </div>
+        </TabsContent>
+        {/* ── Graph Tab — D3.js Force-Directed Layout ────────── */}
+        <TabsContent value="graph">
+          <GraphCanvas
+            data={{
+              nodes: entities.map((e) => ({
+                id: e.entity_id, name: e.name,
+                entity_type: e.entity_type, properties: e.properties,
+              })),
+              edges: relations.map((r) => ({
+                source: r.source_entity_id, target: r.target_entity_id,
+                relation_type: r.relation_type, confidence: r.confidence,
+              })),
+            }}
+            loading={loading}
+            onNodeClick={(node) => setSelectedEntity(node as KGEntity)}
+          />
         </TabsContent>
       </Tabs>
 
