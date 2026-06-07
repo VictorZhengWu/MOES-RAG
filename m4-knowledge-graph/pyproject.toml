@@ -17,6 +17,9 @@ dependencies = [
 dev = ["pytest>=8.0", "pytest-asyncio>=0.23.0"]
 all = ["m4-knowledge-graph[dev]"]
 
+[tool.setuptools.packages.find]
+include = ["m4_kg*"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
