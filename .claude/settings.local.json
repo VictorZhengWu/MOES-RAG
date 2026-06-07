@@ -356,7 +356,9 @@
       "Bash(cat)",
       "Bash(python tools/add_config_tabs.py)",
       "Bash(python -m pytest m2-storage/tests/ -q --tb=line)",
-      "Bash(python -m pytest m2-storage/tests/test_config.py::test_invalid_backend_raises -v --tb=short)"
+      "Bash(python -m pytest m2-storage/tests/test_config.py::test_invalid_backend_raises -v --tb=short)",
+      "Bash(PYTHONPATH=. timeout 180 python tests/e2e/test_full_pipeline.py)",
+      "Bash(PYTHONPATH=. python tests/e2e/test_full_pipeline.py)"
     ]
   }
 }
