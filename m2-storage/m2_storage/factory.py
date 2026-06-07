@@ -107,9 +107,12 @@ def _create_vector_store(cfg: VectorStoreConfig) -> BaseVectorStore:
 
     if cfg.backend == "chromadb":
         return ChromaDBStore(cfg.chromadb)
+    if cfg.backend == "milvus":
+        from .vector_store.milvus_store import MilvusStore
+        return MilvusStore()
     raise ValueError(
         f"Unsupported vector store backend: {cfg.backend}. "
-        f"Supported: chromadb"
+        f"Supported: chromadb, milvus"
     )
 
 
