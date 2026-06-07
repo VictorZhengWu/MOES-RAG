@@ -22,20 +22,25 @@ router = APIRouter(prefix="/api/v1/conversations", tags=["conversations"])
 async def list_conversations(
     request: Request,
     api_key: APIKey = Depends(get_api_key),
+    search: str = "",
 ):
     """
-    GET /api/v1/conversations — List user's conversation history.
+    GET /api/v1/conversations?search=keyword — List user's conversations.
 
-    WHAT: Delegates to M5 QAEngine.list_conversations() with user_id from the
-          API key. Returns a list of ConversationSummary objects.
+    WHAT: Returns conversation summaries, optionally filtered by search
+          keyword (matches title). Delegates to M5 QAEngine.
 
-    WHY: M6 frontend calls this on the Conversations sidebar to show history.
-         Previously served by Mock Server with 3 fake entries.
+    WHY: M6 sidebar has a search input. Client-side filtering works for
+         small lists but degrades with 100+ conversations. Server-side
+         filtering keeps the sidebar responsive at any scale.
     """
     engine = request.app.state.qa_engine
     if engine is None:
         raise HTTPException(500, "QA Engine not initialized")
     conversations = await engine.list_conversations(api_key.user_id)
+    if search.strip():
+        q = search.strip().lower()
+        conversations = [c for c in conversations if q in c.title.lower()]
     return {"conversations": conversations}
 
 
