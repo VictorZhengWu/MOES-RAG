@@ -169,6 +169,33 @@ async def share_conversation(
     return {"share_token": share_token, "share_url": share_url}
 
 
+@router.delete("/api/v1/conversations/{conversation_id}/share")
+async def revoke_share(
+    conversation_id: str,
+    request: Request,
+    api_key: APIKey = Depends(get_api_key),
+):
+    """
+    DELETE /api/v1/conversations/:id/share — Revoke all share links for a conversation.
+
+    WHAT: Deletes all share tokens for this conversation. Existing links
+          return 404 immediately after revocation.
+
+    WHY: Users may want to stop sharing a conversation without deleting it.
+    """
+    async with aiosqlite.connect(DB_PATH) as conn:
+        cursor = await conn.execute(
+            "DELETE FROM shared_conversations "
+            "WHERE conversation_id = ? AND owner_user_id = ?",
+            (conversation_id, api_key.user_id),
+        )
+        await conn.commit()
+        if cursor.rowcount == 0:
+            raise HTTPException(404, "No active share links found for this conversation")
+
+    return {"revoked": True, "conversation_id": conversation_id}
+
+
 @router.get("/api/v1/shared/{share_token}")
 async def get_shared_conversation(share_token: str):
     """

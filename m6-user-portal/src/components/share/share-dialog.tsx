@@ -14,14 +14,22 @@ import { X, Check, Copy } from 'lucide-react';
 interface Props {
   open: boolean;
   onClose: () => void;
+  conversationId?: string;
 }
 
-export function ShareDialog({ open, onClose }: Props) {
+export function ShareDialog({ open, onClose, conversationId }: Props) {
   const t = useTranslations();
   const [copied, setCopied] = useState(false);
+  const [shareLink, setShareLink] = useState('');
 
-  // Mock share link
-  const shareLink = 'https://mo-expert.com/share/conv_' + Math.random().toString(36).slice(2, 10);
+  // Fetch real share link when dialog opens
+  if (open && conversationId && !shareLink) {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+    fetch(`${baseUrl}/api/v1/conversations/${conversationId}/share`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    }).then(r => r.json()).then(d => setShareLink(d.share_url)).catch(() => setShareLink(''));
+  }
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shareLink);
