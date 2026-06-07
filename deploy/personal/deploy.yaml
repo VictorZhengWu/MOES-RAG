@@ -1,0 +1,38 @@
+# ============================================================================
+# Personal Mode — Single user, local machine
+# All backends embedded: ChromaDB + SQLite + Local FS + Meilisearch
+# ============================================================================
+
+deployment_mode: personal
+
+storage:
+  vector_store:
+    backend: chromadb
+    chromadb:
+      persist_dir: ./data/chromadb
+      collection_name: marine_rag
+  document_index:
+    backend: meilisearch
+    meilisearch:
+      host: http://127.0.0.1:7700
+      api_key: ""
+      index_name: marine_rag_docs
+  relational_db:
+    backend: sqlite
+    sqlite:
+      path: ./data/marine_rag.db
+  file_store:
+    backend: local_fs
+    local_fs:
+      root_dir: ./data/files
+
+features:
+  web_search: true
+  deep_research: false
+  billing: false
+  multi_tenant: false
+
+rate_limits:
+  basic: 100
+  pro: -1
+  enterprise: -1

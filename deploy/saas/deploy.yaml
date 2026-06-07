@@ -1,0 +1,49 @@
+# ============================================================================
+# SaaS Mode — Multi-tenant cloud deployment
+# All backends must be enterprise-grade (PostgreSQL, Qdrant, S3).
+# Strict rate limits, billing enabled, Redis for session/rate-limit.
+# ============================================================================
+
+deployment_mode: saas
+
+storage:
+  vector_store:
+    backend: qdrant
+    qdrant:
+      host: ${QDRANT_HOST}
+      port: 6333
+      api_key: ${QDRANT_API_KEY}
+      collection_name: marine_rag
+  document_index:
+    backend: elasticsearch
+    elasticsearch:
+      host: ${ES_HOST}
+      port: 9200
+      api_key: ${ES_API_KEY}
+      index_name: marine_rag_docs
+  relational_db:
+    backend: postgresql
+    postgresql:
+      host: ${PG_HOST}
+      port: 5432
+      database: marine_rag
+      user: ${PG_USER}
+      password: ${PG_PASSWORD}
+  file_store:
+    backend: s3
+    s3:
+      bucket: marine-rag-documents
+      region: ${AWS_REGION}
+      access_key: ${AWS_ACCESS_KEY}
+      secret_key: ${AWS_SECRET_KEY}
+
+features:
+  web_search: true
+  deep_research: true
+  billing: true
+  multi_tenant: true
+
+rate_limits:
+  basic: 30
+  pro: 120
+  enterprise: -1

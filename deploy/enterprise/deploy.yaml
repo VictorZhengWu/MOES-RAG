@@ -1,0 +1,49 @@
+# ============================================================================
+# Enterprise Mode — Internal team deployment
+# Supports external DBs (PostgreSQL, Qdrant) but falls back to embedded.
+# Moderate rate limits, Tavily search recommended.
+# ============================================================================
+
+deployment_mode: enterprise
+
+storage:
+  vector_store:
+    backend: chromadb  # Change to qdrant or milvus for scale
+    chromadb:
+      persist_dir: /data/marine/chromadb
+      collection_name: marine_rag
+    qdrant:
+      host: qdrant.enterprise.local
+      port: 6333
+      collection_name: marine_rag
+  document_index:
+    backend: meilisearch  # Change to elasticsearch for scale
+    meilisearch:
+      host: http://meilisearch.enterprise.local:7700
+      api_key: ""
+      index_name: marine_rag_docs
+  relational_db:
+    backend: sqlite  # Change to postgresql for scale
+    sqlite:
+      path: /data/marine/marine_rag.db
+    postgresql:
+      host: postgres.enterprise.local
+      port: 5432
+      database: marine_rag
+      user: marine
+      password: ""
+  file_store:
+    backend: local_fs  # Change to minio for scale
+    local_fs:
+      root_dir: /data/marine/files
+
+features:
+  web_search: true
+  deep_research: true
+  billing: false
+  multi_tenant: false
+
+rate_limits:
+  basic: 30
+  pro: 120
+  enterprise: -1

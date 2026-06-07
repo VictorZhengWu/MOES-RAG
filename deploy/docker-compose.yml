@@ -31,6 +31,7 @@ services:
     environment:
       # Deployment
       - DEPLOYMENT_MODE=${DEPLOYMENT_MODE:-personal}
+      - DEPLOY_YAML=deploy/${DEPLOYMENT_MODE:-personal}/deploy.yaml
       # Feature flags
       - FEATURE_BILLING=${FEATURE_BILLING:-false}
       - FEATURE_WEB_SEARCH=${FEATURE_WEB_SEARCH:-true}
@@ -88,7 +89,7 @@ services:
       - ../m1-doc-parsing:/app/m1-doc-parsing
       - ../m2-storage:/app/m2-storage
       - ../contracts:/app/contracts
-      - ../deploy.yaml:/app/deploy.yaml
+      - ../deploy/${DEPLOYMENT_MODE:-personal}/deploy.yaml:/app/deploy.yaml
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
       interval: 30s
