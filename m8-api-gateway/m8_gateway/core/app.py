@@ -116,6 +116,13 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
         # the startup phase after the LLM backend configuration is loaded.
         app.state.qa_engine = None
 
+        # Set restrictive DB file permissions (owner-only, prevents data leaks)
+        import os as _os
+        db_path = cfg.db_path
+        _os.makedirs(_os.path.dirname(db_path) or '.', exist_ok=True)
+        if _os.path.exists(db_path):
+            _os.chmod(db_path, 0o600)
+
     # ------------------------------------------------------------------
     # Lifecycle: shutdown
     # ------------------------------------------------------------------
