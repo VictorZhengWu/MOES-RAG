@@ -277,6 +277,17 @@ async def get_smtp(request: Request, api_key: APIKey = Depends(get_api_key)):
     return await _get_section("smtp") or {"host": "smtp.gmail.com", "port": "587"}
 
 
+@router.get("/backends")
+async def get_backend_status(request, api_key=Depends(get_api_key)):
+    """GET /admin/config/backends — Check which parsing backends are available."""
+    import shutil
+    result = {"docling": {"available": True, "note": "Default engine"}}
+    result["marker"] = {"available": shutil.which("marker") is not None,
+                         "install": "pip install marker-pdf"}
+    result["mineru"] = {"available": shutil.which("magic-pdf") is not None,
+                         "install": "pip install magic-pdf"}
+    return result
+
 @router.get("/monitoring")
 async def get_monitoring(request: Request, api_key: APIKey = Depends(get_api_key)):
     """GET /admin/monitoring — M5 query metrics."""
