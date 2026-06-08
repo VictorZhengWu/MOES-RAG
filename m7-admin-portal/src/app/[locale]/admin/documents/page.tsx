@@ -60,6 +60,7 @@ export default function DocumentsPage() {
   const [backendsAvailable, setBackendsAvailable] = useState<Record<string, boolean>>({docling: true});
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState('');
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, filename: '' });
   const [isDragOver, setIsDragOver] = useState(false);
   const [invalidDialogOpen, setInvalidDialogOpen] = useState(false);
   const [invalidFilenames, setInvalidFilenames] = useState<string[]>([]);
@@ -131,11 +132,14 @@ export default function DocumentsPage() {
     if (pendingFiles.length === 0) return;
     setUploading(true);
     setUploadMsg('');
+    setUploadProgress({ current: 0, total: pendingFiles.length, filename: '' });
     const results: string[] = [];
     let success = 0;
     let fail = 0;
 
-    for (const pf of pendingFiles) {
+    for (let i = 0; i < pendingFiles.length; i++) {
+      const pf = pendingFiles[i];
+      setUploadProgress({ current: i + 1, total: pendingFiles.length, filename: pf.file.name });
       try {
         await uploadDocument({
           file_name: pf.file.name,
@@ -270,6 +274,18 @@ export default function DocumentsPage() {
                 {uploading ? 'Uploading...' : `Upload ${pendingFiles.length} File${pendingFiles.length > 1 ? 's' : ''}`}
               </Button>
             </div>
+            {uploading && (
+              <div className="mt-2">
+                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                  <span>Parsing: {uploadProgress.filename}</span>
+                  <span>{uploadProgress.current}/{uploadProgress.total}</span>
+                </div>
+                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-primary rounded-full transition-all duration-300"
+                    style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }} />
+                </div>
+              </div>
+            )}
             {/* Backend selector + timeout */}
             <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
               <span>Engine:</span>
