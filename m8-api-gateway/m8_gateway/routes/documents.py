@@ -55,6 +55,7 @@ M1_PARSE_URL: str = os.environ.get(
 async def upload_document(
     file: UploadFile = File(...),
     output_dir: str = Form(default="./output"),
+    parse_backend: str = Form(default="docling"),
     api_key: APIKey = Depends(get_api_key),
 ):
     """
@@ -118,7 +119,7 @@ async def upload_document(
                             file.content_type or "application/octet-stream",
                         )
                     },
-                    data={"output_dir": output_dir},
+                    data={"output_dir": output_dir, "backend": parse_backend},
                 )
 
             if m1_resp.status_code != 200:
