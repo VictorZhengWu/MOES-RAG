@@ -32,6 +32,7 @@ class MarkerBackend:
         max_pages: int | None = None,
         picture_description: bool = False,
         export_tables: bool = False,
+        timeout: int = 120,
     ) -> ParseResult:
         src = Path(source)
         if not src.exists():
@@ -49,7 +50,7 @@ class MarkerBackend:
 
         logger.info("Parsing PDF with Marker (may take 30-120s for large files)...")
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
             if result.returncode != 0:
                 logger.error("Marker failed: %s", result.stderr[:500])
                 return ParseResult(markdown="", page_count=0)

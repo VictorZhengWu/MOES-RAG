@@ -270,14 +270,20 @@ export default function DocumentsPage() {
                 {uploading ? 'Uploading...' : `Upload ${pendingFiles.length} File${pendingFiles.length > 1 ? 's' : ''}`}
               </Button>
             </div>
-            {/* Backend selector with availability check */}
+            {/* Backend selector + timeout */}
             <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
-              <span>Parsing Engine:</span>
-              <select className="rounded border bg-background px-2 py-1 text-xs"
-                onChange={(e) => {/* Phase 3: pass to uploadDocument */}}>
-                <option>Docling (Default, all formats)</option>
-                <option>Marker (PDF only, install: pip install marker-pdf)</option>
-                <option>MinerU (Chinese PDF, install: pip install magic-pdf)</option>
+              <span>Engine:</span>
+              <select className="rounded border bg-background px-2 py-1 text-xs">
+                <option>Docling</option>
+                <option>Marker (pip install marker-pdf)</option>
+                <option>MinerU (pip install magic-pdf)</option>
+              </select>
+              <span>Timeout:</span>
+              <select className="rounded border bg-background px-2 py-1 text-xs" defaultValue="120">
+                <option value="60">60s</option>
+                <option value="120">120s</option>
+                <option value="300">300s</option>
+                <option value="600">600s</option>
               </select>
             </div>
           </div>

@@ -51,6 +51,7 @@ class ParseOptions:
     vlm_preset: str | None = None
     use_gpu: bool = False
     output_dir: str | None = None
+    parse_timeout_seconds: int = 120  # Configurable via M7 admin UI
     output_formats: list[str] = field(default_factory=lambda: ["md", "json"])
     max_pages: int | None = None          # limit pages parsed (null = all)
     picture_description: bool = False      # enable VLM picture captioning
@@ -167,6 +168,7 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
         raw = backend.convert(
             source, output_dir=options.output_dir,
             max_pages=options.max_pages,
+            timeout=options.parse_timeout_seconds,
         )
     elif backend_name == "mineru":
         from ..backends.mineru_backend import MinerUBackend
@@ -174,6 +176,7 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
         raw = backend.convert(
             source, output_dir=options.output_dir,
             max_pages=options.max_pages,
+            timeout=options.parse_timeout_seconds,
         )
     else:
         return ParseResult(

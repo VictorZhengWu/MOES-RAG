@@ -32,6 +32,7 @@ class MinerUBackend:
         max_pages: int | None = None,
         picture_description: bool = False,
         export_tables: bool = False,
+        timeout: int = 120,
     ) -> ParseResult:
         src = Path(source)
         if not src.exists():
@@ -50,7 +51,7 @@ class MinerUBackend:
 
         try:
             logger.info("Parsing PDF with MinerU (may take 30-120s for large files)...")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
             if result.returncode != 0:
                 logger.error("MinerU failed: %s", result.stderr[:500])
                 return ParseResult(markdown="", page_count=0)
