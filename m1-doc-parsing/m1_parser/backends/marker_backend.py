@@ -42,10 +42,14 @@ class MarkerBackend:
         # Graceful fallback if Marker CLI not installed
         if not shutil.which("marker"):
             logger.warning("Marker CLI not found, falling back to Docling")
-            from ..backends.docling_backend import DoclingBackend
-            return DoclingBackend(use_gpu=self.use_gpu).convert(
-                source, output_dir=output_dir, max_pages=max_pages,
-            )
+            try:
+                from ..backends.docling_backend import DoclingBackend
+                return DoclingBackend(use_gpu=self.use_gpu).convert(
+                    source, output_dir=output_dir, max_pages=max_pages,
+                )
+            except Exception as e:
+                logger.error("Docling fallback also failed: %s", e)
+                return ParseResult(markdown="", page_count=0)
 
         out_dir = Path(output_dir) if output_dir else Path(tempfile.mkdtemp(prefix="marker_"))
         out_dir.mkdir(parents=True, exist_ok=True)
