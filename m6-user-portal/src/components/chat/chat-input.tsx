@@ -151,6 +151,7 @@ export function ChatInput() {
           type="file"
           className="hidden"
           multiple
+          accept=".pdf,.docx,.xlsx,.pptx,.html,.htm,.txt,.md,.csv,.png,.jpg,.jpeg,.tiff,.bmp"
           onChange={handleFileSelect}
         />
 
