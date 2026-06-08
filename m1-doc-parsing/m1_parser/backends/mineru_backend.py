@@ -49,7 +49,8 @@ class MinerUBackend:
             cmd.extend(["--max_pages", str(max_pages)])
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+            logger.info("Parsing PDF with MinerU (may take 30-120s for large files)...")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
             if result.returncode != 0:
                 logger.error("MinerU failed: %s", result.stderr[:500])
                 return ParseResult(markdown="", page_count=0)
