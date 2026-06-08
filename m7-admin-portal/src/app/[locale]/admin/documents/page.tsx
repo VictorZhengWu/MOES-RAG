@@ -55,6 +55,9 @@ export default function DocumentsPage() {
 
   // Upload state
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+
+  // Backend availability (fetched from M8 on mount)
+  const [backendsAvailable, setBackendsAvailable] = useState<Record<string, boolean>>({docling: true});
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
@@ -266,6 +269,16 @@ export default function DocumentsPage() {
                 {uploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {uploading ? 'Uploading...' : `Upload ${pendingFiles.length} File${pendingFiles.length > 1 ? 's' : ''}`}
               </Button>
+            </div>
+            {/* Backend selector with availability check */}
+            <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+              <span>Parsing Engine:</span>
+              <select className="rounded border bg-background px-2 py-1 text-xs"
+                onChange={(e) => {/* Phase 3: pass to uploadDocument */}}>
+                <option>Docling (Default, all formats)</option>
+                <option>Marker (PDF only, install: pip install marker-pdf)</option>
+                <option>MinerU (Chinese PDF, install: pip install magic-pdf)</option>
+              </select>
             </div>
           </div>
 
