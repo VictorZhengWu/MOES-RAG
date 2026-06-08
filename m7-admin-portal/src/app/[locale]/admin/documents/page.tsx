@@ -56,7 +56,8 @@ export default function DocumentsPage() {
   // Upload state
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
 
-  // Backend availability (fetched from M8 on mount)
+  // Backend selection (wired to upload API)
+  const [selectedBackend, setSelectedBackend] = useState('docling');
   const [backendsAvailable, setBackendsAvailable] = useState<Record<string, boolean>>({docling: true});
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState('');
@@ -292,13 +293,14 @@ export default function DocumentsPage() {
                 </div>
               </div>
             )}
-            {/* Backend selector + timeout */}
+            {/* Backend selector (wired to upload API) + timeout */}
             <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
               <span>Engine:</span>
-              <select className="rounded border bg-background px-2 py-1 text-xs">
-                <option>Docling</option>
-                <option>Marker (pip install marker-pdf)</option>
-                <option>MinerU (pip install magic-pdf)</option>
+              <select value={selectedBackend} onChange={(e) => setSelectedBackend(e.target.value)}
+                className="rounded border bg-background px-2 py-1 text-xs">
+                <option value="docling">Docling (Default)</option>
+                <option value="marker">Marker</option>
+                <option value="mineru">MinerU</option>
               </select>
               <span>Timeout:</span>
               <select className="rounded border bg-background px-2 py-1 text-xs" defaultValue="120">

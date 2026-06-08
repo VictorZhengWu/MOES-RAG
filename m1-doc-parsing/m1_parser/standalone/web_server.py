@@ -55,8 +55,8 @@ def _tesseract_ok() -> bool:
 _COMPONENTS = {
     "backends": {
         "docling": {"ok": _safe_has("docling"), "name": "Docling (IBM)", "install": "pip install docling>=2.94.0"},
-        "marker":  {"ok": False, "name": "Marker (skeleton stub)", "install": "pip install marker-pdf"},
-        "mineru":  {"ok": False, "name": "MinerU (skeleton stub)", "install": "pip install magic-pdf"},
+        "marker":  {"ok": _safe_has("marker"), "name": "Marker (Surya-based PDF)", "install": "pip install marker-pdf"},
+        "mineru":  {"ok": _safe_has("magic-pdf"), "name": "MinerU (Chinese PDF optimized)", "install": "pip install magic-pdf"},
     },
     "ocr": {
         "easyocr":   {"ok": _safe_has("easyocr"), "name": "EasyOCR", "install": "pip install easyocr"},

@@ -40,7 +40,9 @@ class MinerUBackend:
 
         import shutil
         if not shutil.which("magic-pdf"):
-            raise RuntimeError("MinerU not found. Install: pip install magic-pdf")
+            logger.warning("MinerU CLI not found, falling back to Docling")
+            from ..backends.docling_backend import DoclingBackend
+            return DoclingBackend(use_gpu=self.use_gpu).convert(source, output_dir=output_dir, max_pages=max_pages)
 
         out_dir = Path(output_dir) if output_dir else Path(tempfile.mkdtemp(prefix="mineru_"))
         out_dir.mkdir(parents=True, exist_ok=True)

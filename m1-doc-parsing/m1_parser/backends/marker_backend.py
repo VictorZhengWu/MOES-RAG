@@ -42,7 +42,9 @@ class MarkerBackend:
         out_dir.mkdir(parents=True, exist_ok=True)
 
         if not shutil.which("marker"):
-            raise RuntimeError("Marker CLI not found. Install: pip install marker-pdf")
+            logger.warning("Marker CLI not found, falling back to Docling")
+            from ..backends.docling_backend import DoclingBackend
+            return DoclingBackend(use_gpu=self.use_gpu).convert(source, output_dir=output_dir, max_pages=max_pages)
 
         cmd = ["marker", str(src), str(out_dir), "--output_format", "markdown"]
         if max_pages:

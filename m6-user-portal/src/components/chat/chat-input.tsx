@@ -42,6 +42,7 @@ export function ChatInput() {
   } = useChatStore();
   const { startStream, stopStream } = useChatStream();
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadFileProgress, setUploadFileProgress] = useState({ current: 0, total: 0 });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
