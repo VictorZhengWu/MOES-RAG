@@ -55,8 +55,8 @@ def _tesseract_ok() -> bool:
 _COMPONENTS = {
     "backends": {
         "docling": {"ok": _safe_has("docling"), "name": "Docling (IBM)", "install": "pip install docling>=2.94.0"},
-        "marker":  {"ok": _safe_has("marker"), "name": "Marker (Surya-based PDF)", "install": "pip install marker-pdf"},
-        "mineru":  {"ok": _safe_has("magic-pdf"), "name": "MinerU (Chinese PDF optimized)", "install": "pip install magic-pdf"},
+        "marker":  {"ok": shutil.which("marker") is not None, "name": "Marker (Surya-based PDF)", "install": "pip install marker-pdf"},
+        "mineru":  {"ok": shutil.which("magic-pdf") is not None, "name": "MinerU (Chinese PDF optimized)", "install": "pip install magic-pdf"},
     },
     "ocr": {
         "easyocr":   {"ok": _safe_has("easyocr"), "name": "EasyOCR", "install": "pip install easyocr"},
@@ -82,8 +82,8 @@ def build_page() -> str:
     c = _COMPONENTS
     be_opts = "".join([
         _option("docling", "Docling (IBM) — PDF/DOCX/XLSX/PPTX/HTML/Images", True),
-        _option("marker", "Marker — PDF/Images only (not implemented)", disabled=True),
-        _option("mineru", "MinerU — PDF only (not implemented)", disabled=True),
+        _option("marker", "Marker — PDF/Images only", disabled=not c['backends']['marker']['ok']),
+        _option("mineru", "MinerU — PDF only", disabled=not c['backends']['mineru']['ok']),
     ])
     ocr_opts = "".join([
         _option("easyocr", "EasyOCR (default)", selected=True),

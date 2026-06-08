@@ -149,6 +149,7 @@ export default function DocumentsPage() {
       try {
         await uploadDocument({
           file_name: pf.file.name,
+          parse_backend: selectedBackend,
           classification_society: pf.society,
           regulation_name: pf.name,
           version_year: parseInt(pf.version?.substring(0, 4) || '0'),
