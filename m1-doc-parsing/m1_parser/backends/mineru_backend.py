@@ -51,13 +51,20 @@ class MinerUBackend:
 
         try:
             logger.info("Parsing PDF with MinerU (may take 30-120s for large files)...")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-            if result.returncode != 0:
-                logger.error("MinerU failed: %s", result.stderr[:500])
+            process = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+            )
+            try:
+                stdout, _ = process.communicate(timeout=timeout)
+                if process.returncode != 0:
+                    lines = stdout.strip().split('\n') if stdout else []
+                    logger.error("MinerU failed (exit %d): %s", process.returncode, lines[-1][:500] if lines else 'Unknown')
+                    return ParseResult(markdown="", page_count=0)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.communicate()
+                logger.error("MinerU timed out (%ds)", timeout)
                 return ParseResult(markdown="", page_count=0)
-        except subprocess.TimeoutExpired:
-            logger.error("MinerU timed out (10 min)")
-            return ParseResult(markdown="", page_count=0)
         except FileNotFoundError:
             raise RuntimeError("MinerU not found. Install: pip install magic-pdf")
 

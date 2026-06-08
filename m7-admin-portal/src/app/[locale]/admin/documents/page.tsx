@@ -61,6 +61,8 @@ export default function DocumentsPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState('');
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, filename: '' });
+  const [uploadElapsed, setUploadElapsed] = useState(0);
+  const uploadTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [invalidDialogOpen, setInvalidDialogOpen] = useState(false);
   const [invalidFilenames, setInvalidFilenames] = useState<string[]>([]);
@@ -132,7 +134,10 @@ export default function DocumentsPage() {
     if (pendingFiles.length === 0) return;
     setUploading(true);
     setUploadMsg('');
+    setUploadElapsed(0);
     setUploadProgress({ current: 0, total: pendingFiles.length, filename: '' });
+    const startTime = Date.now();
+    uploadTimerRef.current = setInterval(() => setUploadElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
     const results: string[] = [];
     let success = 0;
     let fail = 0;
@@ -168,6 +173,7 @@ export default function DocumentsPage() {
       setPendingFiles([]);
       setTimeout(() => { setUploadMsg(''); fetchDocuments(); }, 4000);
     }
+    if (uploadTimerRef.current) { clearInterval(uploadTimerRef.current); uploadTimerRef.current = null; }
     setUploading(false);
   };
 
@@ -278,7 +284,7 @@ export default function DocumentsPage() {
               <div className="mt-2">
                 <div className="flex justify-between text-xs text-muted-foreground mb-1">
                   <span>Parsing: {uploadProgress.filename}</span>
-                  <span>{uploadProgress.current}/{uploadProgress.total}</span>
+                  <span>{uploadProgress.current}/{uploadProgress.total} · {uploadElapsed}s</span>
                 </div>
                 <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                   <div className="h-full bg-primary rounded-full transition-all duration-300"

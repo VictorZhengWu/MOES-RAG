@@ -50,13 +50,23 @@ class MarkerBackend:
 
         logger.info("Parsing PDF with Marker (may take 30-120s for large files)...")
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-            if result.returncode != 0:
-                logger.error("Marker failed: %s", result.stderr[:500])
+            # Use Popen for real-time progress detection
+            process = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+            )
+            try:
+                stdout, _ = process.communicate(timeout=timeout)
+                if process.returncode != 0:
+                    # Extract last meaningful line for error reporting
+                    lines = stdout.strip().split('\n') if stdout else []
+                    last_line = lines[-1] if lines else 'Unknown error'
+                    logger.error("Marker failed (exit %d): %s", process.returncode, last_line[:500])
+                    return ParseResult(markdown="", page_count=0)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.communicate()
+                logger.error("Marker timed out (%ds)", timeout)
                 return ParseResult(markdown="", page_count=0)
-        except subprocess.TimeoutExpired:
-            logger.error("Marker timed out (10 min)")
-            return ParseResult(markdown="", page_count=0)
         except FileNotFoundError:
             raise RuntimeError("Marker CLI not found. Install: pip install marker-pdf")
 
