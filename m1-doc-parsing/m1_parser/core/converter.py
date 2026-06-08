@@ -161,6 +161,20 @@ def convert(source: str, options: ParseOptions | None = None) -> ParseResult:
             picture_description=options.picture_description,
             export_tables=options.export_tables,
         )
+    elif backend_name == "marker":
+        from ..backends.marker_backend import MarkerBackend
+        backend = MarkerBackend(use_gpu=options.use_gpu)
+        raw = backend.convert(
+            source, output_dir=options.output_dir,
+            max_pages=options.max_pages,
+        )
+    elif backend_name == "mineru":
+        from ..backends.mineru_backend import MinerUBackend
+        backend = MinerUBackend(use_gpu=options.use_gpu)
+        raw = backend.convert(
+            source, output_dir=options.output_dir,
+            max_pages=options.max_pages,
+        )
     else:
         return ParseResult(
             doc_id=doc_id,

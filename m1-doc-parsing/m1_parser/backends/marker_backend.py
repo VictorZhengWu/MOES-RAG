@@ -1,25 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Marker backend adapter -- alternative PDF/image parsing engine.
+Marker PDF parser backend — high-quality PDF-to-Markdown via Surya models.
 
-WHY: Marker (marker-pdf) uses Surya deep learning models for layout
-detection and OCR. Some users prefer its output quality for certain
-document types (academic papers, scanned books). It serves as a
-drop-in alternative to Docling for PDF and image formats.
+WHY: Marker excels at academic papers, multi-column layouts, and 90+ language
+     OCR. Subprocess isolation prevents PyTorch version conflicts with Docling.
 
-This adapter wraps Marker behind the same ParseResult interface as
-DoclingBackend, so the converter.py pipeline can switch backends
-without code changes.
-
-Current status: SKELETON. The marker-pdf package has complex
-dependencies (PyTorch, Surya models ~2 GB). Full implementation
-will be completed when marker-pdf is integrated into the deploy
-pipeline.
+Install: pip install marker-pdf
 """
 
 from __future__ import annotations
 
 import logging
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
 
 from .docling_backend import ParseResult
 
@@ -27,51 +22,43 @@ logger = logging.getLogger(__name__)
 
 
 class MarkerBackend:
-    """
-    PDF/image parsing via Marker (Surya-based).
-
-    Marker uses the Surya OCR and layout detection models under the hood.
-    It is particularly strong at:
-      - Academic paper layout (two-column, references, footnotes)
-      - Scanned book pages with complex formatting
-      - Multi-language text (supports 90+ languages)
-
-    Limitations (compared to Docling):
-      - Only supports PDF and image formats (no Office docs)
-      - Heavier install footprint (~2 GB model download)
-      - Slower on CPU-only machines
-    """
+    """PDF-to-Markdown via Marker CLI (subprocess isolation)."""
 
     def __init__(self, use_gpu: bool = False):
-        """
-        Initialize the Marker backend.
-
-        Args:
-            use_gpu: Whether to prefer GPU acceleration for Surya models.
-        """
         self.use_gpu = use_gpu
 
-    def convert(self, source: str) -> ParseResult:
-        """
-        Convert a PDF/image to Markdown using Marker. (SKELETON)
+    def convert(
+        self, source: str, output_dir: str | None = None,
+        max_pages: int | None = None,
+        picture_description: bool = False,
+        export_tables: bool = False,
+    ) -> ParseResult:
+        src = Path(source)
+        if not src.exists():
+            return ParseResult(markdown="", page_count=0)
 
-        WHAT: would call marker.convert_single_pdf() or marker CLI,
-        then wrap the result in a ParseResult. Currently returns an
-        empty result with a warning.
+        out_dir = Path(output_dir) if output_dir else Path(tempfile.mkdtemp(prefix="marker_"))
+        out_dir.mkdir(parents=True, exist_ok=True)
 
-        WHY skeleton: marker-pdf has not been integrated into the
-        deployment pipeline yet. The skeleton ensures the backend is
-        importable and the interface is defined, while the warning
-        message guides the user on how to install it.
+        if not shutil.which("marker"):
+            raise RuntimeError("Marker CLI not found. Install: pip install marker-pdf")
 
-        Args:
-            source: Absolute or relative path to the PDF/image file.
+        cmd = ["marker", str(src), str(out_dir), "--output_format", "markdown"]
+        if max_pages:
+            cmd.extend(["--max_pages", str(max_pages)])
 
-        Returns:
-            ParseResult with empty markdown (skeleton).
-        """
-        logger.warning(
-            "Marker backend called but marker-pdf is not installed. "
-            "Install it with: pip install marker-pdf"
-        )
-        return ParseResult(markdown="", page_count=0)
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+            if result.returncode != 0:
+                logger.error("Marker failed: %s", result.stderr[:500])
+                return ParseResult(markdown="", page_count=0)
+        except subprocess.TimeoutExpired:
+            logger.error("Marker timed out (10 min)")
+            return ParseResult(markdown="", page_count=0)
+        except FileNotFoundError:
+            raise RuntimeError("Marker CLI not found. Install: pip install marker-pdf")
+
+        # Find generated markdown
+        md_files = list(out_dir.rglob("*.md"))
+        markdown = md_files[0].read_text(encoding="utf-8", errors="replace") if md_files else ""
+        return ParseResult(markdown=markdown, page_count=0)

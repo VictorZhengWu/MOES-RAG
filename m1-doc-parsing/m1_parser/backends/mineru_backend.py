@@ -1,32 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-MinerU backend adapter -- PDF parsing engine optimized for Chinese.
+MinerU PDF parser backend — Chinese-optimized PDF-to-Markdown via magic-pdf.
 
-WHY: MinerU (magic-pdf), developed by Shanghai AI Lab (OpenDataLab),
-is the best open-source solution for parsing Chinese-language PDFs
-with complex features:
-  - Mathematical formulas (LaTeX rendering)
-  - Complex nested tables
-  - Multi-column Chinese academic layouts
-  - Mixed Chinese/English content
+WHY: MinerU (magic-pdf) by Shanghai AI Lab is the best open-source engine for
+     Chinese PDFs — handles LaTeX formulas, nested tables, and mixed CJK/EN
+     content. Essential for CCS (China Classification Society) documents.
 
-For the Marine & Offshore domain, MinerU is particularly valuable
-because Chinese classification society standards (CCS, IACS Chinese
-editions) frequently contain dense tables and formulas that general-
-purpose engines may struggle with.
-
-This adapter wraps MinerU behind the same ParseResult interface as
-DoclingBackend, so the converter.py pipeline can switch backends
-without code changes.
-
-Current status: SKELETON. The magic-pdf package requires specific
-environment setup (Python 3.10, system libraries). Full implementation
-will be completed when magic-pdf is integrated into the deploy pipeline.
+Install: pip install magic-pdf
 """
 
 from __future__ import annotations
 
 import logging
+import subprocess
+import tempfile
+from pathlib import Path
 
 from .docling_backend import ParseResult
 
@@ -34,52 +22,44 @@ logger = logging.getLogger(__name__)
 
 
 class MinerUBackend:
-    """
-    PDF parsing via MinerU (magic-pdf).
-
-    MinerU excels at Chinese-language technical documents:
-      - Formula parsing with LaTeX output
-      - Table structure recognition with merged-cell handling
-      - Reading order recovery for multi-column layouts
-      - OCR fallback for scanned pages
-
-    Limitations:
-      - Only supports PDF format (no images or Office docs)
-      - Requires specific Python version (3.10 recommended)
-      - Heavier system dependencies (libreoffice, poppler, etc.)
-    """
+    """PDF-to-Markdown via MinerU CLI (subprocess isolation)."""
 
     def __init__(self, use_gpu: bool = False):
-        """
-        Initialize the MinerU backend.
-
-        Args:
-            use_gpu: Whether to use GPU acceleration for the OCR
-                and layout detection models.
-        """
         self.use_gpu = use_gpu
 
-    def convert(self, source: str) -> ParseResult:
-        """
-        Convert a PDF to Markdown using MinerU. (SKELETON)
+    def convert(
+        self, source: str, output_dir: str | None = None,
+        max_pages: int | None = None,
+        picture_description: bool = False,
+        export_tables: bool = False,
+    ) -> ParseResult:
+        src = Path(source)
+        if not src.exists():
+            return ParseResult(markdown="", page_count=0)
 
-        WHAT: would call magic-pdf CLI or Python API, parse the output
-        directory for markdown files, and wrap the result. Currently
-        returns an empty result with a warning.
+        import shutil
+        if not shutil.which("magic-pdf"):
+            raise RuntimeError("MinerU not found. Install: pip install magic-pdf")
 
-        WHY skeleton: magic-pdf has specific environment requirements
-        that have not yet been integrated into the deployment pipeline.
-        The skeleton ensures the backend is importable and the interface
-        is consistent with other backends.
+        out_dir = Path(output_dir) if output_dir else Path(tempfile.mkdtemp(prefix="mineru_"))
+        out_dir.mkdir(parents=True, exist_ok=True)
 
-        Args:
-            source: Absolute or relative path to the PDF file.
+        cmd = ["magic-pdf", "parse", str(src), "-o", str(out_dir)]
+        if max_pages:
+            cmd.extend(["--max_pages", str(max_pages)])
 
-        Returns:
-            ParseResult with empty markdown (skeleton).
-        """
-        logger.warning(
-            "MinerU backend called but magic-pdf is not installed. "
-            "Install it with: pip install magic-pdf"
-        )
-        return ParseResult(markdown="", page_count=0)
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+            if result.returncode != 0:
+                logger.error("MinerU failed: %s", result.stderr[:500])
+                return ParseResult(markdown="", page_count=0)
+        except subprocess.TimeoutExpired:
+            logger.error("MinerU timed out (10 min)")
+            return ParseResult(markdown="", page_count=0)
+        except FileNotFoundError:
+            raise RuntimeError("MinerU not found. Install: pip install magic-pdf")
+
+        # Find generated markdown (MinerU outputs to <out_dir>/<filename>/auto.md)
+        md_files = list(out_dir.rglob("*.md"))
+        markdown = md_files[0].read_text(encoding="utf-8", errors="replace") if md_files else ""
+        return ParseResult(markdown=markdown, page_count=0)
