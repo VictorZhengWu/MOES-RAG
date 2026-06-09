@@ -79,6 +79,20 @@ def test_create_elasticsearch_backend():
     )
 
 
+def test_create_minio_backend():
+    """_create_file_store must return MinioS3Store for minio/s3 backends.
+
+    WHY: Verifies both "minio" and "s3" backend strings dispatch correctly.
+    """
+    from m2_storage.file_store.minio_store import MinioS3Store
+
+    for backend in ("minio", "s3"):
+        fs = _create_file_store(FileStoreConfig(backend=backend))
+        assert isinstance(fs, MinioS3Store), (
+            f"Factory must return MinioS3Store when backend='{backend}'"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Test 2: Invalid backend raises ValueError (parameterized across all 4)
 # ---------------------------------------------------------------------------
@@ -88,7 +102,7 @@ def test_create_elasticsearch_backend():
     (_create_vector_store, VectorStoreConfig, "weaviate"),
     (_create_document_index, DocumentIndexConfig, "solr"),
     (_create_relational_db, RelationalDBConfig, "mariadb"),
-    (_create_file_store, FileStoreConfig, "s3"),
+    (_create_file_store, FileStoreConfig, "ftp"),
 ])
 def test_unsupported_backend(factory_fn, config_cls, bad_backend):
     """

@@ -405,6 +405,49 @@ async def test_elasticsearch_connection(request: Request, api_key: APIKey = Depe
         return {"ok": False, "error": str(e)}
 
 
+@router.post("/storage/test-minio")
+async def test_minio_connection(request: Request, api_key: APIKey = Depends(get_api_key)):
+    """POST /admin/config/storage/test-minio — Test MinIO/S3 connectivity.
+
+    WHAT: Attempts to connect to MinIO/S3 endpoint and verify bucket access.
+          Works with both MinIO (endpoint-based) and AWS S3 (region-based).
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Request body must be valid JSON")
+
+    endpoint = body.get("endpoint", "localhost:9000")
+    access_key = body.get("access_key", "")
+    secret_key = body.get("secret_key", "")
+    bucket = body.get("bucket", "marine-rag")
+    secure = body.get("secure", False)
+
+    import socket, time
+    # Fast TCP check
+    h, _, p = endpoint.partition(":") if endpoint else ("s3.amazonaws.com", "", "443")
+    port = int(p) if p else (443 if secure else 9000)
+    t0 = time.time()
+    try:
+        sock = socket.create_connection((h, port), timeout=5)
+        sock.close()
+    except (socket.timeout, ConnectionRefusedError, OSError) as e:
+        return {"ok": False, "error": f"Cannot reach {h}:{port} — {e}"}
+
+    try:
+        from minio import Minio
+        client = Minio(endpoint=endpoint, access_key=access_key,
+                       secret_key=secret_key, secure=secure)
+        import asyncio
+        exists = await asyncio.to_thread(client.bucket_exists, bucket)
+        return {"ok": True, "bucket_exists": exists,
+                "latency_ms": round((time.time()-t0)*1000)}
+    except ImportError:
+        return {"ok": True, "note": "Socket reachable; minio package not installed"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 @router.get("/storage")
 async def get_storage_config(request, api_key=Depends(get_api_key)):
     data = await _get_section("storage")

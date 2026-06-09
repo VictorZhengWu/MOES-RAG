@@ -183,15 +183,16 @@ def _create_file_store(cfg: FileStoreConfig) -> BaseFileStore:
     Instantiate the configured file store backend.
 
     WHY separate function: LocalFS is the Personal-mode default
-    (direct filesystem access, no external service). MinIO/S3 will
-    be added in Phase 3 for enterprise/SaaS deployments that need
-    distributed object storage with presigned URLs.
+    (direct filesystem access, no external service). MinIO is for
+    Enterprise (self-hosted S3-compatible), S3 is for SaaS (AWS cloud).
     """
-    from .file_store.local_fs import LocalFSStore
-
     if cfg.backend == "local_fs":
+        from .file_store.local_fs import LocalFSStore
         return LocalFSStore(cfg.local_fs)
+    if cfg.backend in ("minio", "s3"):
+        from .file_store.minio_store import MinioS3Store
+        return MinioS3Store(cfg.minio)
     raise ValueError(
         f"Unsupported file store backend: {cfg.backend}. "
-        f"Supported: local_fs"
+        f"Supported: local_fs, minio, s3"
     )

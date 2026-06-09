@@ -39,6 +39,9 @@ export default function SystemConfigPage() {
   const [esConfig, setEsConfig] = useState({ host: 'http://localhost:9200', index_name: 'marine_rag_docs', user: '', password: '', num_shards: '1', num_replicas: '0' });
   const [esTesting, setEsTesting] = useState(false);
   const [esTestResult, setEsTestResult] = useState<{ ok?: boolean; error?: string } | null>(null);
+  const [minioConfig, setMinioConfig] = useState({ endpoint: 'localhost:9000', access_key: 'minioadmin', secret_key: 'minioadmin', bucket: 'marine-rag', secure: false, region: '' });
+  const [minioTesting, setMinioTesting] = useState(false);
+  const [minioTestResult, setMinioTestResult] = useState<{ ok?: boolean; error?: string; bucket_exists?: boolean } | null>(null);
   const [deployMode, setDeployMode] = useState('personal');
   const [oauthProvider, setOauthProvider] = useState('google');
   const [oauthId, setOauthId] = useState('');
@@ -112,6 +115,22 @@ export default function SystemConfigPage() {
       setEsTestResult({ ok: false, error: e.message || 'Network error' });
     }
     setEsTesting(false);
+  };
+
+  const testMinio = async () => {
+    setMinioTesting(true); setMinioTestResult(null);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const res = await fetch(baseUrl + '/admin/config/storage/test-minio', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: minioConfig.endpoint, access_key: minioConfig.access_key, secret_key: minioConfig.secret_key, bucket: minioConfig.bucket, secure: minioConfig.secure }),
+      });
+      const data = await res.json();
+      setMinioTestResult(data);
+    } catch (e: any) {
+      setMinioTestResult({ ok: false, error: e.message || 'Network error' });
+    }
+    setMinioTesting(false);
   };
 
   const saveStorage = async () => {
@@ -339,6 +358,59 @@ export default function SystemConfigPage() {
                     {esTestResult && (
                       <Badge variant={esTestResult.ok ? 'default' : 'destructive'} className="text-[10px]">
                         {esTestResult.ok ? 'Connected' : `Failed: ${esTestResult.error}`}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ── MinIO / S3 Configuration (expands when selected) ── */}
+              {(storage.file_backend === 'minio' || storage.file_backend === 's3') && (
+                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                  <p className="text-sm font-medium">{storage.file_backend === 's3' ? 'AWS S3' : 'MinIO'} Connection</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">
+                        {storage.file_backend === 's3' ? 'Region' : 'Endpoint'}
+                      </label>
+                      <Input value={storage.file_backend === 's3' ? minioConfig.region : minioConfig.endpoint}
+                        onChange={(e) => setMinioConfig({...minioConfig, [storage.file_backend === 's3' ? 'region' : 'endpoint']: e.target.value})}
+                        placeholder={storage.file_backend === 's3' ? 'us-east-1' : 'localhost:9000'} className="mt-1 h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Bucket</label>
+                      <Input value={minioConfig.bucket} onChange={(e) => setMinioConfig({...minioConfig, bucket: e.target.value})}
+                        placeholder="marine-rag" className="mt-1 h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Access Key</label>
+                      <Input value={minioConfig.access_key} onChange={(e) => setMinioConfig({...minioConfig, access_key: e.target.value})}
+                        placeholder="minioadmin" className="mt-1 h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Secret Key</label>
+                      <Input type="password" value={minioConfig.secret_key} onChange={(e) => setMinioConfig({...minioConfig, secret_key: e.target.value})}
+                        placeholder="Enter secret key" className="mt-1 h-8 text-sm" />
+                    </div>
+                    {storage.file_backend === 'minio' && (
+                      <div className="flex items-center gap-2">
+                        <input type="checkbox" checked={minioConfig.secure}
+                          onChange={(e) => setMinioConfig({...minioConfig, secure: e.target.checked})}
+                          className="h-4 w-4 rounded" />
+                        <label className="text-xs font-medium text-muted-foreground">Use HTTPS</label>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 pt-1">
+                    <Button size="sm" variant="outline" onClick={testMinio} disabled={minioTesting}>
+                      {minioTesting && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                      Test Connection
+                    </Button>
+                    {minioTestResult && (
+                      <Badge variant={minioTestResult.ok ? 'default' : 'destructive'} className="text-[10px]">
+                        {minioTestResult.ok
+                          ? `Connected (bucket ${minioTestResult.bucket_exists ? 'exists' : 'created'})`
+                          : `Failed: ${minioTestResult.error}`}
                       </Badge>
                     )}
                   </div>

@@ -244,6 +244,42 @@ class LocalFSConfig:
         return cls(root_dir=d.get("root_dir", "./data/files"))
 
 
+@dataclass
+class MinioS3Config:
+    """MinIO / AWS S3 object storage configuration.
+
+    WHAT: Connection parameters for S3-compatible object storage.
+          Works with both MinIO (self-hosted) and AWS S3 (cloud).
+          MinIO uses endpoint; S3 uses region.
+
+    WHY: MinIO/S3 is the recommended file store for SaaS deployments
+         where files must be shared across multiple application instances
+         and backed up independently of the application server.
+    """
+
+    endpoint: str = "localhost:9000"   # MinIO server (blank for AWS S3)
+    access_key: str = "minioadmin"     # MinIO access key or AWS_ACCESS_KEY_ID
+    secret_key: str = "minioadmin"     # MinIO secret key or AWS_SECRET_ACCESS_KEY
+    bucket: str = "marine-rag"         # Bucket name
+    region: str = ""                   # AWS region (empty for MinIO)
+    secure: bool = False               # Use HTTPS (True for AWS S3)
+    presigned_expiry: int = 3600       # Presigned URL TTL in seconds
+
+    @classmethod
+    def from_dict(cls, d: dict | None = None) -> "MinioS3Config":
+        if d is None:
+            return cls()
+        return cls(
+            endpoint=d.get("endpoint", "localhost:9000"),
+            access_key=d.get("access_key", "minioadmin"),
+            secret_key=d.get("secret_key", "minioadmin"),
+            bucket=d.get("bucket", "marine-rag"),
+            region=d.get("region", ""),
+            secure=bool(d.get("secure", False)),
+            presigned_expiry=d.get("presigned_expiry", 3600),
+        )
+
+
 # ===========================================================================
 # Storage-type wrapper configs (backend selector + backend-specific section)
 # ===========================================================================
@@ -364,18 +400,29 @@ class FileStoreConfig:
 
     backend: str = "local_fs"
     local_fs: LocalFSConfig = field(default_factory=LocalFSConfig)
+    minio: MinioS3Config = field(default_factory=MinioS3Config)
 
     @classmethod
     def from_dict(cls, d: dict) -> FileStoreConfig:
         backend = d.get("backend", "local_fs")
-        if backend != "local_fs":
-            raise ValueError(
-                f"Unsupported file store backend: {backend}. "
-                f"Supported: local_fs"
+        if backend == "local_fs":
+            return cls(
+                backend=backend,
+                local_fs=LocalFSConfig.from_dict(d.get("local_fs")),
             )
-        return cls(
-            backend=backend,
-            local_fs=LocalFSConfig.from_dict(d.get("local_fs")),
+        if backend == "minio":
+            return cls(
+                backend=backend,
+                minio=MinioS3Config.from_dict(d.get("minio")),
+            )
+        if backend == "s3":
+            return cls(
+                backend=backend,
+                minio=MinioS3Config.from_dict(d.get("s3")),
+            )
+        raise ValueError(
+            f"Unsupported file store backend: {backend}. "
+            f"Supported: local_fs, minio, s3"
         )
 
 

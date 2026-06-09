@@ -35,10 +35,13 @@ storage:
   file_store:
     backend: s3
     s3:
+      endpoint: ""  # Empty = AWS S3 (auto-resolve via region)
+      access_key: ${AWS_ACCESS_KEY_ID}
+      secret_key: ${AWS_SECRET_ACCESS_KEY}
       bucket: marine-rag-documents
       region: ${AWS_REGION}
-      access_key: ${AWS_ACCESS_KEY}
-      secret_key: ${AWS_SECRET_KEY}
+      secure: true
+      presigned_expiry: 3600
 
 features:
   web_search: true

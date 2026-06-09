@@ -44,9 +44,16 @@ storage:
       max_overflow: 20
       ssl_mode: prefer
   file_store:
-    backend: local_fs  # Change to minio for scale
+    backend: local_fs  # Change to minio for enterprise object storage
     local_fs:
       root_dir: /data/marine/files
+    minio:
+      endpoint: ${MINIO_ENDPOINT:-minio.enterprise.local:9000}
+      access_key: ${MINIO_ACCESS_KEY}
+      secret_key: ${MINIO_SECRET_KEY}
+      bucket: marine-rag
+      secure: false
+      presigned_expiry: 3600
 
 features:
   web_search: true
