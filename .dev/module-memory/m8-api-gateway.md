@@ -47,7 +47,7 @@
 ## 3. Key Design Decisions (Module-Internal)
 
 - **Factory pattern for FastAPI app**: `create_app(config)` returns a configured FastAPI instance. This enables test injection -- each TestClient gets its own KeyManager and RateLimiter via `app.state`. No global singletons.
-- **Rate limiter is in-memory, not persistent**: Restart resets all counters. Acceptable for Personal mode. SaaS deployment will need Redis-backed implementation (swap via DI -- no code changes needed in callers).
+- **Rate limiter dual-backend strategy**: `InMemoryRateLimiter` for Personal/Enterprise (zero deps), `RedisRateLimiter` for SaaS (persistent, multi-instance shared state). Backend auto-selected via `deployment_mode` (SaaS→redis, others→memory), explicitly overridable. Swap via DI — callers never know which backend is active.
 - **Sliding window cleanup is lazy**: Expired timestamps removed on each check() call, not via background thread. Keeps the implementation simple with no threading concerns.
 - **Lazy QA Engine initialization**: `app.state.qa_engine = None` on startup. The QA Engine requires LLM backend config from M7 admin before it can be initialized. Routes check for None and return 500 with a clear message if the engine isn't ready.
 - **Key storage**: SHA256 hashed keys in SQLite (`api_keys` table). Only the prefix (`sk-m8-` + first 8 hex chars) is visible in list operations. Full key is shown once at generation time.
@@ -77,10 +77,22 @@
 
 ---
 
+### Session 4: 00100-10~13 Redis Rate Limit Persistence + Test Connection Endpoints (2026-06-09)
+
+- Implemented `BaseRateLimiter` abstract class + `InMemoryRateLimiter` refactoring + `RedisRateLimiter` (ZSET sliding window)
+- DI-friendly factory `create_rate_limiter()` auto-selects backend based on `deployment_mode`
+- `RedisConfig` (8 fields: host/port/db/password/max_connections/backend/strict_mode/window_seconds)
+- `GET/PATCH /admin/config/rate-limit` — hot-swap limiter with `threading.Lock`, health check, atomic replacement
+- 3 Storage Test Connection endpoints: `POST /admin/config/storage/test-{postgresql,elasticsearch,minio}`
+- Docker Compose: Redis 7 Alpine service (maxmemory 256mb + allkeys-lru + AOF + RDB)
+- deploy/saas/deploy.yaml: `rate_limit.redis` config section
+- 12 new redis limiter tests (fakeredis + mock), 58 total passed
+
+---
+
 ## 7. Open Issues
 
 - Admin endpoints lack auth (acceptable for Personal mode)
-- Rate limiter not persisted across restarts
 - QA Engine lazy init -- gateway starts but chat requires engine config
 - FastAPI `on_event` → `lifespan` migration needed (non-blocking)
 

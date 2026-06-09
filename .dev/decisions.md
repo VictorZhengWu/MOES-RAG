@@ -1,7 +1,7 @@
 # Development Decision Log — Marine & Offshore Expert System
 
 > **Purpose**: Record all cross-module decisions made during development that are NOT captured in the design spec. New sessions MUST read this file to recover context.
-> **Last Updated**: 2026-06-07
+> **Last Updated**: 2026-06-09
 
 ---
 
@@ -21,6 +21,15 @@
 | D010 | 2026-05-12 | Development Order: Frontend-First (M6/M7 before Backend) | ✅ Decided |
 | D011 | 2026-05-12 | Session Strategy: Per-Module Clean Sessions + Module Memory Files | ✅ Decided |
 | D012 | 2026-05-12 | File Naming: Date Suffix at End of Filename | ✅ Decided |
+| D013 | 2026-05-18 | M2 Backend Delivery Strategy: Personal First, Enterprise/SaaS in Phase 3 | ✅ Delivered |
+| D035 | 2026-06-03 | M8 Rate Limiting: Tiered Sliding Window → In-Memory / Redis Dual | ✅ Delivered |
+| D045 | 2026-06-07 | M2 VectorStore: 4 Backends (ChromaDB/FAISS/Qdrant/Milvus) | ✅ Implemented |
+| D050 | 2026-06-09 | M8 Redis Rate Limit: ZSET Sliding Window + Factory + Auto-Select | ✅ Implemented |
+| D051 | 2026-06-09 | M2 PostgreSQL: asyncpg + pool_pre_ping + SSL + env var password | ✅ Implemented |
+| D052 | 2026-06-09 | M2 Elasticsearch: AsyncElasticsearch 8.x + explicit mapping + bulk API | ✅ Implemented |
+| D053 | 2026-06-09 | M2 MinIO/S3: minio-py + retry + timeout + metadata validation | ✅ Implemented |
+| D054 | 2026-06-09 | M8 Storage Test Connection: 3 endpoints (PG/ES/MinIO) | ✅ Implemented |
+| D055 | 2026-06-09 | M2 Tests: Auto-skip pattern for external services (PG/ES/MinIO) | ✅ Implemented |
 
 ---
 
@@ -608,6 +617,112 @@ New sessions recover context by reading L1 → L2 → L3 files in order.
 **Decision**: Before any git commit, must run `python -m pytest <module>/tests/` and SEE `passed` in the output. No background test + commit. No cherry-picking review feedback. Global rule added to `~/.claude/CLAUDE.md` v1.3 §0.
 
 **Why**: Repeated pattern of untested code causing runtime failures — missing @dataclass, missing imports, fake UI elements. Hard gate prevents recurrence.
+
+---
+
+### D050: M8 Redis Rate Limit — ZSET Sliding Window + Factory + Auto-Select
+
+**Date**: 2026-06-09 | **Status**: ✅ Implemented
+
+**Decision**: M8 rate limiting upgraded from pure in-memory to dual-backend strategy:
+- `InMemoryRateLimiter` (refactored from `RateLimiter`) — Personal/Enterprise default
+- `RedisRateLimiter` — SaaS default, ZSET sliding window, persistent across restarts
+- Backend auto-selected via `deployment_mode` (SaaS→redis, others→memory), explicitly overridable via config
+- Strict mode: Redis unavailable → reject requests (SaaS cost control) or fallback to memory (Enterprise availability)
+- Configurable via M7 UI (Storage → Rate Limit tab) with Test Connection
+- `GET/PATCH /admin/config/rate-limit` — hot-swap limiter with `threading.Lock`, atomic replacement
+
+**Why**: Multi-instance SaaS deployments need shared rate limit state that survives restarts. Personal/Enterprise don't. DI-based factory design ensures zero call-site changes.
+
+**Impact**: `m8_gateway/rate_limit/` — 5 files (base.py, limiter.py, redis_limiter.py, redis_client.py, __init__.py). Docker Compose adds Redis 7 Alpine service. deploy/saas/deploy.yaml adds rate_limit.redis section.
+
+---
+
+### D051: M2 PostgreSQL — asyncpg + pool_pre_ping + SSL + Env Var Password
+
+**Date**: 2026-06-09 | **Status**: ✅ Implemented
+
+**Decision**: M2 RelationalDB adds PostgreSQL backend with:
+- `asyncpg` driver (2-3x faster than psycopg3, pure Python)
+- `pool_pre_ping=True` — detects silently dropped connections by LB/firewall
+- `pool_recycle=3600` — prevents memory leaks from long-lived connections
+- SSL mode configurable via `ssl_mode` field (prefer/require/disable/allow)
+- Password via `${PG_PASSWORD}` env var injection — never committed to deploy.yaml
+- `pool_size=10, max_overflow=20` — suitable for SaaS workloads
+- Configurable via M7 UI (Storage tab → selects PostgreSQL → 8 fields + Test Connection)
+
+**Why**: Enterprise and SaaS deployments need concurrent write performance, connection pooling, and horizontal scalability that SQLite cannot provide. Same `BaseRelationalDB` interface — zero changes to upper modules (M5).
+
+**Impact**: `m2_storage/relational_db/postgresql_db.py`. `RelationalDBConfig.from_dict()` now supports `postgresql` backend. M8 has `POST /admin/config/storage/test-postgresql` endpoint.
+
+---
+
+### D052: M2 Elasticsearch — AsyncElasticsearch 8.x + Explicit Mapping + Bulk API
+
+**Date**: 2026-06-09 | **Status**: ✅ Implemented
+
+**Decision**: M2 DocumentIndex adds Elasticsearch backend with:
+- `elasticsearch-py` 8.x async client (`AsyncElasticsearch`)
+- Explicit index mapping: `text` with BM25 similarity, `keyword` for filterable fields
+- `_bulk` API for batch indexing (NDJSON body)
+- `bool` query DSL: `must.match` for full-text + `filter.term` for metadata
+- `delete_by_query` with `refresh=True` for immediate deletion visibility
+- Sharding configurable (`num_shards`, `num_replicas`)
+
+**Why**: Elasticsearch provides distributed search (shards + replicas) and horizontal scaling that Meilisearch's single-node architecture cannot. Same `BaseDocumentIndex` interface.
+
+**Impact**: `m2_storage/document_index/elasticsearch_index.py`. `DocumentIndexConfig.from_dict()` now supports `elasticsearch` backend. M8 has `POST /admin/config/storage/test-elasticsearch` endpoint.
+
+---
+
+### D053: M2 MinIO/S3 — minio-py + Retry + Timeout + Metadata Validation
+
+**Date**: 2026-06-09 | **Status**: ✅ Implemented
+
+**Decision**: M2 FileStore adds MinIO/S3 backend with:
+- `minio-py` library — single implementation serves both MinIO (self-hosted) and AWS S3 (cloud)
+- Exponential-backoff retry: 3 attempts, 1s→2s→4s, capped at 10s. Semantic errors (NoSuchKey) not retried
+- Per-operation timeout: `asyncio.timeout(30s)` on all S3 API calls
+- Metadata validation: `_validate_metadata()` enforces string-only keys/values at API boundary
+- Presigned URLs via `presigned_get_object()` — browser downloads directly from S3, bypassing M8
+- Bucket auto-creation at `initialize()` — idempotent
+
+**Why**: Enterprise/SaaS need shared object storage accessible from multiple application instances. MinIO is self-hosted S3-compatible (Enterprise), AWS S3 is cloud (SaaS). Both use identical S3 API.
+
+**Impact**: `m2_storage/file_store/minio_store.py`. `FileStoreConfig.from_dict()` now supports `minio` and `s3` backends. M8 has `POST /admin/config/storage/test-minio` endpoint.
+
+---
+
+### D054: M8 Storage Test Connection — 3 Endpoints (PG/ES/MinIO)
+
+**Date**: 2026-06-09 | **Status**: ✅ Implemented
+
+**Decision**: M8 admin API exposes 3 Test Connection endpoints for storage backends:
+- `POST /admin/config/storage/test-postgresql` — TCP socket → asyncpg `SELECT 1`
+- `POST /admin/config/storage/test-elasticsearch` — socket → ES cluster health API
+- `POST /admin/config/storage/test-minio` — socket → `bucket_exists()`
+
+Each endpoint: fast TCP check first (fails fast if host/port unreachable), then backend-specific deep check. Returns `{ok, error/latency_ms}` for M7 UI to display.
+
+**Why**: Admins need immediate feedback when configuring storage backends. Without test buttons, misconfigurations are only discovered after restart. Previously no validation existed at all.
+
+**Impact**: `m8_gateway/routes/admin.py` — 3 new POST endpoints. M7 config page — Test Connection button + real-time result display for each backend.
+
+---
+
+### D055: M2 Tests — Auto-Skip Pattern for External Services
+
+**Date**: 2026-06-09 | **Status**: ✅ Implemented
+
+**Decision**: All M2 backends that require external services (Meilisearch, PostgreSQL, Elasticsearch, MinIO) use a consistent auto-skip pattern in tests:
+1. Fast TCP socket check at module import time (1.5s timeout)
+2. `@pytest.mark.skipif()` decorator with actionable Docker command in skip message
+3. One fail-fast test per backend (connection to unreachable host → verify exception raised at `initialize()`)
+4. Environment variable overrides (`PG_HOST`, `ES_HOST`, `MINIO_ENDPOINT`, `MEILISEARCH_URL`)
+
+**Why**: Developers should be able to run `pytest` without installing 6 external services. CI can provide these services via Docker. The fail-fast test validates error handling even without real services.
+
+**Impact**: 25 skipped tests in a clean environment, 58 total passed. All tests pass regardless of external service availability.
 
 ---
 

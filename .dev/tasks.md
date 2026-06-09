@@ -1248,7 +1248,7 @@ def test_openai_python_sdk_chat():
 
 00100-02 和 00100-03 可并行。
 
-#### 🔲 00100-10 — Redis 基础层 (redis_client.py + base.py + RedisConfig)
+#### ✅ 00100-10 — Redis 基础层 (redis_client.py + base.py + RedisConfig)
 
 **功能描述：**
 - 创建 `rate_limit/base.py`：`BaseRateLimiter` 抽象基类，定义 `check(key_prefix, tier) -> bool` 和 `get_usage(key_prefix) -> int` 两个抽象方法，可选 `close()` 和 `health_check()` 钩子（默认 no-op）
@@ -1275,7 +1275,7 @@ def test_openai_python_sdk_chat():
 
 ---
 
-#### 🔲 00100-11 — RedisRateLimiter 实现 + InMemory 重构 + Factory
+#### ✅ 00100-11 — RedisRateLimiter 实现 + InMemory 重构 + Factory
 
 **功能描述：**
 - 重构 `rate_limit/limiter.py`：`RateLimiter` → `InMemoryRateLimiter(BaseRateLimiter)`，新增 `window_seconds: int = 60` 参数替代硬编码的 60.0
@@ -1304,7 +1304,7 @@ def test_openai_python_sdk_chat():
 
 ---
 
-#### 🔲 00100-12 — App 集成 + 配置端点 + Docker Compose
+#### ✅ 00100-12 — App 集成 + 配置端点 + Docker Compose
 
 **功能描述：**
 - 修改 `core/app.py`：
@@ -1337,7 +1337,7 @@ def test_openai_python_sdk_chat():
 
 ---
 
-#### 🔲 00100-13 — Redis 限流测试 + 全量回归
+#### ✅ 00100-13 — Redis 限流测试 + 全量回归
 
 **功能描述：**
 - 创建 `tests/test_redis_limiter.py`：5 个测试用例，使用 `fakeredis` + `unittest.mock.patch`（零外部依赖）
@@ -1372,6 +1372,62 @@ def test_openai_python_sdk_chat():
 ```
 
 > 严格串行，每个 Task 完成并验证通过后再进入下一个。
+
+### ✅ 00101 — M2 PostgreSQL 后端 (asyncpg)
+
+> **依赖**：00050 (M2 Personal mode)
+> **完成日期**：2026-06-09
+
+**功能描述**：
+- `PostgreSQLConfig` (9 fields: host/port/database/user/password/pool_size/max_overflow/ssl_mode)
+- `PostgreSQLDB(BaseRelationalDB)` — asyncpg 驱动，pool_pre_ping=True，pool_recycle=3600，env var 密码注入
+- `RelationalDBConfig.from_dict()` 分派 `postgresql` 后端
+- Factory `_create_relational_db()` 新增分支
+- `requirements.txt` 新增 `asyncpg>=0.29.0`
+- `deploy/enterprise/deploy.yaml` + `deploy/saas/deploy.yaml` PostgreSQL 配置段
+- M7 Storage 标签页 — 选 PostgreSQL 时展开 8 配置字段 + Test Connection 按钮
+- M8 `POST /admin/config/storage/test-postgresql` 端点 (TCP + asyncpg SELECT 1)
+- `test_postgresql.py`: 5 tests (auto-skip + fail-fast)
+
+**验证方法：** `python -m pytest m2-storage/tests/ -v`
+**通过条件：** 55 passed, 25 skipped
+
+### ✅ 00102 — M2 Elasticsearch 后端 (ES 8.x)
+
+> **依赖**：00050, 00101
+> **完成日期**：2026-06-09
+
+**功能描述**：
+- `ElasticsearchConfig` (7 fields: host/index/user/password/num_shards/num_replicas/request_timeout)
+- `ElasticsearchIndex(BaseDocumentIndex)` — AsyncElasticsearch 8.x，bool query DSL，bulk API，explicit mapping
+- `DocumentIndexConfig.from_dict()` 分派 `elasticsearch` 后端
+- `deploy/enterprise/deploy.yaml` + `deploy/saas/deploy.yaml` ES 配置段
+- M7 Storage 标签页 — 选 Elasticsearch 时展开 6 配置字段 + Test Connection 按钮
+- M8 `POST /admin/config/storage/test-elasticsearch` 端点 (socket + cluster health)
+- `test_elasticsearch.py`: 7 tests (auto-skip + fail-fast)
+
+**验证方法：** `python -m pytest m2-storage/tests/ -v`
+**通过条件：** 55 passed, 25 skipped
+
+### ✅ 00103 — M2 MinIO/S3 后端 (minio-py)
+
+> **依赖**：00050
+> **完成日期**：2026-06-09
+
+**功能描述**：
+- `MinioS3Config` (7 fields: endpoint/access_key/secret_key/bucket/region/secure/presigned_expiry)
+- `MinioS3Store(BaseFileStore)` — minio-py，presigned URLs，bucket auto-creation
+  - 修复：exponential-backoff retry (3 attempts) + asyncio.timeout(30s) + metadata 验证
+- `FileStoreConfig.from_dict()` 分派 `minio` + `s3` 后端
+- `deploy/enterprise/deploy.yaml` (MinIO) + `deploy/saas/deploy.yaml` (S3) 配置段
+- M7 Storage 标签页 — 选 MinIO/S3 时展开配置字段 (endpoint/bucket/keys/secure) + Test Connection
+- M8 `POST /admin/config/storage/test-minio` 端点 (socket + bucket_exists)
+- `test_minio.py`: 13 tests (auto-skip + 3 metadata validation + fail-fast)
+
+**验证方法：** `python -m pytest m2-storage/tests/ -v`
+**通过条件：** 58 passed, 25 skipped
+
+---
 
 ### ✅ 00110 — deploy/ 部署配置
 
