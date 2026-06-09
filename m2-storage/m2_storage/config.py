@@ -109,6 +109,42 @@ class ChromaDBConfig:
 
 
 @dataclass
+class ElasticsearchConfig:
+    """Elasticsearch connection parameters for DocumentIndex.
+
+    WHAT: Holds host/port/index_name/user/password for Elasticsearch
+          connections. Supports both HTTP and HTTPS with optional auth.
+
+    WHY: Elasticsearch is the recommended full-text engine for SaaS
+         deployments where Meilisearch's single-node architecture is
+         insufficient. ES provides sharding, replication, and the most
+         mature full-text search ecosystem.
+    """
+
+    host: str = "http://localhost:9200"
+    index_name: str = "marine_rag_docs"
+    user: str = ""         # Basic auth user (blank = no auth)
+    password: str = ""     # Basic auth password (blank = no auth)
+    num_shards: int = 1    # Primary shards per index
+    num_replicas: int = 0  # Replica shards (0=no HA, 1+=HA)
+    request_timeout: int = 30  # Seconds for search/index operations
+
+    @classmethod
+    def from_dict(cls, d: dict | None = None) -> "ElasticsearchConfig":
+        if d is None:
+            return cls()
+        return cls(
+            host=d.get("host", "http://localhost:9200"),
+            index_name=d.get("index_name", "marine_rag_docs"),
+            user=d.get("user", ""),
+            password=d.get("password", ""),
+            num_shards=d.get("num_shards", 1),
+            num_replicas=d.get("num_replicas", 0),
+            request_timeout=d.get("request_timeout", 30),
+        )
+
+
+@dataclass
 class MeilisearchConfig:
     """Configuration for the Meilisearch document index backend.
 
@@ -260,18 +296,24 @@ class DocumentIndexConfig:
 
     backend: str = "meilisearch"
     meilisearch: MeilisearchConfig = field(default_factory=MeilisearchConfig)
+    elasticsearch: ElasticsearchConfig = field(default_factory=ElasticsearchConfig)
 
     @classmethod
     def from_dict(cls, d: dict) -> DocumentIndexConfig:
         backend = d.get("backend", "meilisearch")
-        if backend != "meilisearch":
-            raise ValueError(
-                f"Unsupported document index backend: {backend}. "
-                f"Supported: meilisearch"
+        if backend == "meilisearch":
+            return cls(
+                backend=backend,
+                meilisearch=MeilisearchConfig.from_dict(d.get("meilisearch")),
             )
-        return cls(
-            backend=backend,
-            meilisearch=MeilisearchConfig.from_dict(d.get("meilisearch")),
+        if backend == "elasticsearch":
+            return cls(
+                backend=backend,
+                elasticsearch=ElasticsearchConfig.from_dict(d.get("elasticsearch")),
+            )
+        raise ValueError(
+            f"Unsupported document index backend: {backend}. "
+            f"Supported: meilisearch, elasticsearch"
         )
 
 

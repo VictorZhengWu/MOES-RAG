@@ -66,6 +66,19 @@ def test_create_postgresql_backend():
     )
 
 
+def test_create_elasticsearch_backend():
+    """_create_document_index must return ElasticsearchIndex for elasticsearch backend.
+
+    WHY: Verifies the new factory dispatch branch works end-to-end.
+    """
+    from m2_storage.document_index.elasticsearch_index import ElasticsearchIndex
+
+    idx = _create_document_index(DocumentIndexConfig(backend="elasticsearch"))
+    assert isinstance(idx, ElasticsearchIndex), (
+        "Factory must return ElasticsearchIndex when backend='elasticsearch'"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Test 2: Invalid backend raises ValueError (parameterized across all 4)
 # ---------------------------------------------------------------------------
@@ -73,7 +86,7 @@ def test_create_postgresql_backend():
 
 @pytest.mark.parametrize("factory_fn, config_cls, bad_backend", [
     (_create_vector_store, VectorStoreConfig, "weaviate"),
-    (_create_document_index, DocumentIndexConfig, "elasticsearch"),
+    (_create_document_index, DocumentIndexConfig, "solr"),
     (_create_relational_db, RelationalDBConfig, "mariadb"),
     (_create_file_store, FileStoreConfig, "s3"),
 ])

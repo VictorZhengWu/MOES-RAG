@@ -18,11 +18,18 @@ storage:
       persist_dir: /data/marine/chromadb
       collection_name: marine_rag
   document_index:
-    backend: meilisearch  # Change to elasticsearch for scale
+    backend: meilisearch  # Change to elasticsearch for distributed search
     meilisearch:
       host: http://meilisearch.enterprise.local:7700
       api_key: ""
       index_name: marine_rag_docs
+    elasticsearch:
+      host: http://elasticsearch.enterprise.local:9200
+      index_name: marine_rag_docs
+      user: ""
+      password: ""
+      num_shards: 1
+      num_replicas: 0
   relational_db:
     backend: sqlite  # Change to postgresql for enterprise scale
     sqlite:

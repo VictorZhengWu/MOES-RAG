@@ -142,16 +142,18 @@ def _create_document_index(cfg: DocumentIndexConfig) -> BaseDocumentIndex:
     Instantiate the configured document index backend.
 
     WHY separate function: Meilisearch is the Personal-mode default.
-    Elasticsearch will be added in Phase 3 for SaaS deployments with
-    higher throughput requirements and distributed search.
+    Elasticsearch is for SaaS deployments with higher throughput
+    requirements and distributed search.
     """
-    from .document_index.meilisearch_index import MeilisearchIndex
-
     if cfg.backend == "meilisearch":
+        from .document_index.meilisearch_index import MeilisearchIndex
         return MeilisearchIndex(cfg.meilisearch)
+    if cfg.backend == "elasticsearch":
+        from .document_index.elasticsearch_index import ElasticsearchIndex
+        return ElasticsearchIndex(cfg.elasticsearch)
     raise ValueError(
         f"Unsupported document index backend: {cfg.backend}. "
-        f"Supported: meilisearch"
+        f"Supported: meilisearch, elasticsearch"
     )
 
 
