@@ -36,6 +36,9 @@ export default function SystemConfigPage() {
   const [pgConfig, setPgConfig] = useState({ host: 'localhost', port: '5432', database: 'marine_rag', user: 'postgres', password: '', pool_size: '10', max_overflow: '20', ssl_mode: 'prefer' });
   const [pgTesting, setPgTesting] = useState(false);
   const [pgTestResult, setPgTestResult] = useState<{ ok?: boolean; error?: string; latency_ms?: number } | null>(null);
+  const [esConfig, setEsConfig] = useState({ host: 'http://localhost:9200', index_name: 'marine_rag_docs', user: '', password: '', num_shards: '1', num_replicas: '0' });
+  const [esTesting, setEsTesting] = useState(false);
+  const [esTestResult, setEsTestResult] = useState<{ ok?: boolean; error?: string } | null>(null);
   const [deployMode, setDeployMode] = useState('personal');
   const [oauthProvider, setOauthProvider] = useState('google');
   const [oauthId, setOauthId] = useState('');
@@ -93,6 +96,22 @@ export default function SystemConfigPage() {
       setPgTestResult({ ok: false, error: e.message || 'Network error' });
     }
     setPgTesting(false);
+  };
+
+  const testElasticsearch = async () => {
+    setEsTesting(true); setEsTestResult(null);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const res = await fetch(baseUrl + '/admin/config/storage/test-elasticsearch', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host: esConfig.host, user: esConfig.user, password: esConfig.password }),
+      });
+      const data = await res.json();
+      setEsTestResult(data);
+    } catch (e: any) {
+      setEsTestResult({ ok: false, error: e.message || 'Network error' });
+    }
+    setEsTesting(false);
   };
 
   const saveStorage = async () => {
@@ -275,6 +294,56 @@ export default function SystemConfigPage() {
                     <option value="s3">AWS S3 (Cloud)</option>
                   </select></div>
               </div>
+
+              {/* ── Elasticsearch Configuration (expands when selected) ── */}
+              {storage.doc_index_backend === 'elasticsearch' && (
+                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                  <p className="text-sm font-medium">Elasticsearch Connection</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <label className="text-xs font-medium text-muted-foreground">Host URL</label>
+                      <Input value={esConfig.host} onChange={(e) => setEsConfig({...esConfig, host: e.target.value})}
+                        placeholder="http://localhost:9200" className="mt-1 h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Index Name</label>
+                      <Input value={esConfig.index_name} onChange={(e) => setEsConfig({...esConfig, index_name: e.target.value})}
+                        placeholder="marine_rag_docs" className="mt-1 h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">User (optional)</label>
+                      <Input value={esConfig.user} onChange={(e) => setEsConfig({...esConfig, user: e.target.value})}
+                        placeholder="elastic" className="mt-1 h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Password (optional)</label>
+                      <Input type="password" value={esConfig.password} onChange={(e) => setEsConfig({...esConfig, password: e.target.value})}
+                        placeholder="Enter password" className="mt-1 h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Shards</label>
+                      <Input value={esConfig.num_shards} onChange={(e) => setEsConfig({...esConfig, num_shards: e.target.value})}
+                        placeholder="1" className="mt-1 h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Replicas</label>
+                      <Input value={esConfig.num_replicas} onChange={(e) => setEsConfig({...esConfig, num_replicas: e.target.value})}
+                        placeholder="0" className="mt-1 h-8 text-sm" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 pt-1">
+                    <Button size="sm" variant="outline" onClick={testElasticsearch} disabled={esTesting}>
+                      {esTesting && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                      Test Connection
+                    </Button>
+                    {esTestResult && (
+                      <Badge variant={esTestResult.ok ? 'default' : 'destructive'} className="text-[10px]">
+                        {esTestResult.ok ? 'Connected' : `Failed: ${esTestResult.error}`}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* ── PostgreSQL Configuration (expands when selected) ── */}
               {storage.relational_backend === 'postgresql' && (

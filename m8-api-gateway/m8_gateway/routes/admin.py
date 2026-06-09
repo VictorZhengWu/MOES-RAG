@@ -356,6 +356,55 @@ async def test_postgresql_connection(request: Request, api_key: APIKey = Depends
                 "latency_ms": round((time.time() - t0) * 1000)}
 
 
+@router.post("/storage/test-elasticsearch")
+async def test_elasticsearch_connection(request: Request, api_key: APIKey = Depends(get_api_key)):
+    """POST /admin/config/storage/test-elasticsearch — Test ES connectivity.
+
+    WHAT: Attempts to connect to the Elasticsearch cluster and verify
+          cluster health. Returns success/failure with error details.
+
+    WHY: Admins need immediate feedback when configuring ES. Without a
+         test button, misconfigurations are only discovered after restart.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Request body must be valid JSON")
+
+    host = body.get("host", "http://localhost:9200")
+    user = body.get("user", "")
+    password = body.get("password", "")
+
+    import socket, time, urllib.parse
+    # Parse host:port from URL
+    parsed = urllib.parse.urlparse(host)
+    h = parsed.hostname or "localhost"
+    p = parsed.port or 9200
+
+    t0 = time.time()
+    # Fast TCP check first
+    try:
+        sock = socket.create_connection((h, p), timeout=5)
+        sock.close()
+    except (socket.timeout, ConnectionRefusedError, OSError) as e:
+        return {"ok": False, "error": f"Cannot reach {h}:{p} — {e}"}
+
+    # Try ES cluster health API
+    try:
+        from elasticsearch import Elasticsearch
+        es_kwargs = {"hosts": [host], "request_timeout": 5}
+        if user and password:
+            es_kwargs["basic_auth"] = (user, password)
+        es = Elasticsearch(**es_kwargs)
+        health = es.cluster.health()
+        return {"ok": True, "status": health.get("status", "unknown"),
+                "nodes": health.get("number_of_nodes", 0)}
+    except ImportError:
+        return {"ok": True, "note": "Socket reachable; elasticsearch package not installed"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 @router.get("/storage")
 async def get_storage_config(request, api_key=Depends(get_api_key)):
     data = await _get_section("storage")
