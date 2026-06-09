@@ -1,7 +1,7 @@
 # Development Decision Log — Marine & Offshore Expert System
 
 > **Purpose**: Record all cross-module decisions made during development that are NOT captured in the design spec. New sessions MUST read this file to recover context.
-> **Last Updated**: 2026-05-12
+> **Last Updated**: 2026-06-07
 
 ---
 
@@ -588,6 +588,26 @@ New sessions recover context by reading L1 → L2 → L3 files in order.
 **Decision**: M6 and M7 frontends connect to M8 on port 8000. M8 routes added for: conversation CRUD (P4/P5/P6), file upload (P10), auth (P1/P2), share (P7), pin (P9), projects (P8/P15), account deletion (P17), avatar upload (P11), conversation search (P14). M7 pages added for: API key management, LLM config, system config (Features/Retrieval/Storage/Deploy/OAuth/SMTP), monitoring, admin auth guard.
 
 **Why**: Phase 1 frontend was built against Mock Server. Phase 2 backend completed. Phase 3 wired them together.
+
+---
+
+### D048: M1 Alternative PDF Engines — Marker + MinerU Backends
+
+**Date**: 2026-06-07 | **Status**: ✅ Implemented
+
+**Decision**: M1 supports 3 PDF parsing engines: Docling (default, 10+ formats), Marker (Surya-based, CLI subprocess), MinerU (magic-pdf, Chinese-optimized, CLI subprocess). Both Marker and MinerU use subprocess isolation to prevent torch version conflicts with Docling. If CLI not installed, graceful fallback to Docling. Timeout configurable via M7 UI (60s/120s/300s/600s).
+
+**Why**: Users may prefer Marker for academic papers and multi-column layouts, or MinerU for CCS Chinese documents. Subprocess avoids PyTorch conflicts.
+
+---
+
+### D049: Pre-Commit Verification Hard Gates
+
+**Date**: 2026-06-07 | **Status**: ✅ Enforced
+
+**Decision**: Before any git commit, must run `python -m pytest <module>/tests/` and SEE `passed` in the output. No background test + commit. No cherry-picking review feedback. Global rule added to `~/.claude/CLAUDE.md` v1.3 §0.
+
+**Why**: Repeated pattern of untested code causing runtime failures — missing @dataclass, missing imports, fake UI elements. Hard gate prevents recurrence.
 
 ---
 

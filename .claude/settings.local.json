@@ -361,7 +361,8 @@
       "Bash(PYTHONPATH=. python tests/e2e/test_full_pipeline.py)",
       "Bash(DEEPSEEK_API_KEY=\"sk-fd22ed990ebf4c94b5ae11a108ac62ef\" PYTHONPATH=. timeout 180 python tests/e2e/test_full_pipeline.py)",
       "Bash(DEEPSEEK_API_KEY=\"sk-fd22ed990ebf4c94b5ae11a108ac62ef\" PYTHONPATH=. python tests/e2e/test_full_pipeline.py)",
-      "Bash(python -c \"from m1_parser.standalone.web_server import _COMPONENTS; print\\('marker:', _COMPONENTS['backends']['marker']\\); print\\('mineru:', _COMPONENTS['backends']['mineru']\\)\")"
+      "Bash(python -c \"from m1_parser.standalone.web_server import _COMPONENTS; print\\('marker:', _COMPONENTS['backends']['marker']\\); print\\('mineru:', _COMPONENTS['backends']['mineru']\\)\")",
+      "Bash(timeout 60 python -m pytest m1-doc-parsing/tests/test_config.py m1-doc-parsing/tests/test_router.py -q)"
     ]
   }
 }
