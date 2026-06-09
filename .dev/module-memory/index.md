@@ -11,7 +11,7 @@
 | Module | Name | Status | Sessions | Last Session | Active Task |
 |--------|------|--------|----------|-------------|-------------|
 | M1 | Document Parsing Engine | ✅ 3 Engines | 9 | 2026-06-07 | Docling + Marker + MinerU backends |
-| M2 | Storage Abstraction Layer | ✅ 4 VectorStores | 2 | 2026-06-07 | ChromaDB/FAISS/Qdrant/Milvus |
+| M2 | Storage Abstraction Layer | ✅ 5 Backends | 3 | 2026-06-09 | ChromaDB/FAISS/Qdrant/Milvus + PostgreSQL |
 | M3 | Retrieval Engine | ✅ Enhanced | 2 | 2026-06-07 | Propositions + hierarchical nav |
 | M4 | Knowledge Graph Engine | ✅ Complete | 4 | 2026-06-03 | — |
 | M5 | RAG QA Engine | ✅ Enhanced | 4 | 2026-06-07 | OAuth + hardening + web search |
