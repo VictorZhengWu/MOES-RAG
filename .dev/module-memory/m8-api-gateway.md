@@ -1,8 +1,8 @@
 # M8 API Gateway — Module Memory
 
-> **Last Updated**: 2026-06-04
-> **Sessions**: 3
-> **Status**: ✅ Complete
+> **Last Updated**: 2026-06-09
+> **Sessions**: 4
+> **Status**: ✅ Redis 限流持久化完成
 
 ---
 
@@ -10,11 +10,11 @@
 
 | Field | Value |
 |-------|-------|
-| Status | ✅ Complete |
+| Status | ✅ Complete (Redis rate limit added) |
 | Active Tasks | — |
 | First Dev Date | 2026-06-04 |
-| Last Session Date | 2026-06-04 |
-| Total Sessions | 3 |
+| Last Session Date | 2026-06-09 |
+| Total Sessions | 4 |
 
 ---
 
@@ -93,28 +93,37 @@ m8-api-gateway/
   m8_gateway/
     __init__.py          -- exports create_app
     core/
-      config.py          -- GatewayConfig dataclass
+      config.py          -- GatewayConfig + RedisConfig dataclass
       app.py             -- create_app() FastAPI factory
     auth/
       key_manager.py     -- KeyManager (generate/validate/revoke/list/touch)
-      middleware.py      -- get_api_key() FastAPI dependency
+      middleware.py      -- get_api_key() + check_rate_limit DI
     rate_limit/
-      limiter.py         -- RateLimiter (sliding window)
+      base.py            -- BaseRateLimiter abstract (check/get_usage/close/health_check)
+      limiter.py         -- InMemoryRateLimiter (sliding window)
+      redis_limiter.py   -- RedisRateLimiter (ZSET sliding window)
+      redis_client.py    -- create_redis_client() factory
+      __init__.py        -- create_rate_limiter() factory
     routes/
       chat.py            -- POST /v1/chat/completions
       keys.py            -- POST/GET/DELETE /admin/keys
       models.py          -- GET /v1/models
+      admin.py           -- GET/PATCH /admin/config/rate-limit + all config endpoints
     models/
       schemas.py         -- Pydantic models
   tests/
-    conftest.py          -- test_app fixture (isolated FastAPI app)
-    test_config.py       -- 3 tests
+    conftest.py          -- test_app fixture
+    test_config.py       -- 8 tests
     test_key_manager.py  -- 5 tests
-    test_limiter.py      -- 3 tests
+    test_limiter.py      -- 9 tests
+    test_redis_client.py -- 8 tests
+    test_redis_limiter.py -- 12 tests
     test_chat.py         -- 1 test
     test_keys.py         -- 2 tests
     test_models.py       -- 1 test
     test_openai_compat.py -- 2 tests
+    test_conversations.py -- 4 tests
+    test_documents.py     -- 6 tests
   pyproject.toml
   requirements.txt
 ```
@@ -128,5 +137,9 @@ m8-api-gateway/
 | 00100-03 | Sliding window rate limiter with tiered limits | 3 | ✅ |
 | 00100-04 | Routes + auth middleware + OpenAI SDK compat | 6 | ✅ |
 | 00100-05 | Final packaging verification | — | ✅ |
+| 00100-10 | Redis 基础层 (base.py + redis_client.py + RedisConfig) | 13 | ✅ |
+| 00100-11 | RedisRateLimiter + InMemory 重构 + Factory | 9 | ✅ |
+| 00100-12 | App 集成 + Config 端点 + Docker Compose | — | ✅ |
+| 00100-13 | Redis 限流测试 + 全量回归 | 12 | ✅ |
 
-**Total**: 17 tests, all passing. 25 files created. 5 git commits.
+**Total**: 58 tests, all passing. 8 new files created. 4 new commits.
