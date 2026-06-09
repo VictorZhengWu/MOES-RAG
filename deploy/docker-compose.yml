@@ -48,6 +48,10 @@ services:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - GOOGLE_CX=${GOOGLE_CX:-}
       - SEARXNG_URL=${SEARXNG_URL:-http://searxng:8080}
+      # Redis rate limit persistence
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       # Internal
       - M1_PARSE_URL=http://m1:8007/parse
       - M5_DB_PATH=/data/m5_qa.db
@@ -63,6 +67,8 @@ services:
       - ../contracts:/app/contracts
     depends_on:
       meilisearch:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -121,6 +127,28 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  # ── Redis: Rate limit persistence (SaaS) ────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: marine-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
   # ── Optional: Self-hosted web search ────────────────────────────────
   searxng:
     image: searxng/searxng:latest
@@ -160,3 +188,4 @@ volumes:
   meili_data:
   searxng_data:
   ollama_data:
+  redis_data:

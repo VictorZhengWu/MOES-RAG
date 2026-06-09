@@ -47,3 +47,14 @@ rate_limits:
   basic: 30
   pro: 120
   enterprise: -1
+
+rate_limit:
+  backend: redis
+  redis:
+    host: ${REDIS_HOST}
+    port: ${REDIS_PORT:-6379}
+    db: 0
+    password: ${REDIS_PASSWORD}
+    max_connections: 50
+    strict_mode: true
+    window_seconds: 60

@@ -367,6 +367,156 @@ async def set_retrieval_config(body: RetrievalConfig, request, api_key=Depends(g
         cfg.dedup_threshold = data["dedup_threshold"]
     return {"updated": True, "data": data}
 
+# ---------------------------------------------------------------------------
+# Rate-limit config (hot-swap with atomic replacement)
+# ---------------------------------------------------------------------------
+
+import threading
+
+_rate_limit_config_lock = threading.Lock()
+
+
+class RateLimitConfigUpdate(BaseModel):
+    """Config model for PATCH /admin/config/rate-limit."""
+    backend: str | None = None       # "auto", "memory", "redis"
+    redis_host: str | None = None
+    redis_port: int | None = None    # 1-65535
+    redis_db: int | None = None      # 0-15
+    redis_password: str | None = None
+    redis_max_connections: int | None = None  # 5-200
+    strict_mode: bool | None = None
+    window_seconds: int | None = None  # 10-300
+
+
+def _validate_rate_limit_config(body: RateLimitConfigUpdate) -> None:
+    """Validate rate-limit config parameters before applying.
+
+    WHY: Catch invalid values early (at API boundary) rather than
+         silently accepting config that will break at runtime.
+    """
+    if body.backend is not None and body.backend not in ("auto", "memory", "redis"):
+        raise HTTPException(400, f"Invalid backend '{body.backend}'. Must be 'auto', 'memory', or 'redis'.")
+
+    if body.redis_port is not None and not (1 <= body.redis_port <= 65535):
+        raise HTTPException(400, f"Invalid port {body.redis_port}. Must be 1-65535.")
+
+    if body.redis_db is not None and not (0 <= body.redis_db <= 15):
+        raise HTTPException(400, f"Invalid db {body.redis_db}. Must be 0-15.")
+
+    if body.redis_max_connections is not None and not (5 <= body.redis_max_connections <= 200):
+        raise HTTPException(400, f"Invalid max_connections {body.redis_max_connections}. Must be 5-200.")
+
+    if body.window_seconds is not None and not (10 <= body.window_seconds <= 300):
+        raise HTTPException(400, f"Invalid window_seconds {body.window_seconds}. Must be 10-300.")
+
+    if body.strict_mode and body.backend == "memory":
+        raise HTTPException(400, "strict_mode=true requires backend='redis'. In-memory backend cannot be strict.")
+
+
+@router.get("/rate-limit")
+async def get_rate_limit_config(request: Request, api_key: APIKey = Depends(get_api_key)):
+    """GET /admin/config/rate-limit — Return rate-limit config with Redis status.
+
+    WHAT: Returns current backend, RedisConfig, and Redis connectivity status.
+          Used by M7 Admin UI → Storage → Rate Limit tab.
+
+    WHY: M7 needs to display current config AND show whether Redis is
+         reachable (green/red indicator). The health_check() call on
+         the active limiter is lightweight (PING for Redis, always
+         True for memory).
+    """
+    cfg = request.app.state.config
+    redis_cfg = cfg.rate_limit_redis
+    limiter = request.app.state.limiter
+
+    return {
+        "backend": cfg.rate_limit_backend,
+        "redis": {
+            "host": redis_cfg.host,
+            "port": redis_cfg.port,
+            "db": redis_cfg.db,
+            "password_configured": bool(redis_cfg.password),
+            "max_connections": redis_cfg.max_connections,
+            "strict_mode": redis_cfg.strict_mode,
+        },
+        "window_seconds": redis_cfg.window_seconds,
+        "redis_healthy": limiter.health_check() if limiter else False,
+        "rate_limits": cfg.rate_limits,
+    }
+
+
+@router.patch("/rate-limit")
+async def update_rate_limit_config(
+    request: Request,
+    body: RateLimitConfigUpdate,
+    api_key: APIKey = Depends(get_api_key),
+):
+    """PATCH /admin/config/rate-limit — Hot-swap rate limiter configuration.
+
+    WHAT: Updates rate-limit config at runtime with zero downtime.
+          Four-step safe handoff:
+          1. Apply config changes to GatewayConfig
+          2. Create new limiter instance (old one still serving)
+          3. Health-check new limiter
+          4. Atomic swap + close old limiter
+
+    WHY: threading.Lock prevents two admins from racing config updates.
+         Python GIL guarantees pointer assignment is atomic — no request
+         sees a half-swapped limiter. The old limiter is closed AFTER
+         the swap, so in-flight check() calls are unaffected.
+    """
+    _validate_rate_limit_config(body)
+    cfg = request.app.state.config
+    redis_cfg = cfg.rate_limit_redis
+
+    with _rate_limit_config_lock:
+        # 1. Apply config changes
+        if body.backend is not None:
+            cfg.rate_limit_backend = body.backend
+        if body.redis_host is not None:
+            redis_cfg.host = body.redis_host
+        if body.redis_port is not None:
+            redis_cfg.port = body.redis_port
+        if body.redis_db is not None:
+            redis_cfg.db = body.redis_db
+        if body.redis_password is not None:
+            redis_cfg.password = body.redis_password
+        if body.redis_max_connections is not None:
+            redis_cfg.max_connections = body.redis_max_connections
+        if body.strict_mode is not None:
+            redis_cfg.strict_mode = body.strict_mode
+        if body.window_seconds is not None:
+            redis_cfg.window_seconds = body.window_seconds
+
+        old_limiter = request.app.state.limiter
+
+        # 2. Create new limiter with updated config
+        from m8_gateway.rate_limit import create_rate_limiter
+        new_limiter = create_rate_limiter(cfg)
+
+        # 3. Health check (fail fast if new config is broken)
+        if not new_limiter.health_check():
+            new_limiter.close()
+            raise HTTPException(
+                400,
+                "New rate limiter config failed health check. "
+                "Redis may be unreachable. Verify connection settings.",
+            )
+
+        # 4. Atomic swap (GIL guarantees pointer atomicity)
+        request.app.state.limiter = new_limiter
+
+        # 5. Close old limiter (release Redis pool if any)
+        if old_limiter is not None:
+            old_limiter.close()
+
+    return {
+        "status": "ok",
+        "backend": cfg.rate_limit_backend,
+        "redis_healthy": new_limiter.health_check(),
+    }
+
+
 def _apply_config_to_m5(engine, section: str, data: dict) -> None:
     """Apply config changes to the running M5 instance immediately."""
     cfg = engine._config
