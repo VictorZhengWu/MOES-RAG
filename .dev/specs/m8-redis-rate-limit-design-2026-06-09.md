@@ -68,6 +68,29 @@
 | Enterprise | `memory` | 可选启用 Redis + `strict_mode=false` |
 | SaaS | `redis` | `strict_mode=true`（Redis 不可用则拒绝请求） |
 
+**自动选择逻辑**（`GatewayConfig.__post_init__` 中实现）：
+
+```python
+def _resolve_rate_limit_backend(self):
+    """Auto-select rate limit backend based on deployment mode.
+
+    WHY: SaaS deployments need Redis persistence for multi-instance
+         shared state. Personal/Enterprise default to memory for
+         zero-dependency operation. User can explicitly override
+         via config — auto-selection only applies when backend
+         is still the default value "auto".
+    """
+    if self.rate_limit_backend == "auto":
+        if self.deployment_mode == "saas":
+            self.rate_limit_backend = "redis"
+        else:
+            self.rate_limit_backend = "memory"
+```
+
+- `backend: "auto"` (新默认值) → 根据 `deployment_mode` 自动选择
+- `backend: "memory"` → 显式指定，强制内存（覆盖自动选择）
+- `backend: "redis"` → 显式指定，强制 Redis（覆盖自动选择，SaaS 外也可用）
+
 ### 2.3 降级策略
 
 | 场景 | strict_mode=true (SaaS) | strict_mode=false (Enterprise) |
@@ -221,8 +244,22 @@ class RedisConfig:
 @dataclass
 class GatewayConfig:
     # ... existing fields ...
-    rate_limit_backend: str = "memory"           # "memory" | "redis"
+    rate_limit_backend: str = "auto"              # "auto" | "memory" | "redis"
     rate_limit_redis: RedisConfig = field(default_factory=RedisConfig)
+
+    def __post_init__(self):
+        # ... existing rate_limits defaults ...
+        self._resolve_rate_limit_backend()
+
+    def _resolve_rate_limit_backend(self):
+        """Auto-select backend based on deployment mode if set to 'auto'.
+
+        WHY: Personal/Enterprise get zero-dependency memory backend.
+             SaaS gets persistent Redis backend. User can override
+             by explicitly setting 'memory' or 'redis'.
+        """
+        if self.rate_limit_backend == "auto":
+            self.rate_limit_backend = "redis" if self.deployment_mode == "saas" else "memory"
 ```
 
 ### 4.3 配置来源
@@ -260,7 +297,13 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
     restart: unless-stopped
 
   m8:
@@ -273,6 +316,12 @@ services:
 volumes:
   redis_data:
 ```
+
+**Redis 参数说明**：
+- `--appendonly yes`：AOF 持久化，重启不丢数据
+- `--maxmemory 256mb`：限流数据非关键数据，限制内存上限防止 OOM
+- `--maxmemory-policy allkeys-lru`：内存满时 LRU 淘汰最久未用的限流 key
+- `--save 900 1 --save 300 10`：RDB 定期快照，减少重启恢复时间
 
 ---
 
@@ -333,6 +382,92 @@ app.state.limiter = create_rate_limiter(cfg)
 
 路由和中间件通过 `request.app.state.limiter.check()` 调用，接口不变，完全透明。
 
+### 5.3 Shutdown 生命周期 (app.py)
+
+```python
+@app.on_event("shutdown")
+async def shutdown():
+    """Clean up rate limiter resources on server shutdown.
+
+    WHAT: Closes Redis connections (if any) held by the active limiter.
+          InMemoryRateLimiter.close() is a no-op.
+
+    WHY: Redis connection pool must be explicitly closed to release
+         file descriptors and TCP connections gracefully. Without this,
+         Redis server accumulates dead connections until timeout.
+    """
+    limiter = app.state.limiter
+    if hasattr(limiter, 'close'):
+        limiter.close()
+```
+
+### 5.4 配置端点热重载 (routes/admin.py)
+
+**端点**：`PATCH /admin/config/rate-limit`
+
+**并发安全**：使用 `threading.Lock` 串行化配置更新，防止多管理员同时修改导致状态不一致。
+
+```python
+import threading
+from fastapi import APIRouter, HTTPException, Request
+
+_config_lock = threading.Lock()
+
+@router.patch("/admin/config/rate-limit")
+async def update_rate_limit_config(request: Request, ...):
+    """Hot-swap the rate limiter with zero downtime.
+
+    WHAT: Creates a new RateLimiter instance with updated config,
+          validates it, atomically replaces app.state.limiter,
+          then closes the old instance.
+
+    WHY: Four-step safe handoff:
+         1. Create new limiter (old one still serving requests)
+         2. Health-check new limiter (fail fast if config is bad)
+         3. Atomic swap (Python GIL guarantees pointer assignment
+            is atomic — no request sees a half-swapped limiter)
+         4. Close old limiter (release Redis connections)
+
+    CONCURRENCY: threading.Lock prevents two admins from racing
+                 config updates and leaving a stale limiter active.
+    """
+    with _config_lock:
+        cfg = request.app.state.config
+        old_limiter = request.app.state.limiter
+
+        # 1. Create new limiter with updated config
+        new_limiter = create_rate_limiter(cfg)
+
+        # 2. Health check (fail fast if config is bad)
+        if isinstance(new_limiter, RedisRateLimiter):
+            if not new_limiter.health_check():
+                new_limiter.close()
+                raise HTTPException(400, "Redis health check failed with new config")
+
+        # 3. Atomic swap (GIL guarantees pointer atomicity)
+        request.app.state.limiter = new_limiter
+
+        # 4. Close old limiter (release Redis pool)
+        if hasattr(old_limiter, 'close'):
+            old_limiter.close()
+
+    return {"status": "ok", "backend": cfg.rate_limit_backend}
+```
+
+**并发安全性说明**：
+- Python GIL 保证 Python 对象引用赋值的原子性，不存在"半指针"问题
+- `threading.Lock` 保证配置更新的串行化，多管理员并发请求排队执行
+- 旧 limiter 在 swap 之后才 close，确保正在 `check()` 中的请求不受影响（方法调用已持有对象引用）
+
+**配置验证逻辑**（`PATCH` 参数校验）：
+- `backend` 必须是 `"auto"`, `"memory"`, `"redis"` 之一
+- `redis_host` 非空时验证格式（无协议前缀，无路径）
+- `redis_port` 范围 1-65535
+- `redis_db` 范围 0-15
+- `max_connections` 范围 5-200
+- `window_seconds` 范围 10-300
+- `strict_mode` 为 true 且 `backend` 为 memory 时，返回 400 警告（无 Redis 可 strict）
+
 ---
 
 ## 6. 错误处理
@@ -387,11 +522,11 @@ Rate Limiter
 
 **测试用例 (test_redis_limiter.py)**：
 
-1. `test_basic_rate_limit` — 前 N 个通过，第 N+1 拒绝
-2. `test_unlimited_tier` — Enterprise 无限流，200 请求全部通过
-3. `test_sliding_window_expiry` — 手动推进 fakeredis 时间，验证窗口滑动
-4. `test_strict_mode_rejects` — strict_mode=True，模拟 Redis 异常 → return False
-5. `test_non_strict_fallback` — strict_mode=False，模拟 Redis 异常 → 内存放行
+1. `test_basic_rate_limit` — 前 N 个通过，第 N+1 拒绝（fakeredis 正常流程）
+2. `test_unlimited_tier` — Enterprise 无限流，200 请求全部通过，不写 Redis
+3. `test_sliding_window_expiry` — mock `redis.zremrangebyscore` 返回 0（模拟窗口过期），验证请求恢复放行。**注意**：fakeredis 不支持真实时间推进，因此通过 mock `zremrangebyscore` 的副作用来控制"剩余条目数"——patch `zremrangebyscore` 使 `zcard` 返回 0 即模拟所有条目已过期
+4. `test_strict_mode_rejects` — strict_mode=True，patch `redis.zcard` 抛 `ConnectionError` → return False
+5. `test_non_strict_fallback` — strict_mode=False，patch `redis.zcard` 抛异常 → 降级到内存计数 + 放行
 
 ---
 

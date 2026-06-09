@@ -1251,17 +1251,21 @@ def test_openai_python_sdk_chat():
 #### 🔲 00100-10 — Redis 基础层 (redis_client.py + base.py + RedisConfig)
 
 **功能描述：**
-- 创建 `rate_limit/base.py`：`BaseRateLimiter` 抽象基类，定义 `check(key_prefix, tier) -> bool` 和 `get_usage(key_prefix) -> int` 两个抽象方法
+- 创建 `rate_limit/base.py`：`BaseRateLimiter` 抽象基类，定义 `check(key_prefix, tier) -> bool` 和 `get_usage(key_prefix) -> int` 两个抽象方法，可选 `close()` 和 `health_check()` 钩子（默认 no-op）
 - 创建 `rate_limit/redis_client.py`：`create_redis_client(host, port, db, password, max_connections, socket_timeout) -> Redis | None` 纯工厂函数，无全局变量，失败返回 None
-- 扩展 `core/config.py`：新增 `RedisConfig` dataclass（8 个字段：host, port, db, password, max_connections, backend, strict_mode, window_seconds），所有字段有合理默认值
-- `GatewayConfig` 新增 `rate_limit_backend: str = "memory"` 和 `rate_limit_redis: RedisConfig` 字段
+- 扩展 `core/config.py`：
+  - 新增 `RedisConfig` dataclass（8 个字段：host, port, db, password, max_connections, backend, strict_mode, window_seconds），所有字段有合理默认值
+  - `GatewayConfig.rate_limit_backend` 默认值改为 `"auto"`（非 `"memory"`），新增 `rate_limit_redis: RedisConfig` 字段
+  - `GatewayConfig.__post_init__` 新增 `_resolve_rate_limit_backend()` 方法：`backend == "auto"` 时根据 `deployment_mode` 自动选择（SaaS → redis，其他 → memory），显式指定则不覆盖
 - 更新 `requirements.txt`：新增 `redis>=5.0.0` 和 `fakeredis>=2.20.0`（dev dependency）
 
 **验证方法：**
 - 测试用例 1：`RedisConfig` 默认值正确
 - 测试用例 2：`create_redis_client` 连接无效地址返回 None（不抛异常）
-- 测试用例 3：`GatewayConfig` 包含新字段且默认值为 memory 后端
-- 测试用例 4：`BaseRateLimiter` 不可直接实例化（抽象类）
+- 测试用例 3：`GatewayConfig(deployment_mode="saas")` 自动选择 redis 后端
+- 测试用例 4：`GatewayConfig(deployment_mode="personal")` 自动选择 memory 后端
+- 测试用例 5：`GatewayConfig(rate_limit_backend="redis", deployment_mode="personal")` 显式覆盖生效
+- 测试用例 6：`BaseRateLimiter` 不可直接实例化（抽象类）
 
 **自动化验证命令：** `python -m pytest m8-api-gateway/tests/test_config.py m8-api-gateway/tests/test_redis_client.py -v`
 **通过条件：** 全部 passed，0 failed
@@ -1303,17 +1307,27 @@ def test_openai_python_sdk_chat():
 #### 🔲 00100-12 — App 集成 + 配置端点 + Docker Compose
 
 **功能描述：**
-- 修改 `core/app.py`：`app.state.limiter = create_rate_limiter(cfg)` 替换旧的 `RateLimiter(cfg.rate_limits)`（单行替换）
-- 新增 M8 配置端点 `PATCH /admin/config/rate-limit`：运行时更新限流配置、热替换 `app.state.limiter`
-- 新增 M8 配置端点 `GET /admin/config/rate-limit`：返回当前限流配置状态（含 Redis 连接状态）
-- 更新 `deploy/docker-compose.yml`：新增 `redis` 服务（`redis:7-alpine`，AOF 持久化，`redis_data` volume）
+- 修改 `core/app.py`：
+  - `app.state.limiter = create_rate_limiter(cfg)` 替换旧的 `RateLimiter(cfg.rate_limits)`（单行替换）
+  - shutdown handler 中调用 `limiter.close()` 释放 Redis 连接池（如为 InMemoryRateLimiter 则 no-op）
+- 新增 `GET /admin/config/rate-limit` 端点：返回当前限流配置状态（backend、Redis 连接状态、连接池统计）
+- 新增 `PATCH /admin/config/rate-limit` 端点，四步安全热替换：
+  1. 创建新 limiter 实例（旧 limiter 仍在服务请求）
+  2. Health check 新 limiter（`RedisRateLimiter.health_check()` 验证 Redis 连通性）
+  3. 原子替换 `app.state.limiter = new_limiter`（Python GIL 保证引用赋值原子性）
+  4. 关闭旧 limiter（`old_limiter.close()` 释放连接池）
+  - 并发安全：`threading.Lock` 串行化配置更新，防止多管理员竞争
+  - 参数校验：backend ∈ {auto, memory, redis}、port 1-65535、db 0-15、max_connections 5-200、window_seconds 10-300、strict_mode=true + backend=memory 返回 400 错误
+- 更新 `deploy/docker-compose.yml`：新增 `redis` 服务（`redis:7-alpine`，maxmemory 256mb + allkeys-lru + AOF + RDB 双持久化）
 - 更新 `deploy/saas/deploy.yaml`：新增 `rate_limit` 配置段（backend: redis, strict_mode: true）
-- 更新 M8 环境变量段：注入 `REDIS_HOST=redis`
+- 更新 M8 环境变量段：注入 `REDIS_HOST=redis`, `REDIS_PASSWORD`
 
 **验证方法：**
 - 测试用例 1：`GET /admin/config/rate-limit` 返回当前配置（含 backend 和 redis 连接状态）
 - 测试用例 2：`PATCH /admin/config/rate-limit` 更新 backend 后 limiter 实例被替换
-- 测试用例 3：`docker compose config` 语法验证通过（不实际启动）
+- 测试用例 3：无效参数（port=99999）返回 422
+- 测试用例 4：`docker compose config` 语法验证通过（不实际启动）
+- 测试用例 5：shutdown 调用 `limiter.close()`（验证 close 被调用）
 
 **自动化验证命令：** `python -m pytest m8-api-gateway/tests/test_config_endpoint.py -v`
 **通过条件：** 全部 passed，0 failed
@@ -1326,18 +1340,19 @@ def test_openai_python_sdk_chat():
 #### 🔲 00100-13 — Redis 限流测试 + 全量回归
 
 **功能描述：**
-- 创建 `tests/test_redis_limiter.py`：5 个测试用例，全部使用 `fakeredis`（零外部依赖）
-  1. `test_basic_rate_limit`：前 N 个通过，第 N+1 拒绝
-  2. `test_unlimited_tier`：Enterprise 无限流，200 请求全部通过
-  3. `test_sliding_window_expiry`：手动推进 fakeredis 时间，验证窗口过期后重新放行
-  4. `test_strict_mode_rejects`：strict_mode=True，模拟 Redis 异常 → return False
-  5. `test_non_strict_fallback`：strict_mode=False，模拟 Redis 异常 → 降级内存放行
+- 创建 `tests/test_redis_limiter.py`：5 个测试用例，使用 `fakeredis` + `unittest.mock.patch`（零外部依赖）
+  1. `test_basic_rate_limit`：fakeredis 正常流程，前 N 个通过，第 N+1 拒绝
+  2. `test_unlimited_tier`：Enterprise 无限流，200 请求全部通过，验证不写 Redis（跳过 ZADD）
+  3. `test_sliding_window_expiry`：fakeredis 不支持真实时间推进，通过 `patch.object(redis, 'zremrangebyscore')` + `patch.object(redis, 'zcard', return_value=0)` 模拟窗口过期，验证请求恢复放行
+  4. `test_strict_mode_rejects`：`patch.object(redis, 'zcard', side_effect=ConnectionError)` 模拟 Redis 断连，strict_mode=True → return False
+  5. `test_non_strict_fallback`：`patch.object(redis, 'zcard', side_effect=ConnectionError)` + strict_mode=False → 降级到内存计数放行，ERROR 日志记录
+- 新增 `test_redis_limiter_health_check`：验证 `health_check()` 在 Redis 正常/异常时的返回值
 - 更新 `tests/test_limiter.py`：更新 import 路径（`InMemoryRateLimiter`），现有 3 个测试继续通过
 - 运行 M8 全量测试套件回归
 
-**验证方法：** 全量 pytest 通过，新增 5 个测试 + 现有 17 个测试 = 22 tests
+**验证方法：** 全量 pytest 通过，新增 6 个测试 + 现有 17 个测试 = 23 tests
 **自动化验证命令：** `python -m pytest m8-api-gateway/tests/ -v`
-**通过条件：** 22 passed，0 failed
+**通过条件：** 23 passed，0 failed
 **Task 类型：** 集成/跨模块类
 **依赖：** 00100-12
 **关联文件：** `m8-api-gateway/tests/test_redis_limiter.py`, `m8-api-gateway/tests/test_limiter.py`
