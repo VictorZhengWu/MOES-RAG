@@ -17,7 +17,7 @@
 | M5 | RAG QA Engine | ✅ Enhanced | 4 | 2026-06-07 | OAuth + hardening + web search |
 | M6 | User Web Portal | 🔄 17/28 unlocked | ~10 | 2026-06-07 | Backend integrated |
 | M7 | Admin Web Portal | 🔄 Config UI done | 5 | 2026-06-07 | All settings via UI |
-| M8 | API Gateway | ✅ Enhanced | 3 | 2026-06-07 | Config store + OAuth + extras |
+| M8 | API Gateway | 🔄 Redis 限流 | 4 | 2026-06-09 | 00100-10 Redis rate limit persistence |
 | — | contracts/ | ✅ | 1 | 2026-05-12 | 00010 |
 | — | deploy/ | ✅ | 1 | 2026-06-07 | 3 profiles + Docker Compose |
 
