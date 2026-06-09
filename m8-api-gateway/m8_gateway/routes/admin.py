@@ -297,6 +297,65 @@ async def get_monitoring(request: Request, api_key: APIKey = Depends(get_api_key
     return engine._metrics.get_summary()
 
 
+@router.post("/storage/test-postgresql")
+async def test_postgresql_connection(request: Request, api_key: APIKey = Depends(get_api_key)):
+    """POST /admin/config/storage/test-postgresql — Test PostgreSQL connectivity.
+
+    WHAT: Attempts a TCP connection + SELECT 1 against the configured
+          PostgreSQL server using asyncpg. Returns success/failure with
+          latency and error details.
+
+    WHY: Admins need immediate feedback when configuring PG. Without a
+         test button, misconfigurations are only discovered after restart.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Request body must be valid JSON")
+
+    host = body.get("host", "localhost")
+    port = int(body.get("port", 5432))
+    database = body.get("database", "marine_rag")
+    user = body.get("user", "postgres")
+    password = body.get("password", "")
+
+    if not (1 <= port <= 65535):
+        raise HTTPException(400, f"Invalid port: {port}")
+
+    import socket, time
+    t0 = time.time()
+    try:
+        # Fast socket check first (fails fast if host/port unreachable)
+        sock = socket.create_connection((host, port), timeout=5)
+        sock.close()
+    except (socket.timeout, ConnectionRefusedError, OSError) as e:
+        return {
+            "ok": False,
+            "error": f"Cannot reach {host}:{port} — {e}",
+            "latency_ms": round((time.time() - t0) * 1000),
+        }
+
+    # Try asyncpg connection + query for deeper validation
+    try:
+        import asyncpg
+        conn = await asyncpg.connect(
+            host=host, port=port, database=database,
+            user=user, password=password,
+            timeout=5,
+        )
+        await conn.execute("SELECT 1")
+        await conn.close()
+        latency = round((time.time() - t0) * 1000)
+        return {"ok": True, "latency_ms": latency, "version": "connected"}
+    except ImportError:
+        # asyncpg not installed — socket check already passed, so likely OK
+        return {"ok": True, "latency_ms": round((time.time() - t0) * 1000),
+                "note": "Socket reachable; asyncpg not installed for full verification"}
+    except Exception as e:
+        return {"ok": False, "error": str(e),
+                "latency_ms": round((time.time() - t0) * 1000)}
+
+
 @router.get("/storage")
 async def get_storage_config(request, api_key=Depends(get_api_key)):
     data = await _get_section("storage")

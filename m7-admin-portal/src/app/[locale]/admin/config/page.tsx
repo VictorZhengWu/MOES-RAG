@@ -33,6 +33,9 @@ export default function SystemConfigPage() {
   // ── SMTP ──
   const [smtp, setSMTP] = useState({ host: 'smtp.gmail.com', port: '587', user: '', password: '' });
   const [storage, setStorage] = useState({ vector_backend: 'chromadb', relational_backend: 'sqlite', doc_index_backend: 'meilisearch', file_backend: 'local_fs' });
+  const [pgConfig, setPgConfig] = useState({ host: 'localhost', port: '5432', database: 'marine_rag', user: 'postgres', password: '', pool_size: '10', max_overflow: '20', ssl_mode: 'prefer' });
+  const [pgTesting, setPgTesting] = useState(false);
+  const [pgTestResult, setPgTestResult] = useState<{ ok?: boolean; error?: string; latency_ms?: number } | null>(null);
   const [deployMode, setDeployMode] = useState('personal');
   const [oauthProvider, setOauthProvider] = useState('google');
   const [oauthId, setOauthId] = useState('');
@@ -74,6 +77,22 @@ export default function SystemConfigPage() {
       setStatus((s) => ({ ...s, retrieval: 'saved' }));
     } catch { setStatus((s) => ({ ...s, retrieval: 'error' })); }
     setSaving(null);
+  };
+
+  const testPostgres = async () => {
+    setPgTesting(true); setPgTestResult(null);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const res = await fetch(baseUrl + '/admin/config/storage/test-postgresql', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host: pgConfig.host, port: parseInt(pgConfig.port), database: pgConfig.database, user: pgConfig.user, password: pgConfig.password }),
+      });
+      const data = await res.json();
+      setPgTestResult(data);
+    } catch (e: any) {
+      setPgTestResult({ ok: false, error: e.message || 'Network error' });
+    }
+    setPgTesting(false);
   };
 
   const saveStorage = async () => {
@@ -256,7 +275,83 @@ export default function SystemConfigPage() {
                     <option value="s3">AWS S3 (Cloud)</option>
                   </select></div>
               </div>
-              <p className="text-xs text-muted-foreground">Requires service restart for some backends.</p>
+
+              {/* ── PostgreSQL Configuration (expands when selected) ── */}
+              {storage.relational_backend === 'postgresql' && (
+                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                  <p className="text-sm font-medium">PostgreSQL Connection</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Host</label>
+                      <Input value={pgConfig.host} onChange={(e) => setPgConfig({...pgConfig, host: e.target.value})}
+                        placeholder="pg.internal" className="mt-1 h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Port</label>
+                      <Input value={pgConfig.port} onChange={(e) => setPgConfig({...pgConfig, port: e.target.value})}
+                        placeholder="5432" className="mt-1 h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Database</label>
+                      <Input value={pgConfig.database} onChange={(e) => setPgConfig({...pgConfig, database: e.target.value})}
+                        placeholder="marine_rag" className="mt-1 h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">User</label>
+                      <Input value={pgConfig.user} onChange={(e) => setPgConfig({...pgConfig, user: e.target.value})}
+                        placeholder="postgres" className="mt-1 h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Password</label>
+                      <Input type="password" value={pgConfig.password} onChange={(e) => setPgConfig({...pgConfig, password: e.target.value})}
+                        placeholder="Enter password" className="mt-1 h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">SSL Mode</label>
+                      <select value={pgConfig.ssl_mode} onChange={(e) => setPgConfig({...pgConfig, ssl_mode: e.target.value})}
+                        className="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm h-8">
+                        <option value="prefer">prefer (try SSL)</option>
+                        <option value="require">require (SSL only)</option>
+                        <option value="disable">disable (no SSL)</option>
+                        <option value="allow">allow (SSL if offered)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Pool Size</label>
+                      <Input value={pgConfig.pool_size} onChange={(e) => setPgConfig({...pgConfig, pool_size: e.target.value})}
+                        placeholder="10" className="mt-1 h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Max Overflow</label>
+                      <Input value={pgConfig.max_overflow} onChange={(e) => setPgConfig({...pgConfig, max_overflow: e.target.value})}
+                        placeholder="20" className="mt-1 h-8 text-sm" />
+                    </div>
+                  </div>
+
+                  {/* Test Connection + Result */}
+                  <div className="flex items-center gap-3 pt-1">
+                    <Button size="sm" variant="outline" onClick={testPostgres} disabled={pgTesting}>
+                      {pgTesting && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                      Test Connection
+                    </Button>
+                    {pgTestResult && (
+                      <Badge variant={pgTestResult.ok ? 'default' : 'destructive'} className="text-[10px]">
+                        {pgTestResult.ok
+                          ? `Connected (${pgTestResult.latency_ms}ms)`
+                          : `Failed: ${pgTestResult.error}`}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs text-muted-foreground">
+                {storage.relational_backend === 'postgresql'
+                  ? 'PostgreSQL requires service restart to take effect.'
+                  : 'Requires service restart for some backends.'}
+              </p>
               <div className="flex items-center gap-2"><Button size="sm" onClick={saveStorage}>{saving==="storage"&&<Loader2 className="mr-2 h-3.5 w-3.5 animate-spin"/>}Save</Button>{status.storage&&<Badge variant={status.storage==="saved"?"default":"destructive"} className="text-[10px]">{status.storage==="saved"?"Saved":"Failed"}</Badge>}</div>
             </CardContent></Card>
         </TabsContent>
