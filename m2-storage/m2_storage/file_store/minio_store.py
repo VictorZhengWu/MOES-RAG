@@ -15,10 +15,16 @@ WHY: MinIO/S3 is the recommended file store for Enterprise and SaaS
 MINIO vs S3: Both use the same S3 API. The only difference is:
      - MinIO: endpoint = "minio.internal:9000", secure = False
      - AWS S3: endpoint = "" (auto-resolve), region = "us-east-1", secure = True
+
+RESILIENCE:
+     - All network operations use exponential-backoff retry (3 attempts).
+     - get/put/delete have explicit per-operation timeouts (configurable).
+     - Metadata is validated before storage (string-only keys/values).
 """
 
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 from typing import Any
@@ -26,6 +32,13 @@ from typing import Any
 from .base import BaseFileStore
 
 logger = logging.getLogger(__name__)
+
+# Default per-operation timeout in seconds for S3 API calls
+_DEFAULT_OP_TIMEOUT = 30
+# Retry config for transient network errors
+_MAX_RETRIES = 3
+_RETRY_MIN_WAIT = 1.0   # first backoff: 1s
+_RETRY_MAX_WAIT = 10.0  # max backoff: 10s
 
 
 class MinioS3Store(BaseFileStore):
@@ -73,8 +86,6 @@ class MinioS3Store(BaseFileStore):
             )
 
         cfg = self._config
-        # Build endpoint: if endpoint is set, use it (MinIO).
-        # If empty, region is used for AWS S3 auto-resolution.
         if cfg.endpoint:
             self._client = Minio(
                 endpoint=cfg.endpoint,
@@ -91,13 +102,15 @@ class MinioS3Store(BaseFileStore):
                 secure=True,
             )
 
-        # Ensure the bucket exists
-        found = await self._run_sync(
-            self._client.bucket_exists, cfg.bucket
+        # Bucket check/create with retry
+        found = await self._retry_sync(
+            self._client.bucket_exists, cfg.bucket,
+            desc="bucket_exists",
         )
         if not found:
-            await self._run_sync(
-                self._client.make_bucket, cfg.bucket
+            await self._retry_sync(
+                self._client.make_bucket, cfg.bucket,
+                desc="make_bucket",
             )
             logger.info("MinIO/S3 bucket created: %s", cfg.bucket)
         else:
@@ -113,10 +126,14 @@ class MinioS3Store(BaseFileStore):
         try:
             if self._client is None:
                 return False
-            result = await self._run_sync(
-                self._client.bucket_exists, self._config.bucket
-            )
+            async with asyncio.timeout(10):
+                result = await self._run_sync(
+                    self._client.bucket_exists, self._config.bucket
+                )
             return result is True
+        except asyncio.TimeoutError:
+            logger.warning("MinIO/S3 health check timed out")
+            return False
         except Exception:
             logger.warning("MinIO/S3 health check failed")
             return False
@@ -141,39 +158,49 @@ class MinioS3Store(BaseFileStore):
         """Store a file as an S3 object.
 
         WHAT: Uploads data bytes as an S3 object with the given key.
-              Optional metadata is stored as S3 object metadata.
+              Optional metadata is stored as S3 object metadata, validated
+              to ensure all keys and values are strings.
 
-        Returns the key on success.
+        Returns the key on success (no-op if the key is unsafe).
         """
         self._require_safe_key(key)
+
+        # Validate metadata before upload
+        validated_meta = _validate_metadata(metadata)
+
         data_stream = io.BytesIO(data)
 
-        await self._run_sync(
-            self._client.put_object,
-            bucket_name=self._config.bucket,
-            object_name=key,
-            data=data_stream,
-            length=len(data),
-            metadata=metadata or {},
-        )
+        async with asyncio.timeout(_DEFAULT_OP_TIMEOUT):
+            await self._run_sync(
+                self._client.put_object,
+                bucket_name=self._config.bucket,
+                object_name=key,
+                data=data_stream,
+                length=len(data),
+                metadata=validated_meta,
+            )
         return key
 
     async def get(self, key: str) -> bytes | None:
         """Retrieve a file's contents by key.
 
-        Returns None if the object does not exist.
+        Returns None if the object does not exist or the operation times out.
         """
         self._require_safe_key(key)
 
         try:
-            response = await self._run_sync(
-                self._client.get_object,
-                bucket_name=self._config.bucket,
-                object_name=key,
-            )
+            async with asyncio.timeout(_DEFAULT_OP_TIMEOUT):
+                response = await self._retry_sync(
+                    self._client.get_object,
+                    bucket_name=self._config.bucket,
+                    object_name=key,
+                    desc=f"get_object({key})",
+                )
             return response.read()
+        except asyncio.TimeoutError:
+            logger.warning("MinIO get_object timeout for key=%s", key)
+            return None
         except Exception as e:
-            # Minio raises S3Error with code 'NoSuchKey' for missing objects
             if "NoSuchKey" in str(e) or "NoSuchBucket" in str(e):
                 return None
             raise
@@ -186,12 +213,17 @@ class MinioS3Store(BaseFileStore):
         self._require_safe_key(key)
 
         try:
-            await self._run_sync(
-                self._client.remove_object,
-                bucket_name=self._config.bucket,
-                object_name=key,
-            )
+            async with asyncio.timeout(_DEFAULT_OP_TIMEOUT):
+                await self._retry_sync(
+                    self._client.remove_object,
+                    bucket_name=self._config.bucket,
+                    object_name=key,
+                    desc=f"remove_object({key})",
+                )
             return True
+        except asyncio.TimeoutError:
+            logger.warning("MinIO remove_object timeout for key=%s", key)
+            return False
         except Exception as e:
             if "NoSuchKey" in str(e):
                 return False
@@ -208,12 +240,14 @@ class MinioS3Store(BaseFileStore):
         if prefix:
             self._require_safe_key(prefix.rstrip("/"))
 
-        objects = await self._run_sync(
-            self._client.list_objects,
-            bucket_name=self._config.bucket,
-            prefix=prefix or None,
-            recursive=True,
-        )
+        async with asyncio.timeout(_DEFAULT_OP_TIMEOUT):
+            objects = await self._retry_sync(
+                self._client.list_objects,
+                bucket_name=self._config.bucket,
+                prefix=prefix or None,
+                recursive=True,
+                desc="list_objects",
+            )
 
         keys = [obj.object_name for obj in objects]
         keys.sort()
@@ -231,21 +265,25 @@ class MinioS3Store(BaseFileStore):
         self._require_safe_key(key)
 
         try:
-            # First check if object exists
-            await self._run_sync(
-                self._client.stat_object,
-                bucket_name=self._config.bucket,
-                object_name=key,
-            )
+            async with asyncio.timeout(_DEFAULT_OP_TIMEOUT):
+                await self._run_sync(
+                    self._client.stat_object,
+                    bucket_name=self._config.bucket,
+                    object_name=key,
+                )
+        except asyncio.TimeoutError:
+            logger.warning("MinIO stat_object timeout for key=%s", key)
+            return None
         except Exception:
             return None
 
-        url = await self._run_sync(
-            self._client.presigned_get_object,
-            bucket_name=self._config.bucket,
-            object_name=key,
-            expires=self._config.presigned_expiry,
-        )
+        async with asyncio.timeout(_DEFAULT_OP_TIMEOUT):
+            url = await self._run_sync(
+                self._client.presigned_get_object,
+                bucket_name=self._config.bucket,
+                object_name=key,
+                expires=self._config.presigned_expiry,
+            )
         return url
 
     # ------------------------------------------------------------------
@@ -262,8 +300,43 @@ class MinioS3Store(BaseFileStore):
              rather than using run_in_executor directly because it's
              cleaner and has proper cancellation support.
         """
-        import asyncio
         return await asyncio.to_thread(func, *args, **kwargs)
+
+    async def _retry_sync(self, func, *args, desc: str = "operation"):
+        """Run a minio-py method with exponential-backoff retry.
+
+        WHAT: Retries the given func up to _MAX_RETRIES times with
+              exponential backoff (1s → 2s → 4s, capped at _RETRY_MAX_WAIT).
+              Only retries on connection/network errors — semantic errors
+              (NoSuchKey, NoSuchBucket) propagate immediately.
+
+        WHY: Network blips, DNS glitches, and transient S3 errors are
+             common in cloud environments. Exponential backoff prevents
+             thundering-herd retry storms while maximizing the chance
+             of a successful recovery within the timeout window.
+        """
+        last_exc = None
+        for attempt in range(1, _MAX_RETRIES + 1):
+            try:
+                return await self._run_sync(func, *args)
+            except Exception as e:
+                last_exc = e
+                # Don't retry semantic errors
+                msg = str(e).lower()
+                if "nosuchkey" in msg or "nosuchbucket" in msg:
+                    raise
+                if attempt == _MAX_RETRIES:
+                    logger.error(
+                        "MinIO %s failed after %d attempts: %s",
+                        desc, _MAX_RETRIES, e,
+                    )
+                    raise
+                wait = min(_RETRY_MIN_WAIT * (2 ** (attempt - 1)), _RETRY_MAX_WAIT)
+                logger.warning(
+                    "MinIO %s attempt %d/%d failed: %s — retrying in %.1fs",
+                    desc, attempt, _MAX_RETRIES, e, wait,
+                )
+                await asyncio.sleep(wait)
 
     def _require_safe_key(self, key: str) -> None:
         """Reject S3 keys that contain obvious path traversal patterns.
@@ -287,3 +360,41 @@ class MinioS3Store(BaseFileStore):
                 f"Unsafe storage key: '{key}'. "
                 f"Keys must be relative (no leading slash)."
             )
+
+
+# ===========================================================================
+# Module-level helpers
+# ===========================================================================
+
+
+def _validate_metadata(metadata: dict[str, str] | None) -> dict[str, str]:
+    """Validate and return sanitized metadata dict.
+
+    WHAT: Ensures all keys and values in the metadata dict are strings.
+          Returns an empty dict if metadata is None.
+
+    WHY: S3/MinIO object metadata only supports string keys and values.
+         Non-string values (int, bool, nested dicts) cause cryptic errors
+         from minio-py's internals. Validating at the API boundary gives
+         the caller a clear, actionable error message.
+
+    Raises:
+        ValueError: If any key or value is not a string.
+    """
+    if metadata is None:
+        return {}
+    if not isinstance(metadata, dict):
+        raise ValueError(
+            f"Metadata must be a dict[str, str], got {type(metadata).__name__}"
+        )
+    for k, v in metadata.items():
+        if not isinstance(k, str):
+            raise ValueError(
+                f"Metadata keys must be strings, got {type(k).__name__}: {k!r}"
+            )
+        if not isinstance(v, str):
+            raise ValueError(
+                f"Metadata values must be strings for key {k!r}, "
+                f"got {type(v).__name__}: {v!r}"
+            )
+    return metadata

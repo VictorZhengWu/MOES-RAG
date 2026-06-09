@@ -178,6 +178,40 @@ async def test_path_traversal_rejected(minio_store):
 
 
 # ---------------------------------------------------------------------------
+# Metadata validation (no MinIO needed)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_metadata_rejects_non_string_values():
+    """put() with non-string metadata values must raise ValueError."""
+    from m2_storage.file_store.minio_store import MinioS3Store, _validate_metadata
+
+    with pytest.raises(ValueError, match="strings"):
+        _validate_metadata({"key": 123})
+
+    with pytest.raises(ValueError, match="strings"):
+        _validate_metadata({123: "value"})
+
+    with pytest.raises(ValueError, match="dict"):
+        _validate_metadata("not a dict")
+
+
+def test_metadata_accepts_valid():
+    """Valid string-only metadata must pass validation."""
+    from m2_storage.file_store.minio_store import _validate_metadata
+
+    result = _validate_metadata({"author": "DNV", "year": "2025"})
+    assert result == {"author": "DNV", "year": "2025"}
+
+
+def test_metadata_none_returns_empty():
+    """None metadata must return empty dict."""
+    from m2_storage.file_store.minio_store import _validate_metadata
+
+    assert _validate_metadata(None) == {}
+
+
+# ---------------------------------------------------------------------------
 # Connection failure (no MinIO needed)
 # ---------------------------------------------------------------------------
 
