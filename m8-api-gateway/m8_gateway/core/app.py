@@ -16,7 +16,7 @@ from fastapi import FastAPI
 
 from m8_gateway.auth.key_manager import KeyManager
 from m8_gateway.core.config import GatewayConfig
-from m8_gateway.rate_limit.limiter import RateLimiter
+from m8_gateway.rate_limit import create_rate_limiter
 from m8_gateway.routes import chat, keys, models
 
 
@@ -98,9 +98,10 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
         # via KeyManager._ensure_table().
         app.state.key_manager = KeyManager(cfg.db_path)
 
-        # Initialize the rate limiter with per-tier limits from config.
-        # In-memory implementation; will be replaced with Redis in SaaS phase.
-        app.state.limiter = RateLimiter(cfg.rate_limits)
+        # Initialize the rate limiter via factory.
+        # Auto-selects InMemoryRateLimiter or RedisRateLimiter based on
+        # config.rate_limit_backend (auto-detected from deployment_mode).
+        app.state.limiter = create_rate_limiter(cfg)
 
         # QA Engine is lazy-initialized. It requires an LLM backend config
         # which is set up separately via the admin portal (M7).
@@ -131,13 +132,17 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
     async def shutdown():
         """Clean up resources on server shutdown.
 
-        WHY: Ensures connections are released gracefully.
-             Individual modules (KeyManager, RateLimiter) handle
-             their own close methods. The KeyManager uses short-lived
-             aiosqlite connections per operation, so no persistent
-             connection needs closing.
+        WHAT: Calls close() on the rate limiter to release Redis
+              connection pools (if any). InMemoryRateLimiter.close()
+              is a no-op.
+
+        WHY: Redis connection pool must be explicitly closed to release
+             TCP connections gracefully. Without this, Redis server
+             accumulates dead connections until timeout.
         """
-        pass  # Cleanup handled by module close methods
+        limiter = app.state.limiter
+        if limiter is not None:
+            limiter.close()
 
     # ------------------------------------------------------------------
     # Register routers

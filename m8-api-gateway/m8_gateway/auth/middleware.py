@@ -29,7 +29,7 @@ WHY: Using FastAPI's dependency injection system (Depends) keeps auth
 from fastapi import Depends, HTTPException, Request
 
 from m8_gateway.auth.key_manager import APIKey, KeyManager
-from m8_gateway.rate_limit.limiter import RateLimiter
+from m8_gateway.rate_limit import BaseRateLimiter as RateLimiter
 
 
 async def get_api_key(request: Request) -> APIKey:

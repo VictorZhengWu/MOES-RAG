@@ -8,10 +8,12 @@ WHY: Separate namespace keeps the limiter isolated from auth and routing
 """
 
 from m8_gateway.rate_limit.base import BaseRateLimiter
+from m8_gateway.rate_limit.limiter import InMemoryRateLimiter
 
 __all__ = [
     "BaseRateLimiter",
     "InMemoryRateLimiter",
+    "RedisRateLimiter",
     "create_rate_limiter",
 ]
 
@@ -27,19 +29,16 @@ def create_rate_limiter(config):
     WHY: Factory isolates backend selection to a single point. Callers
          (app.py, tests) don't know which backend is active.
 
-    NOTE: Imports are deferred to avoid circular dependencies and to
-          allow the package to be imported even when redis is not installed.
+    NOTE: Redis imports are deferred to avoid ImportError when the redis
+          package is not installed.
     """
     from m8_gateway.core.config import GatewayConfig
     from m8_gateway.rate_limit.redis_client import create_redis_client
 
-    limits = config.rate_limits if isinstance(config, GatewayConfig) else config.get("rate_limits", {})
-    redis_cfg = config.rate_limit_redis if isinstance(config, GatewayConfig) else config.get("rate_limit_redis", None)
+    limits = config.rate_limits
+    redis_cfg = config.rate_limit_redis
 
-    if hasattr(config, 'rate_limit_backend') and config.rate_limit_backend == "redis":
-        if redis_cfg is None:
-            raise RuntimeError("rate_limit_backend='redis' but rate_limit_redis config is missing")
-
+    if config.rate_limit_backend == "redis":
         redis_client = create_redis_client(
             host=redis_cfg.host,
             port=redis_cfg.port,
@@ -64,7 +63,7 @@ def create_rate_limiter(config):
             )
         # Redis unavailable + non-strict → fall through to in-memory
 
-    # Default: in-memory limiter
-    window_seconds = redis_cfg.window_seconds if redis_cfg else 60
-    from m8_gateway.rate_limit.limiter import RateLimiter
-    return RateLimiter(rate_limits=limits)
+    return InMemoryRateLimiter(
+        rate_limits=limits,
+        window_seconds=redis_cfg.window_seconds,
+    )
