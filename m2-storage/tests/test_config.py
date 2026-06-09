@@ -17,6 +17,8 @@ from m2_storage.config import (
     ChromaDBConfig,
     LocalFSConfig,
     MeilisearchConfig,
+    PostgreSQLConfig,
+    RelationalDBConfig,
     SQLiteConfig,
     StorageConfig,
     load_config,
@@ -170,3 +172,123 @@ def test_missing_file_raises():
     """Passing a non-existent path must raise FileNotFoundError."""
     with pytest.raises(FileNotFoundError):
         load_config("./nonexistent_config.yaml")
+
+
+# ---------------------------------------------------------------------------
+# Test 5: PostgreSQLConfig defaults
+# ---------------------------------------------------------------------------
+
+def test_postgresql_config_defaults():
+    """PostgreSQLConfig must have sensible defaults for local dev."""
+    cfg = PostgreSQLConfig()
+    assert cfg.host == "localhost"
+    assert cfg.port == 5432
+    assert cfg.database == "marine_rag"
+    assert cfg.user == "postgres"
+    assert cfg.password == ""
+    assert cfg.pool_size == 10
+    assert cfg.max_overflow == 20
+    assert cfg.ssl_mode == "prefer"  # default: prefer SSL, allow plain
+
+
+def test_postgresql_config_custom_values():
+    """All PostgreSQLConfig fields must accept custom values."""
+    cfg = PostgreSQLConfig(
+        host="pg.internal",
+        port=5433,
+        database="testdb",
+        user="app_user",
+        password="secret",
+        pool_size=5,
+        max_overflow=10,
+        ssl_mode="require",
+    )
+    assert cfg.host == "pg.internal"
+    assert cfg.port == 5433
+    assert cfg.database == "testdb"
+    assert cfg.user == "app_user"
+    assert cfg.password == "secret"
+    assert cfg.pool_size == 5
+    assert cfg.max_overflow == 10
+    assert cfg.ssl_mode == "require"
+
+
+def test_postgresql_config_from_dict_minimal():
+    """from_dict() with empty dict must return defaults."""
+    cfg = PostgreSQLConfig.from_dict({})
+    assert cfg.host == "localhost"
+    assert cfg.port == 5432
+
+
+def test_postgresql_config_from_dict_full():
+    """from_dict() with all values must populate all fields."""
+    cfg = PostgreSQLConfig.from_dict({
+        "host": "pg.prod",
+        "port": 5432,
+        "database": "prod_db",
+        "user": "admin",
+        "password": "${PG_PASSWORD}",
+        "pool_size": 20,
+        "max_overflow": 40,
+        "ssl_mode": "require",
+    })
+    assert cfg.host == "pg.prod"
+    assert cfg.database == "prod_db"
+    assert cfg.user == "admin"
+    assert cfg.password == "${PG_PASSWORD}"
+    assert cfg.pool_size == 20
+    assert cfg.max_overflow == 40
+    assert cfg.ssl_mode == "require"
+
+
+def test_postgresql_config_from_dict_none():
+    """from_dict(None) must return defaults (not crash)."""
+    cfg = PostgreSQLConfig.from_dict(None)
+    assert cfg.host == "localhost"
+
+
+# ---------------------------------------------------------------------------
+# Test 6: RelationalDBConfig supports PostgreSQL
+# ---------------------------------------------------------------------------
+
+def test_relational_db_config_postgresql():
+    """RelationalDBConfig.from_dict() must parse postgresql backend."""
+    d = {"backend": "postgresql", "postgresql": {
+        "host": "pg.local", "port": 5432, "database": "mydb",
+        "user": "app", "password": "pw",
+    }}
+    cfg = RelationalDBConfig.from_dict(d)
+    assert cfg.backend == "postgresql"
+    assert isinstance(cfg.postgresql, PostgreSQLConfig)
+    assert cfg.postgresql.host == "pg.local"
+    assert cfg.postgresql.database == "mydb"
+    assert cfg.postgresql.user == "app"
+
+
+# ---------------------------------------------------------------------------
+# Test 7: YAML parse with PostgreSQL backend
+# ---------------------------------------------------------------------------
+
+def test_load_config_with_postgresql():
+    """load_config() must parse a deploy.yaml using PostgreSQL relational DB."""
+    import tempfile
+    raw = {
+        "deployment_mode": "saas",
+        "storage": {
+            "vector_store": {"backend": "qdrant", "qdrant": {}},
+            "document_index": {"backend": "meilisearch"},
+            "relational_db": {
+                "backend": "postgresql",
+                "postgresql": {"host": "pg.prod", "user": "app", "password": "pw"},
+            },
+            "file_store": {"backend": "local_fs"},
+        },
+    }
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+        yaml.dump(raw, f)
+        path = f.name
+
+    cfg = load_config(path)
+    assert cfg.relational_db.backend == "postgresql"
+    assert isinstance(cfg.relational_db.postgresql, PostgreSQLConfig)
+    assert cfg.relational_db.postgresql.host == "pg.prod"

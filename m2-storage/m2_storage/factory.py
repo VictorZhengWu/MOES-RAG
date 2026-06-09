@@ -160,17 +160,19 @@ def _create_relational_db(cfg: RelationalDBConfig) -> BaseRelationalDB:
     Instantiate the configured relational database backend.
 
     WHY separate function: SQLite is the Personal-mode default
-    (zero-config, single file, no server process). PostgreSQL will
-    be added in Phase 3 for enterprise deployments that need
-    concurrent writers and horizontal scaling.
+    (zero-config, single file, no server process). PostgreSQL is
+    for Enterprise/SaaS deployments that need concurrent writers
+    and horizontal scaling.
     """
-    from .relational_db.sqlite_db import SQLiteDB
-
     if cfg.backend == "sqlite":
+        from .relational_db.sqlite_db import SQLiteDB
         return SQLiteDB(cfg.sqlite)
+    if cfg.backend == "postgresql":
+        from .relational_db.postgresql_db import PostgreSQLDB
+        return PostgreSQLDB(cfg.postgresql)
     raise ValueError(
         f"Unsupported relational DB backend: {cfg.backend}. "
-        f"Supported: sqlite"
+        f"Supported: sqlite, postgresql"
     )
 
 

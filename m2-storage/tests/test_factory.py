@@ -52,6 +52,20 @@ def test_create_backends_correct_types():
     assert isinstance(fs, LocalFSStore)
 
 
+def test_create_postgresql_backend():
+    """_create_relational_db must return PostgreSQLDB for postgresql backend.
+
+    WHY: The factory dispatch was just added. This test verifies the new
+         branch works end-to-end: config → factory → correct backend type.
+    """
+    from m2_storage.relational_db.postgresql_db import PostgreSQLDB
+
+    rdb = _create_relational_db(RelationalDBConfig(backend="postgresql"))
+    assert isinstance(rdb, PostgreSQLDB), (
+        "Factory must return PostgreSQLDB when backend='postgresql'"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Test 2: Invalid backend raises ValueError (parameterized across all 4)
 # ---------------------------------------------------------------------------
@@ -60,7 +74,7 @@ def test_create_backends_correct_types():
 @pytest.mark.parametrize("factory_fn, config_cls, bad_backend", [
     (_create_vector_store, VectorStoreConfig, "weaviate"),
     (_create_document_index, DocumentIndexConfig, "elasticsearch"),
-    (_create_relational_db, RelationalDBConfig, "postgresql"),
+    (_create_relational_db, RelationalDBConfig, "mariadb"),
     (_create_file_store, FileStoreConfig, "s3"),
 ])
 def test_unsupported_backend(factory_fn, config_cls, bad_backend):

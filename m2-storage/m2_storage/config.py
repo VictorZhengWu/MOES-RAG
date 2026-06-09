@@ -133,6 +133,44 @@ class MeilisearchConfig:
 
 
 @dataclass
+class PostgreSQLConfig:
+    """PostgreSQL connection parameters for RelationalDB.
+
+    WHAT: Holds host/port/database/user/password/pool settings and SSL
+          mode for PostgreSQL connections via asyncpg driver.
+
+    WHY: PostgreSQL is the recommended relational database for Enterprise
+         and SaaS deployments where concurrent write performance and
+         connection pooling are needed. Each field maps to a SQLAlchemy
+         engine parameter or connection string component.
+    """
+
+    host: str = "localhost"
+    port: int = 5432
+    database: str = "marine_rag"
+    user: str = "postgres"
+    password: str = ""  # Use env var ${PG_PASSWORD} in production
+    pool_size: int = 10  # Base pool connections, range 1-50
+    max_overflow: int = 20  # Extra connections beyond pool_size, range 0-100
+    ssl_mode: str = "prefer"  # "disable" | "allow" | "prefer" | "require"
+
+    @classmethod
+    def from_dict(cls, d: dict | None = None) -> "PostgreSQLConfig":
+        if d is None:
+            return cls()
+        return cls(
+            host=d.get("host", "localhost"),
+            port=d.get("port", 5432),
+            database=d.get("database", "marine_rag"),
+            user=d.get("user", "postgres"),
+            password=d.get("password", ""),
+            pool_size=d.get("pool_size", 10),
+            max_overflow=d.get("max_overflow", 20),
+            ssl_mode=d.get("ssl_mode", "prefer"),
+        )
+
+
+@dataclass
 class SQLiteConfig:
     """Configuration for the SQLite relational database backend.
 
@@ -250,18 +288,24 @@ class RelationalDBConfig:
 
     backend: str = "sqlite"
     sqlite: SQLiteConfig = field(default_factory=SQLiteConfig)
+    postgresql: PostgreSQLConfig = field(default_factory=PostgreSQLConfig)
 
     @classmethod
     def from_dict(cls, d: dict) -> RelationalDBConfig:
         backend = d.get("backend", "sqlite")
-        if backend != "sqlite":
-            raise ValueError(
-                f"Unsupported relational DB backend: {backend}. "
-                f"Supported: sqlite"
+        if backend == "sqlite":
+            return cls(
+                backend=backend,
+                sqlite=SQLiteConfig.from_dict(d.get("sqlite")),
             )
-        return cls(
-            backend=backend,
-            sqlite=SQLiteConfig.from_dict(d.get("sqlite")),
+        if backend == "postgresql":
+            return cls(
+                backend=backend,
+                postgresql=PostgreSQLConfig.from_dict(d.get("postgresql")),
+            )
+        raise ValueError(
+            f"Unsupported relational DB backend: {backend}. "
+            f"Supported: sqlite, postgresql"
         )
 
 

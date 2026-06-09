@@ -24,15 +24,18 @@ storage:
       api_key: ""
       index_name: marine_rag_docs
   relational_db:
-    backend: sqlite  # Change to postgresql for scale
+    backend: sqlite  # Change to postgresql for enterprise scale
     sqlite:
       path: /data/marine/marine_rag.db
     postgresql:
-      host: postgres.enterprise.local
-      port: 5432
+      host: ${PG_HOST:-postgres.enterprise.local}
+      port: ${PG_PORT:-5432}
       database: marine_rag
-      user: marine
-      password: ""
+      user: ${PG_USER:-marine}
+      password: ${PG_PASSWORD}
+      pool_size: 10
+      max_overflow: 20
+      ssl_mode: prefer
   file_store:
     backend: local_fs  # Change to minio for scale
     local_fs:
