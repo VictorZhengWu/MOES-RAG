@@ -568,9 +568,12 @@ def _build_meili_filter(filters: dict[str, Any]) -> str:
 
         if isinstance(value, str):
 
-            # String values must be double-quoted in Meilisearch filter syntax
+            # Escape backslash and double-quote to prevent filter syntax
+            # injection. A filename containing " would break the
+            # Meilisearch filter expression: key = "val"ue" is invalid.
+            escaped = value.replace('\\', '\\\\').replace('"', '\\"')
 
-            parts.append(f'{key} = "{value}"')
+            parts.append(f'{key} = "{escaped}"')
 
         else:
 

@@ -357,7 +357,7 @@
 
 ---
 
-#### 🔲 00060-03 — Docling 后端适配器 (docling_backend.py)
+#### ✅ 00060-03 — Docling 后端适配器 (docling_backend.py)
 
 **功能描述：**
 - 封装 Docling DocumentConverter 为标准接口
@@ -376,7 +376,7 @@
 
 ---
 
-#### 🔲 00060-04 — Marker 与 MinerU 后端适配器 (marker_backend.py + mineru_backend.py)
+#### ✅ 00060-04 — Marker 与 MinerU 后端适配器 (marker_backend.py + mineru_backend.py)
 
 **功能描述：**
 - Marker 后端：调用 Marker CLI/API，PDF → Markdown。封装为 Docling 兼容的 adapter 接口
@@ -391,7 +391,7 @@
 
 ---
 
-#### 🔲 00060-05 — 主转换器 (converter.py)
+#### ✅ 00060-05 — 主转换器 (converter.py)
 
 **功能描述：**
 - `convert(input_path, options) → ParsedDocument`：单文件转换入口
@@ -407,7 +407,7 @@
 
 ---
 
-#### 🔲 00060-06 — 海洋工程元数据提取 (marine_metadata.py)
+#### ✅ 00060-06 — 海洋工程元数据提取 (marine_metadata.py)
 
 **功能描述：**
 - 自动提取 5 个字段：
@@ -498,7 +498,7 @@
 
 ---
 
-#### 🔲 00060-11 — Standalone CLI 与 Web UI (cli.py + web_server.py + web_ui.html)
+#### ✅ 00060-11 — Standalone CLI 与 Web UI (cli.py + web_server.py + web_ui.html)
 
 **功能描述：**
 - CLI：`m1-parser input.pdf --backend docling --ocr paddleocr --output ./out/ --format md`
@@ -699,7 +699,7 @@
 
 ---
 
-#### 🔲 00070-10 — M2 集成 + 打包验证 (m2_client.py + pyproject.toml)
+#### ✅ 00070-10 — M2 集成 + 打包验证 (m2_client.py + pyproject.toml)
 
 **功能描述：**
 - `m2_client.py`：封装 StorageManager 调用，统一错误处理
@@ -1085,7 +1085,7 @@
 
 ## Phase 2-3 过渡：Mock 迁移
 
-### 🔲 00085 — Mock Data 渐进迁移
+### ✅ 00085 — Mock Data 渐进迁移
 
 > **依赖**：M3 (00070), M4 (00080), M5 (00090) 完成后执行
 > **策略来源**：审查报告 `.dev/advisor/20260524-112101-m2-m6-m7-review.md`

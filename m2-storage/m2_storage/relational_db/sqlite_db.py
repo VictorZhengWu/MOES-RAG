@@ -75,11 +75,22 @@ class SQLiteDB(BaseRelationalDB):
             connect_args={"check_same_thread": False},
         )
 
-        # Enable WAL journal mode -- applied as a PRAGMA on the first
-        # connection, and it persists for all subsequent connections
-        # because WAL is a database-level setting stored in the file header
+        # Enable WAL journal mode -- persists across connections (DB-level)
+        # Enable foreign key enforcement -- must be set per connection
         async with self._engine.begin() as conn:
             await conn.execute(text("PRAGMA journal_mode=WAL"))
+            await conn.execute(text("PRAGMA foreign_keys=ON"))
+
+        # Also set foreign_keys on every new connection via event listener.
+        # The PRAGMA above only applies to the first connection. SQLAlchemy's
+        # connection pool creates new connections that won't have this set
+        # unless we use a connect-level event.
+        from sqlalchemy import event
+        def _set_fk_pragma(dbapi_connection, _connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+        event.listen(self._engine.sync_engine, "connect", _set_fk_pragma)
 
         # Create session factory -- expire_on_commit=False prevents
         # SQLAlchemy from issuing SELECT queries to refresh attributes
