@@ -79,8 +79,7 @@ export function ConversationSidebar() {
   };
 
   const handleDeepResearch = () => {
-    // Phase 2: trigger deep research agent flow
-    console.log('Deep research requested');
+    router.push(`/${locale}/research`);
   };
 
   const userInitials = user?.username?.slice(0, 2).toUpperCase() || '??';
