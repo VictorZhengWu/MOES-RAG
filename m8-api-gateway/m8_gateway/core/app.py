@@ -177,6 +177,10 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
     from m8_gateway.routes import extras
     app.include_router(extras.router)
 
+    # Deep Research endpoint (Phase 4-A)
+    from m8_gateway.routes import research
+    app.include_router(research.router)
+
     # ------------------------------------------------------------------
     # Global error handler — catches all unhandled exceptions
     # ------------------------------------------------------------------
