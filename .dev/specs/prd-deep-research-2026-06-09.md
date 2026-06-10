@@ -43,6 +43,60 @@
 - **G5**: 研究进度实时可见，用户可干预（调整研究计划、深入某个子问题）
 - **G6**: Phase 4-A 仅实现核心流程：Planner + 2 Agent（规范 + Web）+ 报告生成
 
+### 1.3 海事工程专业特性
+
+与 ChatGPT 等通用 AI 不同，Deep Research 针对海事工程的专业痛点设计：
+
+| 专业痛点 | 通用 AI | 本系统 |
+|---------|-------|--------|
+| 规范追溯 | 引用来源模糊 | M4 知识图谱精确到条款级别 |
+| 版本演进 | 无法识别规范年份 | 自动区分 2025 版 vs 2019 版差异 |
+| 多船级社 | 混淆不同船级社要求 | 对比矩阵：DNV vs ABS vs CCS vs LR |
+| 案例关联 | 缺少行业事故案例 | 关联 MAIB/NTSB 事故数据库 (Phase 4-C) |
+| 合规告警 | 不识别规范冲突 | 自动检测 DNV 要求 X 但 ABS 要求 Y |
+| 审计就绪 | 无完整引用链 | 每个结论可追溯到条款原文 |
+
+### 2.5 研究方法论
+
+Deep Research 采用四步研究法，模拟资深验船师的思维过程：
+
+**Step 1: 问题分解**（见 FR-2 Planner Agent）
+- 识别研究维度：规范/标准/案例/法规
+- 利用 M4 知识图谱发现隐藏的引用关系
+- 生成研究计划：预计检索 N 个规范、M 个知识域
+
+**Step 2: 并行检索**（见 FR-3 Retrieval Agents）
+- 规范 Agent：M3 全文检索 + M4 图遍历发现引用链
+- Web Agent：DuckDuckGo/Tavily 获取最新资讯
+- 两个 Agent 通过 `asyncio.gather` 并行执行，耗时减半
+
+**Step 3: 交叉分析**（见 FR-4 Analysis Agent）
+- 规范冲突检测：DNV 要求 1.5 但 ABS 要求 1.67 → 标记冲突
+- 版本差异：规范年度不同的同一条款 → 对比数值变化
+- 案例关联：事故报告 → 关联到违反的具体条款
+
+**Step 4: 报告生成**（见 FR-5 Report Agent）
+- 7 节专业报告，结构固定，可预期
+- 每个结论标注置信度（高/中/需确认）
+- AI 不确定的部分显式标注，建议人工介入
+
+### 2.6 研究质量保证
+
+**引用完整性验证**：
+- 每个结论必须 ≥ 1 个规范引用
+- 引用格式：`[DNV] Pt.3 Ch.3 §6.2 (2025)`
+- 点击引用可查看条款原文（从 M3 库中摘录）
+
+**不确定性标注**：
+- 单一来源的结论 → 标记"需进一步确认"
+- ≥ 2 个独立来源确认 → 标记"高置信度"
+- 规范间冲突 → 标记"⚠️ 警告"，给出推荐方案
+
+**可质疑设计**：
+- 用户可点击任意结论 → 展开推导过程 + 原始检索结果
+- "质疑"按钮 → 输入疑点 → AI 重新审视证据 → 更新结论
+- 质疑过程追加到报告，标注"人工复核"
+
 ---
 
 ## 3. 用户故事
@@ -144,14 +198,42 @@
 
 ### 4.1 M5 后端 — 研究引擎
 
-**FR-1: 问题复杂度评分**
-- 输入: 用户查询文本
-- 评分规则:
-  - 识别规范名称: DNV/ABS/CCS/LR/BV/RINA/NK/KR/IACS/IMO → 每个 +1 分
-  - 识别关键词: "对比""总结""全面分析""版本""演进""事故" → 每个 +2 分
-  - 识别跨章节: 正则匹配 "Pt\.\d+" 或 "Ch\.\d+" 或 "§\s*\d" → 每个 +1 分
-  - 识别跨学科: 匹配钢级/材料/焊接/NDT/疲劳等关键词 → 每个 +1 分
-- 输出: 0-10 分，≥5 分建议 Deep Research
+**FR-1: 问题复杂度评分（6 维度）**
+
+```python
+def calculate_complexity(query: str, conversation_history: list = None) -> int:
+    score = 0
+    # 维度1: 规范广度（每个船级社 +1）
+    societies = ["DNV", "ABS", "CCS", "LR", "BV", "RINA", "NK", "KR", "IACS", "IMO"]
+    found = [s for s in societies if s.lower() in query.lower()]
+    score += len(set(found))
+
+    # 维度2: 规范深度（跨 Part+Chapter 引用 +2，单条款 +1）
+    if re.search(r"Pt\.\d+.*Ch\.\d+", query): score += 2
+    elif re.search(r"(?:Pt\.|Ch\.|§)\s*\d", query): score += 1
+
+    # 维度3: 问题深度（分析性疑问词 +2）
+    deep_words = ["为什么", "如何", "原因", "区别", "对比", "分析"]
+    score += sum(2 for w in deep_words if w in query)
+
+    # 维度4: 上下文连续性（连续追问同一规范 +3）
+    if conversation_history:
+        last_3 = [m.content for m in conversation_history[-3:]]
+        if all(any(s.lower() in q.lower() for s in societies) for q in last_3):
+            score += 3
+
+    # 维度5: 研究范围关键词（每个 +2）
+    scope_words = ["全面分析", "总结", "所有", "完整", "系统", "综述"]
+    score += sum(2 for w in scope_words if w in query)
+
+    # 维度6: 专业领域复杂度（海事术语 +1）
+    domain_terms = ["疲劳", "焊接", "NDT", "有限元", "屈曲", "稳性", "腐蚀"]
+    score += sum(1 for t in domain_terms if t in query)
+
+    return min(score, 15)
+```
+
+- 阈值: 5-7→建议, 8-10→强烈建议, ≥11→自动建议
 
 **FR-2: 研究规划（Planner Agent）**
 - 调用 LLM (`deepseek-chat`) 进行问题分解
@@ -183,24 +265,51 @@ Agent_Web: DuckDuckGo / Tavily → 每子问题 top 5 结果
 - 检索结果写入内存缓存: `{query_hash: results}` TTL=1h
 
 **FR-4: 交叉分析（Analysis Agent）**
-- 调用 LLM 分析检索结果，输出结构化 JSON:
-  ```json
-  {
-    "conflicts": [
-      {
-        "clause_a": "DNV Pt.3 Ch.3 §6.2 (strength ≥ 1.5× load)",
-        "clause_b": "ABS Pt.5B §3-8 (strength ≥ 1.67× load)",
-        "severity": "warning",
-        "recommendation": "ABS requires 11% higher strength. If dual-class, use ABS."
-      }
-    ],
-    "version_diffs": [...],
-    "case_correlations": [...],
-    "key_findings": [...]
-  }
-  ```
-- M4 KG `cross_reference()` 用于发现规范间的 explicit 引用关系
-- LLM 用于发现 implicit 冲突（数值差异、范围差异）
+
+分两步执行——先规则提取，再 LLM 深度分析：
+
+**Step 1: 轻量规则提取（无需 LLM）**
+
+从检索到的条款中用正则提取数值要求，构建结构化对比表：
+
+```python
+def extract_requirements(clauses: list) -> dict:
+    requirements = {}
+    for clause in clauses:
+        matches = re.findall(
+            r"(强度|板厚|系数|间距|温度|压力|速度)\s*[≥≤]\s*([\d.]+)",
+            clause.text,
+        )
+        for param, value in matches:
+            requirements.setdefault(param, {})[clause.society] = float(value)
+    return requirements
+# 输出: {"强度系数": {"DNV": 1.5, "ABS": 1.67}, "板厚": {"DNV": 12, "CCS": 10}}
+```
+
+**Step 2: LLM 深度分析**
+
+输入: 原始问题 + 检索结果 + 规则提取的对比表
+输出: 结构化 JSON
+
+```json
+{
+  "conflicts": [
+    {
+      "clause_a": "DNV Pt.3 Ch.3 §6.2 (strength ≥ 1.5× load)",
+      "clause_b": "ABS Pt.5B §3-8 (strength ≥ 1.67× load)",
+      "severity": "warning",
+      "recommendation": "ABS requires 11% higher strength. If dual-class, use ABS."
+    }
+  ],
+  "version_diffs": [...],
+  "case_correlations": [...],
+  "key_findings": [...]
+}
+```
+
+- 规则提取提供**数值精度**（正则结果不会编造数字）
+- LLM 提供**语义理解**（为什么 ABS 要求更严？适用场景差异？）
+- M4 KG `cross_reference()` 发现规范间的 explicit 引用关系
 
 **FR-5: 报告生成（Report Agent）**
 - 调用 LLM，输入: 原始问题 + 检索结果 + 分析结果 + 报告模板
@@ -328,7 +437,24 @@ if not request.disable_suggestions:
 
 ---
 
-## 9. 任务分解预览
+## 9. 与 Projects 的知识闭环
+
+```
+单个项目的闭环:
+  遇到问题 → Deep Research → 研究报告 → 存入 Projects
+  → 提取为项目结论 → 关联合规矩阵
+  → 项目归档 → 标记为案例
+
+组织级知识积累:
+  多个项目归档 → 形成案例库 → Deep Research 可检索案例
+  → 新项目可引用历史结论 → 知识持续积累 → 组织能力提升
+```
+
+详见 [Projects PRD §9](./prd-projects-2026-06-09.md)。
+
+---
+
+## 10. 任务分解预览
 
 | Task | 内容 | 模块 |
 |------|------|------|
