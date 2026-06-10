@@ -387,6 +387,32 @@ class ChatRequest:
 - `global_only`: M3 全量检索（与无项目时相同）
 - `hybrid` (默认): 项目结果优先排序，全局结果补充
 
+**混合排序算法**:
+
+```python
+def hybrid_search_ranking(project_results, global_results, project):
+    scored = []
+    # 项目结果: 基础分 0.7
+    for r in project_results:
+        score = 0.7
+        if r.source == "project_document":   score += 0.2  # 项目文档最相关
+        if r.source == "project_conclusion":  score += 0.15 # 已确认的结论
+        if r.source == "project_conversation": score += 0.1  # 历史上下文
+        scored.append((r, score))
+
+    # 全局结果: 基础分 0.5 + 向量相似度权重
+    for r in global_results:
+        score = 0.5 + r.similarity * 0.3  # 最高 0.8
+        if hasattr(r, 'regulation') and r.regulation in project.regulation_list:
+            score += 0.1  # 属于项目相关规范的条款
+        scored.append((r, min(score, 0.9)))
+
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return [r for r, _ in scored]
+```
+
+排序保证: 项目文档 > 项目结论 > 项目对话 > 全局相关规范 > 全局其他
+
 ### 4.2 M5 后端 — 项目辅助功能
 
 **FR-8: 项目仪表板 API**
@@ -707,7 +733,55 @@ GET /api/v1/projects/{id}/issues/{issue_id}
 
 ---
 
-## 11. 任务分解预览
+## 11. Beta 测试计划
+
+### 11.1 项目仪表板验证
+
+仪表板 (FR-13) 是否提供了"一眼看到全局"的价值？测试指标:
+
+- 用户首次进入项目 → 是否直接看 Overview 而非文件夹树？
+- 高优待办点击率 (从仪表板进入具体问题/合规条款)
+- 合规风险告警是否准确 (非误报)
+
+### 11.2 自动分类准确率
+
+FR-10 的关键词自动分类初始准确率预计 70%。Phase 4-B 加入反馈循环:
+
+```python
+# 用户手动修正 → 记录原文→正确分类 → 积累训练数据
+classification_feedback = {
+    "query": "EH36 钢板焊接预热温度要求",
+    "predicted": "设计阶段/焊接",
+    "corrected": "建造阶段/焊接",  # 用户修正
+}
+```
+
+- 积累 100+ 反馈后 → 训练轻量分类器 → 准确率目标 85%
+- 反馈数据存储在 `project_classification_feedback` 表中
+
+### 11.3 合规矩阵懒加载
+
+单个 DNV 规范可能 500+ 条款，分三层懒加载:
+
+| 层级 | 初始加载 | 点击展开 | 性能目标 |
+|------|---------|---------|---------|
+| Part (1-9) | ✅ 全部 Part 列表 | → 加载该 Part 的 Chapter 列表 | < 500ms |
+| Chapter | ❌ 不加载 | → 加载该 Chapter 的 Section 列表 | < 200ms |
+| Section (条款) | ❌ 不加载 | → 加载条款详情 + 关联 | < 300ms |
+
+### 11.4 未来演进路线图
+
+详见 [Deep Research PRD §6.1](./prd-deep-research-2026-06-09.md)。Projects 特有演进:
+
+| Phase | Projects 特有 |
+|-------|-------------|
+| **4-B** (当前) | 硬编码 10 个模板 + Markdown 报告 |
+| **4-C** | 用户自定义模板 + PDF/Excel 导出 + 协作 + 案例库 |
+| **4-D** (未来) | AI 模板推荐 + 项目间链接 + 组织知识库 |
+
+---
+
+## 12. 任务分解预览
 
 | Task | 内容 | 模块 |
 |------|------|------|

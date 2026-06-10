@@ -264,6 +264,27 @@ Agent_Web: DuckDuckGo / Tavily → 每子问题 top 5 结果
 - 单个 Agent 异常不阻断其他 Agent（graceful degradation）
 - 检索结果写入内存缓存: `{query_hash: results}` TTL=1h
 
+**轻量级 ISO 标准检索** (Phase 4-A):
+
+海事工程核心依赖 ISO 标准。Phase 4-A 不建完整的 ISO Agent，但在 Agent_规范中内置 Top 10 常用标准的标题+范围字典，通过关键词匹配提供标准号推荐：
+
+```python
+ISO_STANDARDS_TOP10 = {
+    "ISO 5817":  "Welding — Fusion-welded joints in steel — Quality levels for imperfections",
+    "ISO 9712":  "Non-destructive testing — Qualification of NDT personnel",
+    "ISO 17635": "Non-destructive testing of welds — General rules for metallic materials",
+    "ISO 17640": "Non-destructive testing of welds — Ultrasonic testing",
+    "ISO 15614": "Specification and qualification of welding procedures — Welding procedure test",
+    "ISO 12944": "Paints and varnishes — Corrosion protection of steel structures",
+    "ISO 19901": "Petroleum and natural gas industries — Specific requirements for offshore structures",
+    "ISO 19902": "Petroleum and natural gas industries — Fixed steel offshore structures",
+    "ISO 19903": "Petroleum and natural gas industries — Concrete offshore structures",
+    "ISO 2400":  "Non-destructive testing — Ultrasonic testing — Specification for calibration block No. 1",
+}
+```
+
+当用户查询或 Agent_规范检索结果中提到 ISO 标准号时，自动追加该标准的标题和适用范围到检索上下文。
+
 **FR-4: 交叉分析（Analysis Agent）**
 
 分两步执行——先规则提取，再 LLM 深度分析：
@@ -413,6 +434,15 @@ if not request.disable_suggestions:
 - ❌ 版本演进自动分析（需规范 changelog 数据） — Phase 4-C
 - ❌ 规范对比矩阵自动生成（需 entity linking） — Phase 4-A 用 LLM 近似
 
+### 6.1 未来演进路线图
+
+| Phase | Deep Research | Projects |
+|-------|-------------|----------|
+| **4-A** (当前) | Planner + 2 Agent + 分析 + 7 节报告 | — |
+| **4-B** | Deep Research → Projects 保存集成 | CRUD + 对话分组 + 文档 + 合规 + 仪表板 |
+| **4-C** | +Agent_标准/案例/法规 + PDF 导出 | +协作(@提及/讨论串) + 案例库检索 + PDF/Excel 导出 |
+| **4-D** (未来) | AI 自动选择报告模板 + 模型微调 | AI 模板推荐 + 组织知识库 + 项目间链接 |
+
 ---
 
 ## 7. 非功能需求
@@ -454,7 +484,52 @@ if not request.disable_suggestions:
 
 ---
 
-## 10. 任务分解预览
+## 10. Beta 测试计划
+
+### 10.1 复杂度阈值校准
+
+当前 FR-1 阈值为"5-7 建议，8-10 强烈建议，≥11 自动建议"，需实测验证：
+
+- **Alpha 阶段** (内部测试): 默认阈值 5，收集 50+ 次触发数据
+- **Beta 阶段**: 根据 Alpha 数据调整:
+  - 若接受率 < 20% → 阈值提升至 6
+  - 若完成率 > 80% 且评分 4-5 分的问题也产出好报告 → 阈值降至 4
+- **测量指标**: 接受率、拒绝率、完成率、平均复杂度分
+
+### 10.2 报告模板演进
+
+- **Phase 4-A**: 固定 7 节通用模板（当前方案）
+- **Phase 4-C**: 根据问题类型选择子模板:
+  - 规范对比型 → 重点 §2 对比矩阵
+  - 技术攻关型 → 重点 §3 方案建议
+  - 事故分析型 → 重点 §5 风险矩阵
+  - 审计就绪型 → 重点 §6 引用链
+- **Phase 4-D (未来)**: AI 自动选择最佳模板
+
+### 10.3 规则提取评估
+
+FR-4 的正则提取需验证覆盖率和准确率：
+
+```python
+# 多语言 + 多格式模式（Phase 4-A 实现时逐条加入）
+PATTERNS = [
+    # 中文
+    r"(强度|板厚|系数|间距|温度|压力|速度|厚度)\s*[≥≤≥]\s*([\d.]+)",
+    # 英文
+    r"(strength|thickness|factor|spacing|temperature|pressure)\s*(?:>=|≥|minimum)\s*([\d.]+)",
+    # "not less than" 句型 (DNV 常见)
+    r"not\s+less\s+than\s+([\d.]+)\s*(mm|MPa|kN)",
+    # "minimum ... mm" 句型
+    r"minimum\s+[\w\s]+\s+([\d.]+)\s*(mm|MPa)",
+]
+```
+
+- Alpha 测试: 抽取 20 条真实规范条款，人工标注期望提取值 → 计算 Precision/Recall
+- 目标: Precision > 90%, Recall > 80%
+
+---
+
+## 11. 任务分解预览
 
 | Task | 内容 | 模块 |
 |------|------|------|
