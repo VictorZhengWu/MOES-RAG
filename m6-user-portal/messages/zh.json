@@ -165,7 +165,31 @@
       "passwordLength": "密码长度不得少于8个字符。",
       "passwordsMatch": "两次输入的密码不一致。",
       "loginFailed": "邮箱或密码错误。",
-      "registerFailed": "注册失败，请重试。"
+      "registerFailed": "注册失败，请重试。",
+      "resetTokenInvalid": "Invalid or expired reset token.",
+      "resetTooMany": "Too many attempts. Please wait."
+    },
+    "forgotPassword": {
+      "title": "Forgot password",
+      "subtitle": "Enter your email and we'll send you a reset link.",
+      "email": "you@example.com",
+      "submit": "Send reset link",
+      "sent": {
+        "title": "Check your email",
+        "message": "If an account exists, we've sent a password reset link."
+      }
+    },
+    "resetPassword": {
+      "title": "Reset password",
+      "subtitle": "Enter your new password below.",
+      "newPassword": "New password (min 8 chars)",
+      "confirmPassword": "Confirm new password",
+      "submit": "Reset password",
+      "done": {
+        "title": "Password reset",
+        "message": "Your password has been changed.",
+        "signIn": "Sign in"
+      }
     }
   },
   "share": {
@@ -186,5 +210,45 @@
     "close": "关闭",
     "back": "返回",
     "more": "更多"
+  },
+  "help": {
+    "title": "Help & Documentation",
+    "subtitle": "Learn how to use the Marine & Offshore Expert System effectively.",
+    "gettingStarted": {
+      "title": "Getting Started",
+      "body": "Type your question..."
+    },
+    "askingQuestions": {
+      "title": "Asking Good Questions",
+      "body": "Include clause references..."
+    },
+    "uploading": {
+      "title": "Uploading Documents",
+      "body": "Drag & drop files..."
+    },
+    "webSearch": {
+      "title": "Web Search",
+      "body": "Toggle the globe button..."
+    },
+    "citations": {
+      "title": "Citations",
+      "body": "Every answer includes numbered citations..."
+    },
+    "conversations": {
+      "title": "Conversations",
+      "body": "Chat history is saved automatically..."
+    },
+    "settings": {
+      "title": "Settings & Account",
+      "body": "Change language, theme, or profile..."
+    },
+    "apiAccess": {
+      "title": "API Access",
+      "body": "Access via OpenAI-compatible API..."
+    },
+    "moreHelp": {
+      "title": "Need more help?",
+      "body": "Contact the development team."
+    }
   }
 }

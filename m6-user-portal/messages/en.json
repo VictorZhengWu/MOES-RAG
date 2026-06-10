@@ -160,12 +160,36 @@
       "hasAccount": "Already have an account?",
       "login": "Sign In"
     },
+    "forgotPassword": {
+      "title": "Forgot password",
+      "subtitle": "Enter your email and we'll send you a reset link.",
+      "email": "you@example.com",
+      "submit": "Send reset link",
+      "sent": {
+        "title": "Check your email",
+        "message": "If an account exists, we've sent a password reset link. The link expires in 24 hours."
+      }
+    },
+    "resetPassword": {
+      "title": "Reset password",
+      "subtitle": "Enter your new password below.",
+      "newPassword": "New password (min 8 chars)",
+      "confirmPassword": "Confirm new password",
+      "submit": "Reset password",
+      "done": {
+        "title": "Password reset",
+        "message": "Your password has been changed. You can now sign in with your new password.",
+        "signIn": "Sign in"
+      }
+    },
     "errors": {
       "invalidEmail": "Please enter a valid email address.",
       "passwordLength": "Password must be at least 8 characters.",
       "passwordsMatch": "Passwords do not match.",
       "loginFailed": "Invalid email or password.",
-      "registerFailed": "Registration failed. Please try again."
+      "registerFailed": "Registration failed. Please try again.",
+      "resetTokenInvalid": "Invalid or expired reset token.",
+      "resetTooMany": "Too many attempts. Please wait."
     }
   },
   "share": {
@@ -173,6 +197,46 @@
     "description": "Anyone with the link can view this conversation.",
     "copyLink": "Copy Link",
     "copied": "Copied!"
+  },
+  "help": {
+    "title": "Help & Documentation",
+    "subtitle": "Learn how to use the Marine & Offshore Expert System effectively.",
+    "gettingStarted": {
+      "title": "Getting Started",
+      "body": "Type your engineering question in the chat input and press Enter. The system searches maritime regulations, classification society rules (DNV, ABS, CCS, LR, BV), and engineering knowledge to provide citation-backed answers."
+    },
+    "askingQuestions": {
+      "title": "Asking Good Questions",
+      "body": "Include specific clause references (e.g., 'DNV Pt.4 Ch.3 §5') for precise results. Mention the vessel type, steel grade, or system for domain-specific answers."
+    },
+    "uploading": {
+      "title": "Uploading Documents",
+      "body": "Drag & drop PDF, DOCX, XLSX, or image files anywhere on the page, or click the attach button. The system parses the document and uses its content to answer your questions."
+    },
+    "webSearch": {
+      "title": "Web Search",
+      "body": "Toggle the globe button to include live web search results in your answers. Useful for recent regulatory updates or manufacturer specifications not yet in the knowledge base."
+    },
+    "citations": {
+      "title": "Citations",
+      "body": "Every answer includes numbered citations in the right panel. Click a citation number to see the exact source: classification society, regulation chapter, section, and text excerpt."
+    },
+    "conversations": {
+      "title": "Conversations",
+      "body": "Your chat history is saved automatically in the sidebar. Right-click any conversation to rename, share, pin, or delete it. Use the search bar to find past conversations."
+    },
+    "settings": {
+      "title": "Settings & Account",
+      "body": "Click Settings in the sidebar to change language, theme, or manage your profile. You can upload an avatar and delete your account from the Profile tab."
+    },
+    "apiAccess": {
+      "title": "API Access",
+      "body": "Developers can access the system via the OpenAI-compatible API. Generate an API key from the Admin Portal (M7) and use it as a Bearer token."
+    },
+    "moreHelp": {
+      "title": "Need more help?",
+      "body": "For bug reports, feature requests, or enterprise support, contact the development team."
+    }
   },
   "common": {
     "loading": "Loading...",

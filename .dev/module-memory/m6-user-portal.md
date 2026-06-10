@@ -99,32 +99,26 @@
 
 ## 7. Open Issues
 
-### 占位功能（18 项，详见 .dev/tasks.md 00030 节）
+### 已完成对接（18 项，2026-06-09 验证）
 
-**认证类（3 项）**
-- 00030-P1: 邮箱登录 → 待 M5 Auth API
-- 00030-P2: 邮箱注册 → 待 M5 Auth API
-- 00030-P3: 社交登录(OAuth) → 待 M5 OAuth 集成
+| 功能 | 状态 | 对接方式 |
+|------|------|---------|
+| P1-P2 邮箱登录/注册 | ✅ | `auth.ts` → M8 `/auth/login` `/auth/register` |
+| P3 社交登录 OAuth | ✅ | `social-buttons.tsx` → M8 `/auth/oauth/login?provider=` |
+| P4-P9 会话 CRUD/分享/Pin | ✅ | `conversation-store.ts` → M8 `/api/v1/conversations/*` |
+| P10/P21 文件上传/存储 | ✅ | `chat-input.tsx` → `uploadDocuments()` → M8 → M1 |
+| P11 头像上传 | ✅ | `profile-tab.tsx` → M8 `/api/v1/user/avatar` |
+| P12 Web Search | ✅ | `chat-input.tsx` 传 `web_search` 参数到 chat API |
+| P14 会话搜索 | ✅ | `conversation-sidebar.tsx` 传 `searchQuery` 到 `fetchConversations()` |
+| P16 Help 页面 | ✅ | `help/page.tsx` + sidebar 导航 |
+| P17 Delete Account | ✅ | `profile-tab.tsx` 确认对话框 → `deleteAccount()` |
+| P18 About 链接 | ✅ | 静态配置 |
+| P19 忘记/重置密码 | ✅ | `forgot-password-form.tsx` + `reset-password-form.tsx` → M8 |
 
-**对话管理类（6 项）**
-- 00030-P4: 会话历史持久化 → 待 M5 Conversation API
-- 00030-P5: 会话重命名 → 待 M5 Conversation API
-- 00030-P6: 会话删除 → 待 M5 Conversation API
-- 00030-P7: 会话分享 → 待 M5 Share API
-- 00030-P8: Move to Project → 待 M5 Project API
-- 00030-P9: Pin 对话 → 待 M5 Conversation API
+### 延后（需 M5 新 API）
 
-**文件类（2 项）**
-- 00030-P10: 文件真实上传 → 待 M1 文件处理管线
-- 00030-P11: 头像上传 → 待 M5 User API
-
-**搜索类（2 项）**
-- 00030-P12: Web Search → 待 M5 搜索集成
-- 00030-P13: Deep Research → 待 M5 Agent 流程
-
-**其他（5 项）**
-- 00030-P14: 会话搜索 → 待 M5 Search API
-- 00030-P15: Projects 页面 → 待 M5 Project API
-- 00030-P16: Help 页面 → 待文档编写
-- 00030-P17: Delete Account → 待 M5 User API
-- 00030-P18: About 社交链接 → 待真实地址配置
+| 功能 | 依赖 |
+|------|------|
+| P8 Move to Project | M5 Project API |
+| P13 Deep Research | M5 Agent 流程 |
+| P15/P20 Projects CRUD | M5 Project API |

@@ -71,49 +71,27 @@
 
 ## 6. Performance Notes
 
-- 待记录
+- Config page: ~200ms load (single fetch to M8 for features + SMTP)
+- Monitoring page: 30s auto-refresh, initial load ~500ms (health + monitoring fetch)
+- Auth guard: sub-millisecond sessionStorage check, ~200ms API key validation on login
 
 ---
 
-## 7. Development Roadmap
+## 7. Development Status
 
-### Phase C-1: ✅ Complete (2026-05-16)
-- C1: Scaffold ✅
-- C2: i18n ✅
-- C3: Types ✅
-- C4: API client + Store ✅
+### All Core Pages: ✅ Complete (2026-05-17)
 
-### Phase C-2: Next (待开始)
-- C5: AdminLayout + AdminSidebar（6 个导航项 + 侧边栏）
+### Pending Features Status
 
-### Phase C-3: Core Pages (待开始)
-- C6: Dashboard
-- C7: Document Management
-- C8: Knowledge Graph Browser
-- C9: LLM Config
-- C10: User Management
-- C11: System Monitoring
-
-### Phase C-4: Test & Wrap-up (待开始)
-
----
-
-## 6.5 Pending Features (Recorded for Future)
-
-| ID | 功能 | 说明 |
+| ID | 功能 | 状态 |
 |----|------|------|
-| 00040-P1 | 付款/计费模块 | SaaS 模式专属，deploy.yaml features.billing 控制显隐 |
-| 00040-P2 | 部署模式 feature 开关 | deploy.yaml → 控制 billing/web_search/deep_research |
-| 00040-P3 | 忘记密码/重置密码 | M6 登录页 + M7 用户管理 → SMTP 邮件服务 |
-| 00040-P4 | 社交登录 OAuth | 6 按钮 UI 就绪 → Phase 2 接真实 OAuth |
-| 00040-P5 | KG 可视化（图形版） | D3.js/vis.js → 真实 KG 数据 |
-| 00040-P6 | 系统监控真实数据 | Phase 2 接 M5 Monitoring API |
-| 00040-P7 | 管理员登录保护 | 当前无鉴权 → Phase 2 加 Auth Guard |
-
-### Phase C-4: Test & Wrap-up (待开始)
-- C12: Playwright E2E
-- C13: Translations
-- C14: Wrap-up
+| 00040-P1 | 付款/计费模块 | ⏸️ 需 Stripe + M5 Billing API |
+| 00040-P2 | 部署 feature 开关 | ✅ 已对接 M8 features API，按 deployMode 显隐 |
+| 00040-P3 | 忘记密码/重置密码 (admin) | ⏸️ M8 API 就绪，M7 UI 未实现 |
+| 00040-P4 | 社交登录 OAuth 配置 | ✅ OAuth 标签页已完整实现 |
+| 00040-P5 | KG 可视化 (D3.js) | ⏸️ 独立前端大工程 |
+| 00040-P6 | 系统监控真实数据 | ✅ 已对接 M8 `/admin/monitoring`，30s 自动刷新 |
+| 00040-P7 | 管理员登录保护 | ✅ `auth-guard.tsx` → M8 `/auth/admin-login` |
 
 ---
 
@@ -123,7 +101,7 @@
 
 1. `.dev/specs/rag-system-design-2026-05-12.md` — 架构总览
 2. `.dev/decisions.md` — 全局决策
-3. `.dev/tasks.md` — 任务状态（00040 待开始）
+3. `.dev/tasks.md` — 任务状态（00040 已完成）
 4. `.dev/module-memory/m7-admin-portal.md` — 本文件
 5. `.dev/plans/plan-c-m7-admin-portal-2026-05-16.md` — M7 详细实现计划
 

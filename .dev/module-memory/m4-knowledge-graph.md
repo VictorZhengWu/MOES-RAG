@@ -116,9 +116,8 @@
 
 ## 7. Open Issues
 
-- 00080-05 (KuzuStore) test records not yet written — needs to be created before marking 00080-06 complete.
-- Test execution pending — user must run `python -m pytest m4-knowledge-graph/tests/test_traversal.py -v` to verify.
-- **00080-07**: _llm_cross_reference is a STUB — returns None until M7's LLM backend configuration is available. The hybrid strategy works correctly via graph lookup and mock LLM (in tests), but real LLM integration requires M7 to provide the LLM backend config.
+- **00080-07**: `_llm_cross_reference` is a STUB — returns None until M7's LLM backend configuration is available. Real LLM integration requires M7 to provide the LLM backend config.
+- **Table LLM semantic layer**: Model choice for optional Layer 4 (footnote expansion, cross-table context) — pending decision.
 
 ---
 

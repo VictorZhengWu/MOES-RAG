@@ -50,7 +50,10 @@
       "viewSource": "原文を見る",
       "noReferences": "この回答には参照がありません"
     },
-    "jumpNav": { "title": "この会話の質問", "empty": "まだ質問はありません" },
+    "jumpNav": {
+      "title": "この会話の質問",
+      "empty": "まだ質問はありません"
+    },
     "streaming": "生成中...",
     "error": {
       "send": "メッセージの送信に失敗しました。再試行してください。",
@@ -62,8 +65,16 @@
     "title": "会話履歴",
     "search": "会話を検索...",
     "new": "新しい会話",
-    "delete": { "label": "会話を削除", "confirm": "この会話を削除しますか？", "cancel": "キャンセル", "confirmButton": "削除" },
-    "rename": { "label": "名前変更", "placeholder": "会話タイトル" },
+    "delete": {
+      "label": "会話を削除",
+      "confirm": "この会話を削除しますか？",
+      "cancel": "キャンセル",
+      "confirmButton": "削除"
+    },
+    "rename": {
+      "label": "名前変更",
+      "placeholder": "会話タイトル"
+    },
     "empty": "まだ会話がありません。新しい会話を始めましょう。",
     "guestEmpty": "会話履歴を表示するにはログインしてください。",
     "menu": {
@@ -79,9 +90,25 @@
     "title": "ナレッジベース",
     "subtitle": "システムに登録された文書と規則",
     "search": "文書を検索...",
-    "filter": { "society": "船級協会", "domain": "分野", "year": "バージョン年", "all": "すべて" },
-    "table": { "name": "文書名", "society": "船級", "domain": "分野", "year": "年", "chunks": "セクション", "status": "状態" },
-    "status": { "active": "有効", "deprecated": "置換済", "error": "エラー" },
+    "filter": {
+      "society": "船級協会",
+      "domain": "分野",
+      "year": "バージョン年",
+      "all": "すべて"
+    },
+    "table": {
+      "name": "文書名",
+      "society": "船級",
+      "domain": "分野",
+      "year": "年",
+      "chunks": "セクション",
+      "status": "状態"
+    },
+    "status": {
+      "active": "有効",
+      "deprecated": "置換済",
+      "error": "エラー"
+    },
     "empty": "一致する文書がありません。"
   },
   "settings": {
@@ -91,14 +118,79 @@
       "profile": "プロフィール",
       "about": "情報"
     },
-    "language": { "label": "インターフェース言語", "description": "UIの表示言語を変更します。", "en": "English", "zh": "中文", "ko": "한국어", "ja": "日本語", "no": "Norsk" },
-    "theme": { "label": "テーマ", "light": "ライト", "dark": "ダーク", "system": "システム" },
-    "apiKeys": { "title": "APIキー", "create": "APIキーを作成", "empty": "APIキーはまだありません。" }
+    "language": {
+      "label": "インターフェース言語",
+      "description": "UIの表示言語を変更します。",
+      "en": "English",
+      "zh": "中文",
+      "ko": "한국어",
+      "ja": "日本語",
+      "no": "Norsk"
+    },
+    "theme": {
+      "label": "テーマ",
+      "light": "ライト",
+      "dark": "ダーク",
+      "system": "システム"
+    },
+    "apiKeys": {
+      "title": "APIキー",
+      "create": "APIキーを作成",
+      "empty": "APIキーはまだありません。"
+    }
   },
   "auth": {
-    "login": { "title": "ログイン", "subtitle": "おかえりなさい", "email": "メールアドレス", "password": "パスワード", "submit": "ログイン", "noAccount": "アカウント未登録ですか？", "register": "作成する" },
-    "register": { "title": "アカウント作成", "subtitle": "はじめましょう", "username": "ユーザー名", "email": "メールアドレス", "password": "パスワード", "confirmPassword": "パスワード確認", "submit": "作成", "hasAccount": "アカウントをお持ちですか？", "login": "ログイン" },
-    "errors": { "invalidEmail": "有効なメールアドレスを入力してください。", "passwordLength": "パスワードは8文字以上必要です。", "passwordsMatch": "パスワードが一致しません。", "loginFailed": "メールアドレスまたはパスワードが無効です。", "registerFailed": "登録に失敗しました。" }
+    "login": {
+      "title": "ログイン",
+      "subtitle": "おかえりなさい",
+      "email": "メールアドレス",
+      "password": "パスワード",
+      "submit": "ログイン",
+      "noAccount": "アカウント未登録ですか？",
+      "register": "作成する"
+    },
+    "register": {
+      "title": "アカウント作成",
+      "subtitle": "はじめましょう",
+      "username": "ユーザー名",
+      "email": "メールアドレス",
+      "password": "パスワード",
+      "confirmPassword": "パスワード確認",
+      "submit": "作成",
+      "hasAccount": "アカウントをお持ちですか？",
+      "login": "ログイン"
+    },
+    "errors": {
+      "invalidEmail": "有効なメールアドレスを入力してください。",
+      "passwordLength": "パスワードは8文字以上必要です。",
+      "passwordsMatch": "パスワードが一致しません。",
+      "loginFailed": "メールアドレスまたはパスワードが無効です。",
+      "registerFailed": "登録に失敗しました。",
+      "resetTokenInvalid": "Invalid or expired reset token.",
+      "resetTooMany": "Too many attempts. Please wait."
+    },
+    "forgotPassword": {
+      "title": "Forgot password",
+      "subtitle": "Enter your email and we'll send you a reset link.",
+      "email": "you@example.com",
+      "submit": "Send reset link",
+      "sent": {
+        "title": "Check your email",
+        "message": "If an account exists, we've sent a password reset link."
+      }
+    },
+    "resetPassword": {
+      "title": "Reset password",
+      "subtitle": "Enter your new password below.",
+      "newPassword": "New password (min 8 chars)",
+      "confirmPassword": "Confirm new password",
+      "submit": "Reset password",
+      "done": {
+        "title": "Password reset",
+        "message": "Your password has been changed.",
+        "signIn": "Sign in"
+      }
+    }
   },
   "share": {
     "title": "会話を共有",
@@ -106,5 +198,57 @@
     "copyLink": "リンクをコピー",
     "copied": "コピーしました！"
   },
-  "common": { "loading": "読み込み中...", "error": "エラー発生", "retry": "再試行", "cancel": "キャンセル", "save": "保存", "delete": "削除", "search": "検索", "noResults": "結果なし", "close": "閉じる", "back": "戻る", "more": "もっと見る" }
+  "common": {
+    "loading": "読み込み中...",
+    "error": "エラー発生",
+    "retry": "再試行",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "delete": "削除",
+    "search": "検索",
+    "noResults": "結果なし",
+    "close": "閉じる",
+    "back": "戻る",
+    "more": "もっと見る"
+  },
+  "help": {
+    "title": "Help & Documentation",
+    "subtitle": "Learn how to use the Marine & Offshore Expert System effectively.",
+    "gettingStarted": {
+      "title": "Getting Started",
+      "body": "Type your question..."
+    },
+    "askingQuestions": {
+      "title": "Asking Good Questions",
+      "body": "Include clause references..."
+    },
+    "uploading": {
+      "title": "Uploading Documents",
+      "body": "Drag & drop files..."
+    },
+    "webSearch": {
+      "title": "Web Search",
+      "body": "Toggle the globe button..."
+    },
+    "citations": {
+      "title": "Citations",
+      "body": "Every answer includes numbered citations..."
+    },
+    "conversations": {
+      "title": "Conversations",
+      "body": "Chat history is saved automatically..."
+    },
+    "settings": {
+      "title": "Settings & Account",
+      "body": "Change language, theme, or profile..."
+    },
+    "apiAccess": {
+      "title": "API Access",
+      "body": "Access via OpenAI-compatible API..."
+    },
+    "moreHelp": {
+      "title": "Need more help?",
+      "body": "Contact the development team."
+    }
+  }
 }

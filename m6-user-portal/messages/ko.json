@@ -50,7 +50,10 @@
       "viewSource": "원문 보기",
       "noReferences": "이 답변에 대한 참조가 없습니다"
     },
-    "jumpNav": { "title": "이 대화의 질문", "empty": "아직 질문이 없습니다" },
+    "jumpNav": {
+      "title": "이 대화의 질문",
+      "empty": "아직 질문이 없습니다"
+    },
     "streaming": "생성 중...",
     "error": {
       "send": "메시지 전송 실패. 다시 시도하세요.",
@@ -62,8 +65,16 @@
     "title": "대화 기록",
     "search": "대화 검색...",
     "new": "새 대화",
-    "delete": { "label": "대화 삭제", "confirm": "이 대화를 삭제하시겠습니까?", "cancel": "취소", "confirmButton": "삭제" },
-    "rename": { "label": "이름 변경", "placeholder": "대화 제목" },
+    "delete": {
+      "label": "대화 삭제",
+      "confirm": "이 대화를 삭제하시겠습니까?",
+      "cancel": "취소",
+      "confirmButton": "삭제"
+    },
+    "rename": {
+      "label": "이름 변경",
+      "placeholder": "대화 제목"
+    },
     "empty": "아직 대화가 없습니다. 새 대화를 시작하세요.",
     "guestEmpty": "대화 기록을 보려면 로그인하세요.",
     "menu": {
@@ -79,9 +90,25 @@
     "title": "지식 베이스",
     "subtitle": "시스템에 등록된 문서 및 규정",
     "search": "문서 검색...",
-    "filter": { "society": "선급", "domain": "분야", "year": "버전 연도", "all": "전체" },
-    "table": { "name": "문서명", "society": "선급", "domain": "분야", "year": "연도", "chunks": "섹션", "status": "상태" },
-    "status": { "active": "현행", "deprecated": "대체됨", "error": "오류" },
+    "filter": {
+      "society": "선급",
+      "domain": "분야",
+      "year": "버전 연도",
+      "all": "전체"
+    },
+    "table": {
+      "name": "문서명",
+      "society": "선급",
+      "domain": "분야",
+      "year": "연도",
+      "chunks": "섹션",
+      "status": "상태"
+    },
+    "status": {
+      "active": "현행",
+      "deprecated": "대체됨",
+      "error": "오류"
+    },
     "empty": "일치하는 문서가 없습니다."
   },
   "settings": {
@@ -91,14 +118,79 @@
       "profile": "프로필",
       "about": "정보"
     },
-    "language": { "label": "인터페이스 언어", "description": "사용자 인터페이스 언어를 변경합니다.", "en": "English", "zh": "中文", "ko": "한국어", "ja": "日本語", "no": "Norsk" },
-    "theme": { "label": "테마", "light": "라이트", "dark": "다크", "system": "시스템" },
-    "apiKeys": { "title": "API 키", "create": "API 키 생성", "empty": "API 키가 없습니다." }
+    "language": {
+      "label": "인터페이스 언어",
+      "description": "사용자 인터페이스 언어를 변경합니다.",
+      "en": "English",
+      "zh": "中文",
+      "ko": "한국어",
+      "ja": "日本語",
+      "no": "Norsk"
+    },
+    "theme": {
+      "label": "테마",
+      "light": "라이트",
+      "dark": "다크",
+      "system": "시스템"
+    },
+    "apiKeys": {
+      "title": "API 키",
+      "create": "API 키 생성",
+      "empty": "API 키가 없습니다."
+    }
   },
   "auth": {
-    "login": { "title": "로그인", "subtitle": "돌아오신 것을 환영합니다", "email": "이메일", "password": "비밀번호", "submit": "로그인", "noAccount": "계정이 없으신가요?", "register": "계정 만들기" },
-    "register": { "title": "계정 만들기", "subtitle": "시작하기", "username": "사용자 이름", "email": "이메일", "password": "비밀번호", "confirmPassword": "비밀번호 확인", "submit": "계정 만들기", "hasAccount": "이미 계정이 있으신가요?", "login": "로그인" },
-    "errors": { "invalidEmail": "유효한 이메일 주소를 입력하세요.", "passwordLength": "비밀번호는 8자 이상이어야 합니다.", "passwordsMatch": "비밀번호가 일치하지 않습니다.", "loginFailed": "이메일 또는 비밀번호가 올바르지 않습니다.", "registerFailed": "등록에 실패했습니다. 다시 시도하세요." }
+    "login": {
+      "title": "로그인",
+      "subtitle": "돌아오신 것을 환영합니다",
+      "email": "이메일",
+      "password": "비밀번호",
+      "submit": "로그인",
+      "noAccount": "계정이 없으신가요?",
+      "register": "계정 만들기"
+    },
+    "register": {
+      "title": "계정 만들기",
+      "subtitle": "시작하기",
+      "username": "사용자 이름",
+      "email": "이메일",
+      "password": "비밀번호",
+      "confirmPassword": "비밀번호 확인",
+      "submit": "계정 만들기",
+      "hasAccount": "이미 계정이 있으신가요?",
+      "login": "로그인"
+    },
+    "errors": {
+      "invalidEmail": "유효한 이메일 주소를 입력하세요.",
+      "passwordLength": "비밀번호는 8자 이상이어야 합니다.",
+      "passwordsMatch": "비밀번호가 일치하지 않습니다.",
+      "loginFailed": "이메일 또는 비밀번호가 올바르지 않습니다.",
+      "registerFailed": "등록에 실패했습니다. 다시 시도하세요.",
+      "resetTokenInvalid": "Invalid or expired reset token.",
+      "resetTooMany": "Too many attempts. Please wait."
+    },
+    "forgotPassword": {
+      "title": "Forgot password",
+      "subtitle": "Enter your email and we'll send you a reset link.",
+      "email": "you@example.com",
+      "submit": "Send reset link",
+      "sent": {
+        "title": "Check your email",
+        "message": "If an account exists, we've sent a password reset link."
+      }
+    },
+    "resetPassword": {
+      "title": "Reset password",
+      "subtitle": "Enter your new password below.",
+      "newPassword": "New password (min 8 chars)",
+      "confirmPassword": "Confirm new password",
+      "submit": "Reset password",
+      "done": {
+        "title": "Password reset",
+        "message": "Your password has been changed.",
+        "signIn": "Sign in"
+      }
+    }
   },
   "share": {
     "title": "대화 공유",
@@ -106,5 +198,57 @@
     "copyLink": "링크 복사",
     "copied": "복사됨!"
   },
-  "common": { "loading": "로딩 중...", "error": "오류 발생", "retry": "재시도", "cancel": "취소", "save": "저장", "delete": "삭제", "search": "검색", "noResults": "결과 없음", "close": "닫기", "back": "뒤로", "more": "더 보기" }
+  "common": {
+    "loading": "로딩 중...",
+    "error": "오류 발생",
+    "retry": "재시도",
+    "cancel": "취소",
+    "save": "저장",
+    "delete": "삭제",
+    "search": "검색",
+    "noResults": "결과 없음",
+    "close": "닫기",
+    "back": "뒤로",
+    "more": "더 보기"
+  },
+  "help": {
+    "title": "Help & Documentation",
+    "subtitle": "Learn how to use the Marine & Offshore Expert System effectively.",
+    "gettingStarted": {
+      "title": "Getting Started",
+      "body": "Type your question..."
+    },
+    "askingQuestions": {
+      "title": "Asking Good Questions",
+      "body": "Include clause references..."
+    },
+    "uploading": {
+      "title": "Uploading Documents",
+      "body": "Drag & drop files..."
+    },
+    "webSearch": {
+      "title": "Web Search",
+      "body": "Toggle the globe button..."
+    },
+    "citations": {
+      "title": "Citations",
+      "body": "Every answer includes numbered citations..."
+    },
+    "conversations": {
+      "title": "Conversations",
+      "body": "Chat history is saved automatically..."
+    },
+    "settings": {
+      "title": "Settings & Account",
+      "body": "Change language, theme, or profile..."
+    },
+    "apiAccess": {
+      "title": "API Access",
+      "body": "Access via OpenAI-compatible API..."
+    },
+    "moreHelp": {
+      "title": "Need more help?",
+      "body": "Contact the development team."
+    }
+  }
 }

@@ -50,10 +50,9 @@ export function ForgotPasswordForm() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
             <Mail className="h-6 w-6 text-green-600 dark:text-green-400" />
           </div>
-          <h1 className="text-xl font-bold">Check your email</h1>
+          <h1 className="text-xl font-bold">{t('auth.forgotPassword.sent.title')}</h1>
           <p className="text-sm text-muted-foreground">
-            If an account exists for <strong>{email}</strong>, we've sent a password reset link.
-            The link expires in 24 hours.
+            {t('auth.forgotPassword.sent.message')}
           </p>
           <Link href={`/${locale}/login`}
             className="inline-block text-sm text-primary underline underline-offset-2">
@@ -74,9 +73,9 @@ export function ForgotPasswordForm() {
         </Link>
 
         <div>
-          <h1 className="text-2xl font-bold">Forgot password</h1>
+          <h1 className="text-2xl font-bold">{t('auth.forgotPassword.title')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Enter your email and we'll send you a reset link.
+            {t('auth.forgotPassword.subtitle')}
           </p>
         </div>
 
@@ -85,10 +84,10 @@ export function ForgotPasswordForm() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          <Input type="email" placeholder="you@example.com" value={email}
+          <Input type="email" placeholder={t('auth.forgotPassword.email')} value={email}
             onChange={(e) => setEmail(e.target.value)} required autoFocus />
           <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : 'Send reset link'}
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : t('auth.forgotPassword.submit')}
           </Button>
         </form>
       </div>
