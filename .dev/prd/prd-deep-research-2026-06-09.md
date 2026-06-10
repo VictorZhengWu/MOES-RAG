@@ -63,7 +63,7 @@
 **描述**: 作为工程师，我可以通过 Sidebar "Deep Research"按钮或输入框旁的 🔬 图标，手动启动深度研究。
 
 **验收标准**:
-- [ ] Sidebar "Deep Research"按钮 → 打开研究输入界面
+- [ ] Sidebar "🧠 Deep Research"按钮 → 打开研究输入界面
 - [ ] 输入框旁边 "🔬" 图标 → 将当前输入作为研究问题
 - [ ] 两种方式均进入 Phase 1（研究规划）流程
 
@@ -174,30 +174,9 @@
 
 **FR-3: 并行检索（Retrieval Agents）**
 
-Agent_规范:
-```python
-async def agent_regulations(sub_questions):
-    for sq in sub_questions:
-        # M3 检索: chunks (dense) + propositions (sparse)
-        dense = await m3_client.search(sq["search_query"], top_k=20, 
-                                        source="dense")
-        sparse = await m3_client.search(sq["search_query"], top_k=20,
-                                         source="sparse")
-        # M4 图遍历: 从检索到的 entity 展开 1-hop
-        graph = await m4_client.graph_search(sq["search_query"], depth=1)
-        # 合并去重
-        return rrf_fusion(dense, sparse, graph)
-```
+Agent_规范: M3 dense + sparse 双路检索 → M4 图遍历（1-hop） → RRF 融合去重
 
-Agent_Web:
-```python
-async def agent_web(sub_questions):
-    for sq in sub_questions:
-        results = await web_search_engine.search(
-            sq["search_query"], max_results=5
-        )
-        return results  # list[{title, url, snippet}]
-```
+Agent_Web: DuckDuckGo / Tavily → 每子问题 top 5 结果
 
 - 2 个 Agent 通过 `asyncio.gather` 并行执行
 - 单个 Agent 异常不阻断其他 Agent（graceful degradation）
@@ -220,7 +199,7 @@ async def agent_web(sub_questions):
     "key_findings": [...]
   }
   ```
-- M4 KG 的 `cross_reference()` 用于发现规范间的 explicit 引用关系
+- M4 KG `cross_reference()` 用于发现规范间的 explicit 引用关系
 - LLM 用于发现 implicit 冲突（数值差异、范围差异）
 
 **FR-5: 报告生成（Report Agent）**
@@ -231,25 +210,9 @@ async def agent_web(sub_questions):
 
 **FR-6: 流式进度通知**
 - `POST /api/v1/agent/research` 返回 SSE 事件流:
-  ```
-  event: progress
-  data: {"phase": "planning", "sub_questions": [...]}
-
-  event: progress
-  data: {"phase": "retrieving", "agent": "regulations", "progress": 0.5}
-
-  event: progress
-  data: {"phase": "retrieving", "agent": "web", "progress": 0.3}
-
-  event: progress
-  data: {"phase": "analyzing", "conflicts_found": 2}
-
-  event: report_chunk
-  data: {"section": "executive_summary", "delta": "..."}
-
-  event: done
-  data: {"report_id": "rpt-xxx", "full_report": "..."}
-  ```
+  - `event: progress` — 阶段变化 + 进度百分比
+  - `event: report_chunk` — 报告流式渲染
+  - `event: done` — 研究完成 + 完整报告
 
 **FR-7: 质疑与深入**
 - `POST /api/v1/agent/research/{report_id}/question`
@@ -259,31 +222,28 @@ async def agent_web(sub_questions):
 ### 4.2 M6 前端 — 研究界面
 
 **FR-8: 研究入口**
-- Sidebar "🧠 Deep Research" 按钮（已存在，当前 console.log）
-- 点击 → 切换到研究模式 → 显示研究输入界面（全屏/大卡片）
+- Sidebar "🧠 Deep Research" 按钮 → 切换到研究模式 → 显示研究输入界面
 
 **FR-9: 研究计划展示 (Phase 1)**
 - 卡片列表: 每个子问题 1 个卡片（标题 + 检索策略标签）
 - 复选框: 取消不需要的子问题
 - [开始研究] 按钮 + 预计耗时
-- 进度条: Phase 1 → 2 → 3 → 4 阶段指示器
+- 阶段指示器: Phase 1 → 2 → 3 → 4
 
 **FR-10: 检索进度 (Phase 2)**
-- 并行 Agent 卡片: Agent_规范 / Agent_Web (每个有独立进度)
+- 并行 Agent 卡片: 每个有独立进度
 - 检索结果可展开（原始结果预览）
-- 进度条 + 已耗时
 
 **FR-11: 报告渲染 (Phase 3-4)**
-- 7 节报告 → Markdown 渲染（复用 message-bubble 组件）
-- §2 对比矩阵 → 表格组件（支持横向滚动）
+- 7 节报告 → Markdown 渲染（复用 message-bubble）
+- §2 对比矩阵 → 表格组件（横向滚动）
 - §5 风险矩阵 → 表格 + 颜色编码（红/黄/绿）
 - §6 引用 → 可点击，展开规范原文
 
 **FR-12: 交互操作**
-- [保存到项目] → 按钮（Phase 4-A 暂存 toast 提示"Projects 功能即将上线"）
+- [保存到项目] → 按钮（Phase 4-A 暂存提示）
 - [复制分享链接] → 复制 URL
-- [导出] → 留空，Phase 4-C 实现
-- [质疑] → 输入框 + 重新分析流程
+- [质疑] → 输入框 + 重新分析
 
 ---
 
@@ -292,48 +252,28 @@ async def agent_web(sub_questions):
 ### 5.1 模块关系
 
 ```
-M6 (User Portal)
-  │ POST /api/v1/agent/research (SSE)
-  ▼
-M8 (API Gateway)
-  │ route → app.state.qa_engine.research()
-  ▼
-M5 (QA Engine) — 新增 research 模块
-  │
-  ├── m5_qa/research/
-  │   ├── __init__.py
-  │   ├── planner.py         # FR-2: 问题分解 + 策略生成
-  │   ├── complexity.py      # FR-1: 问题复杂度评分
-  │   ├── agents/
-  │   │   ├── regulations.py # FR-3: Agent_规范 (M3+M4)
-  │   │   └── web.py         # FR-3: Agent_Web
-  │   ├── analyzer.py        # FR-4: 交叉分析
-  │   ├── report_generator.py # FR-5: 报告生成
-  │   └── progress.py        # FR-6: SSE 进度事件
-  │
-  ├── M3 (Retrieval)  ← 已存在
-  └── M4 (KG)         ← 已存在
+M6 → M8 → POST /api/v1/agent/research (SSE) → M5
+
+M5 新增 research/ 模块:
+├── complexity.py         # FR-1: 问题复杂度评分
+├── planner.py            # FR-2: LLM 问题分解 + KG 关联
+├── agents/
+│   ├── regulations.py    # FR-3: Agent_规范 (M3+M4)
+│   └── web.py            # FR-3: Agent_Web
+├── analyzer.py           # FR-4: 交叉分析 + 冲突检测
+├── report_generator.py   # FR-5: 7 节报告生成
+└── progress.py           # FR-6: SSE 进度事件
 ```
 
 ### 5.2 M5 API 扩展
 
 ```
 POST /api/v1/agent/research
-  Content-Type: application/json
-  Body: {
-    "query": "LNG 船液货舱疲劳裂纹修复的规范要求",
-    "sub_questions": [  // 可选，Phase 1 生成的子问题
-      {"id": 1, "question": "...", "enabled": true}
-    ],
-    "stream": true
-  }
+  Body: {"query": "...", "sub_questions": [...], "stream": true}
   Response: text/event-stream (SSE)
 
 POST /api/v1/agent/research/{report_id}/question
-  Body: {
-    "conclusion_id": 3,
-    "question": "质疑内容"
-  }
+  Body: {"conclusion_id": ..., "question": "..."}
   Response: {"report_id": "...", "updated_section": "..."}
 ```
 
@@ -347,35 +287,22 @@ if not request.disable_suggestions:
     if score >= 5:
         response.suggestions.append({
             "type": "deep_research",
-            "message": "This question involves 3+ classification societies. Deep Research can provide a comprehensive analysis.",
+            "message": "涉及 3+ 船级社规范的复杂问题，建议使用 Deep Research",
             "action": "/api/v1/agent/research",
         })
-```
-
-### 5.4 数据流
-
-```
-用户点击 Deep Research
-  → Phase 1: M5 Planner → LLM 分解问题 → 返回研究计划 (JSON)
-    → M6 展示计划 → 用户确认
-  → Phase 2: M5 并行启动 Agent_规范 (M3+M4) + Agent_Web
-    → 每个 Agent 返回结果 → M6 实时更新进度
-  → Phase 3: M5 Analysis → LLM 交叉分析 → 冲突/案例关联
-  → Phase 4: M5 Report Generator → LLM → Markdown 报告
-    → M6 SSE 渲染报告
 ```
 
 ---
 
 ## 6. 非目标（Phase 4-A 不做）
 
-- ❌ Agent_标准 (ISO/ASTM/API/EN 检索) — Phase 4-C
-- ❌ Agent_案例 (事故数据库: MAIB/NTSB) — Phase 4-C
-- ❌ Agent_法规 (IMO 通函: MSC/MEPC) — Phase 4-C
+- ❌ Agent_标准 (ISO/ASTM/API/EN) — Phase 4-C
+- ❌ Agent_案例 (事故数据库) — Phase 4-C
+- ❌ Agent_法规 (IMO 通函) — Phase 4-C
 - ❌ PDF/Excel 导出 — Phase 4-C
-- ❌ 保存报告到 Projects — Phase 4-B（Projects 功能）
-- ❌ 版本演进自动分析（需规范 changelog 数据）— Phase 4-C
-- ❌ 规范对比矩阵自动生成（需 entity linking）— Phase 4-A 用 LLM 近似
+- ❌ 保存报告到 Projects — Phase 4-B
+- ❌ 版本演进自动分析（需规范 changelog 数据） — Phase 4-C
+- ❌ 规范对比矩阵自动生成（需 entity linking） — Phase 4-A 用 LLM 近似
 
 ---
 
@@ -384,10 +311,10 @@ if not request.disable_suggestions:
 | 需求 | 目标 | 测量方式 |
 |------|------|---------|
 | 响应延迟 | 完整研究 < 90s | 计时 |
-| 并行检索 | 2 Agent 真并行（非串行） | 日志 |
+| 并行检索 | 2 Agent 真并行 | 日志 |
 | Graceful degradation | 单 Agent 失败不崩溃 | 测试 |
-| 缓存 | 相同问题 1h 内复用结果 | 测试 |
-| 引用完整性 | 每个结论至少 1 个规范引用 | 人工审查 |
+| 缓存 | 相同问题 1h 内复用 | 测试 |
+| 引用完整性 | 每个结论 ≥1 规范引用 | 人工审查 |
 | 报告可读性 | 非技术人员能读懂 §1 | 人工审查 |
 
 ---
@@ -422,8 +349,8 @@ if not request.disable_suggestions:
 
 ## 10. 开放问题
 
-1. **复杂度评分阈值**: 5 分是否合适？需要 A/B 测试或 alpha 反馈调整
+1. **复杂度评分阈值**: 5 分是否合适？需要 alpha 反馈调整
 2. **报告模板**: 7 节是否涵盖所有海事场景？可能需要新造船/改造船/审计等子模板
-3. **LLM 选择**: Planner + Analyzer + Reporter 是否共用同一个 LLM backend，还是允许各自配置不同的模型？
-4. **引用格式**: 海事行业是否有标准引用格式（类似 IEEE/APA）？目前用 `DNV Pt.3 Ch.3 §6.2` 格式
-5. **Web Search Agent**: Phase 4-A 是否包含 Web Agent，还是留到 Phase 4-C？当前设计包含，但可降级到仅规范 Agent
+3. **LLM 选择**: Planner + Analyzer + Reporter 是否共用同一个 LLM backend？
+4. **引用格式**: 海事行业是否有标准引用格式？目前用 `DNV Pt.3 Ch.3 §6.2`
+5. **Web Search Agent**: Phase 4-A 是否包含，还是留到 Phase 4-C？
