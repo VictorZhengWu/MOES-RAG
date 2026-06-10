@@ -207,7 +207,12 @@ export default function SystemConfigPage() {
           <Card>
             <CardHeader><CardTitle className="text-base">Feature Flags</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              {Object.entries(features).map(([key, val]) => (
+              {Object.entries(features).map(([key, val]) => {
+                // Hide billing + multi_tenant in personal/enterprise mode — SaaS only
+                if ((key === 'feature_billing' || key === 'feature_multi_tenant') && deployMode !== 'saas') return null;
+                // Hide deep_research in personal mode
+                if (key === 'feature_deep_research' && deployMode === 'personal') return null;
+                return (
                 <div key={key} className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium">{key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</p>
@@ -225,7 +230,8 @@ export default function SystemConfigPage() {
                     <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${val ? 'translate-x-[18px]' : 'translate-x-[2px]'}`} />
                   </button>
                 </div>
-              ))}
+                );
+              })}
               <div className="flex items-center gap-2 pt-2">
                 <Button size="sm" onClick={saveFeatures} disabled={saving === 'features'}>
                   {saving === 'features' && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />} Save
