@@ -1429,6 +1429,325 @@ def test_openai_python_sdk_chat():
 
 ---
 
+## Phase 4: 智能研究平台
+
+> **PRD**: `.dev/specs/prd-deep-research-2026-06-09.md`
+> **关联 PRD**: `.dev/specs/prd-projects-2026-06-09.md`
+
+### 🔲 00104 — M5 Deep Research 引擎
+
+> **依赖**：M3 (00070), M4 (00080), M5 (00090), M6 (00030)
+> **定位**：多步研究 Agent — Planner → 并行检索 → 交叉分析 → 结构化报告
+
+---
+
+#### 🔲 00104-01 — 问题复杂度评分 (complexity.py)
+
+**功能描述：**
+- 实现 6 维度复杂度评分算法（FR-1）：
+  - 维度 1：规范广度（每个船级社 +1）
+  - 维度 2：规范深度（跨 Part+Chapter 引用 +2，单条款 +1）
+  - 维度 3：问题深度（分析性疑问词 +2）
+  - 维度 4：上下文连续性（连续追问同一规范 +3）
+  - 维度 5：研究范围关键词（"全面分析""总结" 等 +2）
+  - 维度 6：专业领域复杂度（海事术语 +1）
+- 输出：0-15 分，阈值 5→建议, 8→强烈建议, 11→自动建议
+- 集成到 M5 `engine.py` 的 `chat()` 流程末尾，流式回答完成后附加建议
+
+**验证方法：**
+- 测试用例 1：单规范查询 ("DNV Pt.3 Ch.3 §6 要求") → 1-3 分，不触发
+- 测试用例 2：跨规范对比 ("对比 DNV 和 ABS 的疲劳要求") → 6-8 分，建议
+- 测试用例 3：多规范+关键词 ("全面分析 LNG 船液货舱的 DNV/ABS/CCS 规范差异") → 11+ 分，自动建议
+- 测试用例 4：连续追问上下文 → 累计 +3 分
+
+**自动化验证命令：** `python -m pytest m5-qa-engine/tests/test_complexity.py -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 工具/原子函数类
+**依赖：** 00090 (M5 基础)
+**关联文件：** `m5-qa-engine/m5_qa/research/complexity.py`, `m5-qa-engine/tests/test_complexity.py`
+
+---
+
+#### 🔲 00104-02 — 研究规划器 (planner.py)
+
+**功能描述：**
+- 调用 LLM (`deepseek-chat`) 进行问题分解
+- Prompt 要求输出 JSON: `{sub_questions: [{id, question, search_strategy, search_query}], estimated_runtime_seconds}`
+- 验证：至少 1 个子问题，至多 8 个
+- 利用 M4 KG `cross_reference()` 发现跨规范关联，注入子问题
+- 输出研究计划 → M6 展示 → 用户可调整（勾选取消子问题）
+
+**验证方法：**
+- 测试用例 1：单规范问题 → 生成 1-2 个子问题
+- 测试用例 2：跨规范问题 ("对比 DNV/ABS/CCS") → 每个船级社 1 个子问题
+- 测试用例 3：Mock LLM JSON 响应 → 正确解析
+- 测试用例 4：LLM 返回无效 JSON → 降级到规则分解（按规范名称拆分）
+
+**自动化验证命令：** `python -m pytest m5-qa-engine/tests/test_planner.py -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 模块/服务类
+**依赖：** 00104-01
+**关联文件：** `m5-qa-engine/m5_qa/research/planner.py`, `m5-qa-engine/tests/test_planner.py`
+
+---
+
+#### 🔲 00104-03 — Agent_规范 (agents/regulations.py)
+
+**功能描述：**
+- M3 双路检索：`retrieve()` (dense, top_k=20) + `retrieve()` (sparse, top_k=20)
+- M4 图遍历：`graph_search(query, depth=1)` → 1-hop 扩展
+- RRF 融合：dense + sparse + graph 三路结果合并去重
+- 支持 metadata filter（按船级社/章节过滤）
+- 内置 ISO Top 10 标准字典（FR-3 轻量检索：关键词匹配 → 追加标准标题+范围）
+
+**验证方法：**
+- 测试用例 1：单规范检索 → 返回 ≥ 5 条结果
+- 测试用例 2：含 ISO 标准号查询 ("ISO 5817 焊接缺陷") → 追加 ISO 标准描述
+- 测试用例 3：空结果 → 返回空列表，不抛异常
+- 测试用例 4：M3 不可用 → 记录错误，其他 Agent 继续
+
+**自动化验证命令：** `python -m pytest m5-qa-engine/tests/test_agent_regulations.py -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 模块/服务类
+**依赖：** 00104-02, M3, M4
+**关联文件：** `m5-qa-engine/m5_qa/research/agents/regulations.py`, `m5-qa-engine/tests/test_agent_regulations.py`
+
+---
+
+#### 🔲 00104-04 — Agent_Web (agents/web.py)
+
+**功能描述：**
+- 复用 M5 已有的 Web Search 引擎（DuckDuckGo / Tavily / Brave）
+- 每子问题 top 5 结果
+- 返回：`[{title, url, snippet, source}]`
+- Graceful degradation：Web Search 不可用 → 返回空列表 + WARNING 日志（不阻断研究）
+
+**验证方法：**
+- 测试用例 1：正常检索 → 返回 ≥ 1 条结果
+- 测试用例 2：引擎不可用 → 返回空列表，不抛异常
+- 测试用例 3：多子问题批量 → 顺序执行（避免 API rate limit）
+
+**自动化验证命令：** `python -m pytest m5-qa-engine/tests/test_agent_web.py -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 模块/服务类
+**依赖：** 00104-02, M5 Web Search 模块
+**关联文件：** `m5-qa-engine/m5_qa/research/agents/web.py`, `m5-qa-engine/tests/test_agent_web.py`
+
+---
+
+#### 🔲 00104-05 — 交叉分析器 (analyzer.py)
+
+**功能描述：**
+- Step 1: 正则规则提取数值要求（多语言模式：中文/英文/DNV 句型/minimum 句型）
+  - 输出: `{参数: {船级社: 数值}}` → 构建对比矩阵
+- Step 2: LLM 深度分析
+  - 规范冲突检测（数值差异 → 标记 severity + recommendation）
+  - 版本差异分析（不同年份规范对比）
+  - 案例关联（Web 结果关联到规范条款）
+- M4 KG `cross_reference()` 发现 explicit 引用关系
+
+**验证方法：**
+- 测试用例 1：规则提取 — DNV/ABS 条款 → 正确提取数值对比表
+- 测试用例 2：冲突检测 — DNV 1.5 vs ABS 1.67 → 生成 conflict 条目
+- 测试用例 3：无冲突 → 空 conflicts 列表，正常完成
+- 测试用例 4：LLM 超时 → 仅输出 Step 1 规则提取结果（降级）
+
+**自动化验证命令：** `python -m pytest m5-qa-engine/tests/test_analyzer.py -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 模块/服务类
+**依赖：** 00104-03, 00104-04
+**关联文件：** `m5-qa-engine/m5_qa/research/analyzer.py`, `m5-qa-engine/tests/test_analyzer.py`
+
+---
+
+#### 🔲 00104-06 — 报告生成器 (report_generator.py)
+
+**功能描述：**
+- 调用 LLM 生成 7 节 Markdown 报告（FR-5）
+- 输入：原始问题 + 检索结果 + 分析结果 + 报告模板
+- 每节标注 confidence（high/medium/needs_review）
+- 引用格式：`[规范-N] DNV Pt.3 Ch.3 §6.2 (2025)`
+- 支持 M6 流式渲染（复用 message-bubble Markdown 组件）
+- §2 对比矩阵：优先用 analyzer 规则提取的结构化数据，LLM 补充
+
+**验证方法：**
+- 测试用例 1：完整输入 → 生成 7 节报告（每节非空）
+- 测试用例 2：报告中每个结论至少 1 个规范引用
+- 测试用例 3：LLM 超时 → 返回部分报告（§1 + §2 规则提取版）+ 错误标注
+- 测试用例 4：空检索结果 → 返回"无法生成报告"提示
+
+**自动化验证命令：** `python -m pytest m5-qa-engine/tests/test_report_generator.py -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 集成/跨模块类
+**依赖：** 00104-05
+**关联文件：** `m5-qa-engine/m5_qa/research/report_generator.py`, `m5-qa-engine/tests/test_report_generator.py`
+
+---
+
+#### 🔲 00104-07 — SSE 进度流 + M8 路由 (progress.py + routes)
+
+**功能描述：**
+- `POST /api/v1/agent/research` SSE 流式端点
+  - event: `progress` — 阶段变化 + 进度百分比 + 当前 Agent 状态
+  - event: `report_chunk` — 报告逐节流式输出
+  - event: `done` — 研究完成 + `{report_id, full_report}`
+- `POST /api/v1/agent/research/{report_id}/question` — 质疑深入
+- `GET /api/v1/agent/research/suggestion` — 复杂度检测建议（可选，也可内嵌到 chat 响应）
+- M8 路由注册 + `app.state.qa_engine.research()` 调用
+
+**验证方法：**
+- 测试用例 1：SSE 流 → 收到 progress + report_chunk + done 事件序列
+- 测试用例 2：子问题取消 → 仅检索未取消的问题
+- 测试用例 3：质疑端点 → 返回更新后的报告段落
+- 测试用例 4：单个 Agent 失败 → progress 事件包含 agent_error，其他继续
+
+**自动化验证命令：** `python -m pytest m8-api-gateway/tests/test_research_routes.py -v`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 集成/跨模块类
+**依赖：** 00104-06, M8 (00100)
+**关联文件：** `m5-qa-engine/m5_qa/research/progress.py`, `m8-api-gateway/m8_gateway/routes/research.py`, `m8-api-gateway/tests/test_research_routes.py`
+
+---
+
+#### 🔲 00104-08 — M6 研究界面 (入口 + 进度 + 报告渲染)
+
+**功能描述：**
+- 入口：Sidebar "🧠 Deep Research" 按钮 → 研究模式（全屏/大卡片）
+- Phase 1 规划展示：子问题卡片列表 + 复选框 + [开始研究] 按钮 + 预计耗时
+- Phase 2 检索进度：并行 Agent 卡片（独立进度条）+ 可展开原始结果
+- Phase 3-4 报告渲染：7 节 Markdown + §2 对比表格（横向滚动）+ §5 风险矩阵（颜色编码）+ §6 引用可点击展开原文
+- 交互：[质疑] 按钮 → 输入框 → [保存到项目] 按钮（Phase 4-A 提示"Projects 功能即将上线"）
+- SSE 连接管理：自动重连 + 断开提示
+
+**验证方法：**
+- 测试用例 1：完整研究流程走通（输入 → 规划 → 进度 → 报告）
+- 测试用例 2：取消子问题 → 研究只执行选中问题
+- 测试用例 3：报告 Markdown 渲染正确（表格/列表/代码块）
+- Playwright: 启动研究 → 等待完成 → 验证报告包含 7 节
+
+**自动化验证命令：** `npx playwright test --grep "deep-research"`
+**通过条件：** 全部 passed，0 failed
+**Task 类型：** 集成/跨模块类
+**依赖：** 00104-07, M6 (00030)
+**关联文件：** `m6-user-portal/src/app/[locale]/(main)/research/`, `m6-user-portal/src/components/research/`
+
+---
+
+#### 🔲 00104-09 — 测试 + 集成验证
+
+**功能描述：**
+- M5 全量回归：新增 research 模块不破坏现有 chat/retrieve 功能
+- 端到端测试：M6 → M8 → M5 research → M3 + M4 + Web → 报告 → M6 渲染
+- 容错测试：M3 不可用 / Web Search 不可用 / LLM 超时 → graceful degradation
+- 复杂度建议集成测试：chat() 返回建议 → M6 展示 → 点击启动
+
+**验证方法：** 全量 pytest + Playwright E2E
+**自动化验证命令：** `python -m pytest m5-qa-engine/tests/ m8-api-gateway/tests/ -q`
+**通过条件：** 现有测试无回归，新增 research 测试全部通过
+**Task 类型：** 集成/跨模块类
+**依赖：** 00104-01 ~ 00104-08
+**关联文件：** 全部 research 模块 + tests
+
+---
+
+**依赖关系图：**
+
+```
+00104-01 (复杂度评分)
+    ↓
+00104-02 (planner)
+    ↓
+┌───────────────────────┐
+│ 00104-03   00104-04   │  ← 并行
+│ (regulations) (web)   │
+└──────────┬────────────┘
+           ↓
+    00104-05 (analyzer)
+           ↓
+    00104-06 (report_generator)
+           ↓
+    00104-07 (SSE + M8 routes)
+           ↓
+    00104-08 (M6 UI)
+           ↓
+    00104-09 (集成验证)
+```
+
+---
+
+### 🔲 00105 — M5 Projects 项目工作空间 (Phase 4-B 占位)
+
+> **PRD**: `.dev/specs/prd-projects-2026-06-09.md`
+> **状态**: 🔲 占位 — Phase 4-A 完成后展开详细内容
+
+#### 🔲 00105-01 — 项目 CRUD + SQLite 建表 + M8 路由 (manager.py)
+
+**功能描述：** 项目创建/读取/更新/删除/归档 API + 6 张新表 (projects / project_conversations / project_documents / research_issues / project_conclusions / compliance_items)
+**依赖：** 00090 (M5)
+**关联文件：** `m5-qa-engine/m5_qa/project/manager.py`
+
+#### 🔲 00105-02 — 对话关联 + 文件夹 + 标签 + 自动分类 (conversations.py)
+
+**功能描述：** 对话关联到项目文件夹、标签系统、FR-10 自动分类（关键词映射+阶段推断）
+**依赖：** 00105-01
+**关联文件：** `m5-qa-engine/m5_qa/project/conversations.py`
+
+#### 🔲 00105-03 — 文档上传 + M1 集成 + 版本管理 (documents.py)
+
+**功能描述：** 项目文档上传、M1 异步解析、专业自动分类、版本管理
+**依赖：** 00105-01, M1 (00060)
+**关联文件：** `m5-qa-engine/m5_qa/project/documents.py`
+
+#### 🔲 00105-04 — 待研究问题 + 结论提取 (issues.py + conclusions.py)
+
+**功能描述：** 问题看板 CRUD + AI 结论自动提取 + 人工标注
+**依赖：** 00105-01
+**关联文件：** `m5-qa-engine/m5_qa/project/issues.py`, `m5-qa-engine/m5_qa/project/conclusions.py`
+
+#### 🔲 00105-05 — 合规矩阵 + 偏差清单 + 规范模板库 (compliance.py)
+
+**功能描述：** 规范满足度矩阵、偏差清单、硬编码 10 个规范模板库（按船型+入级社）
+**依赖：** 00105-01
+**关联文件：** `m5-qa-engine/m5_qa/project/compliance.py`
+
+#### 🔲 00105-06 — 项目范围搜索 (search_scope.py)
+
+**功能描述：** 混合搜索排序算法（项目文档 0.9 > 结论 0.85 > 对话 0.8 > 全局相关 > 全局其他）
+**依赖：** 00105-01
+**关联文件：** `m5-qa-engine/m5_qa/project/search_scope.py`
+
+#### 🔲 00105-07 — M6 项目列表 + 仪表板 Overview (FR-12/FR-13)
+
+**功能描述：** 项目列表页 + 项目仪表板（进度统计/最近活动/待办/风险告警）
+**依赖：** 00105-01
+**关联文件：** `m6-user-portal/src/app/[locale]/(main)/projects/`
+
+#### 🔲 00105-08 — M6 文件夹树 + 对话面板 + 文档管理 (FR-14/FR-15/FR-16)
+
+**功能描述：** 文件夹树（阶段→专业→子文件夹）、项目内对话面板、文档列表+上传
+**依赖：** 00105-02, 00105-03
+**关联文件：** `m6-user-portal/src/components/project/`
+
+#### 🔲 00105-09 — M6 问题看板 + 合规面板 + Deep Research 入口 (FR-17/FR-18)
+
+**功能描述：** 待研究问题看板（Kanban）、合规追踪面板（规范树+进度条）、[启动 Deep Research] 按钮
+**依赖：** 00105-04, 00105-05
+**关联文件：** `m6-user-portal/src/components/project/`
+
+#### 🔲 00105-10 — 项目总结报告生成 (FR-9 Markdown)
+
+**功能描述：** 项目总结报告 Markdown 生成（项目信息+合规状态+关键结论+待研究问题+合规矩阵）
+**依赖：** 00105-05, 00105-04
+**关联文件：** `m5-qa-engine/m5_qa/project/report.py`
+
+#### 🔲 00105-11 — 测试 + 集成验证（含 Phase 4-A 集成测试）
+
+**功能描述：** 全量回归 + 双向集成测试（Deep Research → Projects 保存, Projects → Deep Research 启动）
+**依赖：** 00105-01 ~ 00105-10
+**关联文件：** `m5-qa-engine/tests/test_project*.py`
+
+---
+
 ### ✅ 00110 — deploy/ 部署配置
 
 **功能描述：**
