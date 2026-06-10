@@ -98,12 +98,19 @@ export function LoginForm() {
 
         <SocialButtons />
 
-        <p className="text-center text-sm text-muted-foreground">
-          {t('auth.login.noAccount')}{' '}
-          <Link href={`/${locale}/register`} className="text-primary underline underline-offset-2">
-            {t('auth.login.register')}
-          </Link>
-        </p>
+        <div className="text-center space-y-1">
+          <p className="text-sm">
+            <Link href={`/${locale}/forgot-password`} className="text-muted-foreground underline underline-offset-2 hover:text-foreground">
+              Forgot password?
+            </Link>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {t('auth.login.noAccount')}{' '}
+            <Link href={`/${locale}/register`} className="text-primary underline underline-offset-2">
+              {t('auth.login.register')}
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

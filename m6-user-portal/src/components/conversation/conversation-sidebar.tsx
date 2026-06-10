@@ -176,6 +176,7 @@ export function ConversationSidebar() {
         <Button
           variant="ghost"
           className="w-full justify-start gap-2 h-9 text-sm text-muted-foreground"
+          onClick={() => router.push(`/${locale}/help`)}
         >
           <HelpCircle className="h-4 w-4" />
           {t('sidebar.help')}

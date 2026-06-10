@@ -10,7 +10,7 @@ import type {
   ConversationListResponse,
   ConversationDetailResponse,
 } from '@/types';
-import { apiGet, apiDelete, apiPatch } from './client';
+import { apiGet, apiDelete, apiPatch, apiPost } from './client';
 
 export async function listConversations(
   token?: string,

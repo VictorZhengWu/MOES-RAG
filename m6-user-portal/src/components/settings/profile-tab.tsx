@@ -16,7 +16,65 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useAuthStore } from '@/lib/stores/auth-store';
+import { Loader2 } from 'lucide-react';
+import { deleteAccount } from '@/lib/api/conversations';
+import { useRouter } from 'next/navigation';
+import { useLocale } from 'next-intl';
+
+function DeleteAccountButton() {
+  const t = useTranslations();
+  const locale = useLocale();
+  const router = useRouter();
+  const { user, token, logout } = useAuthStore();
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState('');
+
+  if (!user) return null;
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setError('');
+    try {
+      await deleteAccount(token ?? undefined);
+      logout();
+      router.push(`/${locale}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete account');
+      setDeleting(false);
+      setConfirming(false);
+    }
+  };
+
+  if (!confirming) {
+    return (
+      <div className="mt-3 space-y-2">
+        <Button variant="destructive" size="sm" onClick={() => setConfirming(true)}>
+          Delete Account
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+      <p className="text-sm font-medium text-destructive">Are you absolutely sure?</p>
+      <p className="text-xs text-muted-foreground">
+        This will permanently delete your account, all conversations, and API keys. This action cannot be undone.
+      </p>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      <div className="flex gap-2">
+        <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting}>
+          {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+          Yes, delete my account
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => { setConfirming(false); setError(''); }} disabled={deleting}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export function ProfileTab() {
   const t = useTranslations();
@@ -114,9 +172,7 @@ export function ProfileTab() {
         <p className="mt-1 text-xs text-muted-foreground">
           Once you delete your account, there is no going back. Please be certain.
         </p>
-        <Button variant="destructive" size="sm" className="mt-3" disabled>
-          Delete Account
-        </Button>
+        <DeleteAccountButton />
       </div>
     </div>
   );
