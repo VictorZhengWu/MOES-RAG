@@ -17,6 +17,8 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 import httpx
+import logging
+logger = logging.getLogger(__name__)
 
 from m8_gateway.auth.key_manager import APIKey
 from m8_gateway.auth.middleware import get_api_key
@@ -131,10 +133,29 @@ async def upload_document(
 
             result = m1_resp.json()
 
-        # ---- Step 6: Return the parsed result ----
+        # ---- Step 6: Link to project if project_id provided ----
+        project_id = form_data.get("project_id")
+        doc_id = None
+        if project_id:
+            try:
+                pm = request.app.state.project_manager
+                doc_rec = await pm.add_document(
+                    project_id, filename,
+                    file_key=f"m2://{result.get('doc_id', filename)}",
+                    uploaded_by=api_key.user_id,
+                )
+                doc_id = doc_rec["document_id"]
+                # Update status to 'done' after successful parse
+                await pm.update_document_status(project_id, doc_id, "done", result)
+            except Exception as e:
+                logger.warning("Failed to link document to project %s: %s", project_id, e)
+
+        # ---- Step 7: Return the parsed result ----
         return {
             "filename": filename,
             "parse_result": result,
+            "document_id": doc_id,
+            "project_id": project_id,
         }
 
     except httpx.ConnectError:

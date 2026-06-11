@@ -54,6 +54,9 @@ class ChatCompletionRequest(BaseModel):
     domain_filter: str | None = None
     vessel_type_filter: str | None = None
     web_search: bool = False  # Enable live web search (DuckDuckGo/SearXNG/Tavily/Brave)
+    # Phase 4-B: Project-scoped search extensions
+    project_id: str | None = None
+    search_scope: str = "hybrid"  # "project_only" | "global_only" | "hybrid"
 
 
 # ---------------------------------------------------------------------------

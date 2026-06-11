@@ -114,7 +114,7 @@ function DashboardTab({ dash, project, locale, token }: any) {
           <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${dash.compliance_pct || 0}%` }} />
         </div>
       )}
-      <Button size="sm" onClick={() => router.push(`/${locale}/research`)} className="gap-1.5">
+      <Button size="sm" onClick={() => router.push(`/${locale}/research?project=${project.project_id}&title=${encodeURIComponent(project.name || '')}`)} className="gap-1.5">
         <Brain className="h-3.5 w-3.5"/> Start Deep Research
       </Button>
     </div>
@@ -202,9 +202,14 @@ function IssuesTab({ projectId, locale, token }: any) {
             {issues.filter(i => i.status === col).map(i => (
               <Card key={i.issue_id} className="p-2 text-xs">
                 <p className="font-medium">{i.title}</p>
-                <div className="flex gap-1 mt-1">
-                  <Badge variant="outline" className="text-[9px]">{i.priority}</Badge>
-                  {i.assignee && <Badge variant="secondary" className="text-[9px]">{i.assignee}</Badge>}
+                <div className="flex gap-1 mt-1 items-center justify-between">
+                  <div className="flex gap-1">
+                    <Badge variant="outline" className="text-[9px]">{i.priority}</Badge>
+                    {i.assignee && <Badge variant="secondary" className="text-[9px]">{i.assignee}</Badge>}
+                  </div>
+                  <Brain className="h-3 w-3 text-primary cursor-pointer hover:opacity-70"
+                    onClick={(e) => { e.stopPropagation(); router.push(`/${locale}/research?issue=${i.title}`); }}
+                    title="Start Deep Research on this issue" />
                 </div>
               </Card>
             ))}

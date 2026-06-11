@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,8 @@ interface ProgressData {
 interface ReportSection {
   delta: string;
 }
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export default function ResearchPage() {
   const t = useTranslations();
@@ -60,10 +62,10 @@ export default function ResearchPage() {
 
     const controller = new AbortController();
     abortRef.current = controller;
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
     try {
-      const res = await fetch(`${baseUrl}/api/v1/agent/research`, {
+      const res = await fetch(`${BASE_URL}/api/v1/agent/research`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -224,9 +226,12 @@ export default function ResearchPage() {
 
       {/* Done state */}
       {done && (
-        <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
-          Research complete
+        <div className="mt-4 flex items-center gap-3">
+          <span className="text-sm text-muted-foreground flex items-center gap-1">
+            <CheckCircle2 className="h-4 w-4 text-green-500" />
+            Research complete
+          </span>
+          <SaveToProjectButton report={report} token={token || ''} />
         </div>
       )}
     </div>
@@ -269,6 +274,51 @@ function handleSSEEvent(
 }
 
 // ---- Simple Markdown renderer (bold, lists, headers, tables) ----
+
+function SaveToProjectButton({ report, token }: { report: string; token: string }) {
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selected, setSelected] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open || !token) return;
+    const h: any = token ? { Authorization: `Bearer ${token}` } : {};
+    fetch(`${BASE_URL}/api/v1/projects`, { headers: h })
+      .then(r => r.ok ? r.json() : []).then(setProjects).catch(() => {});
+  }, [open, token]);
+
+  const handleSave = async () => {
+    if (!selected || !token) return;
+    setSaving(true);
+    const h: any = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    try {
+      await fetch(`${BASE_URL}/api/v1/projects/${selected}/conclusions`, {
+        method: 'POST', headers: h,
+        body: JSON.stringify({ text: 'Deep Research report', detail: report.slice(0, 500), source_type: 'deep_research', status: 'important' }),
+      });
+      setSaved(true);
+    } catch {} finally { setSaving(false); }
+  };
+
+  if (saved) return <span className="text-sm text-green-600 font-medium">✓ Saved to project</span>;
+
+  if (!open) return <Button size="sm" variant="outline" onClick={() => setOpen(true)}>Save to Project</Button>;
+
+  return (
+    <div className="flex items-center gap-2">
+      <select value={selected} onChange={(e) => setSelected(e.target.value)}
+        className="rounded-lg border px-2 py-1 text-xs h-7">
+        <option value="">Select project...</option>
+        {projects.map((p: any) => <option key={p.project_id} value={p.project_id}>{p.name}</option>)}
+      </select>
+      <Button size="sm" onClick={handleSave} disabled={!selected || saving}>
+        {saving ? 'Saving...' : 'Save'}
+      </Button>
+    </div>
+  );
+}
 
 function renderMarkdown(md: string): string {
   let html = md
