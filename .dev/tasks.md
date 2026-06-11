@@ -1751,17 +1751,17 @@ def test_openai_python_sdk_chat():
 
 ---
 
-#### 🔲 00105-12 — 跨模块集成补完
+#### 🔄 00105-12 — 跨模块集成补完 (3/5 完成)
 
-**功能描述：**
-1. **M1 文档上传链路**: 上传 → M1 异步解析 → M2 → project_documents 状态更新
-2. **M3 项目范围搜索**: chat 带 `project_id` + `search_scope` → 混合排序
-3. **4-A → 4-B**: Deep Research 报告 → "保存到项目" → POST conclusions + compliance
-4. **4-B → 4-A**: 问题看板 [启动 Deep Research] → 带问题标题跳转
-5. **对话自动分类**: 新建对话 → classify_conversation() → auto-link 到项目
+**已完成：**
+1. ✅ **M1 文档上传链路**: 上传 → M1 解析 → project_documents 状态更新 (project_id form field)
+2. ⏸️ **M3 项目范围搜索**: chat 模型已有 project_id/search_scope 字段，M5 pipeline 集成延后至 Phase 4-C
+3. ✅ **4-A → 4-B**: 研究页面 "Save to Project" 按钮 → POST conclusions
+4. ✅ **4-B → 4-A**: 仪表板 + 问题卡片 [🧠] → 带上下文跳转 research 页面
+5. ⏸️ **对话自动分类**: Manager 方法已就绪，M5 chat pipeline 触发点延后至 Phase 4-C
 
-**依赖：** 00105-10, M1, M3, 00104 (Deep Research)
-**关联文件：** `m5-qa-engine/m5_qa/project/integration.py`, `m6-user-portal/src/`
+**依赖：** 00105-10, M1, 00104 (Deep Research)
+**关联文件：** `m8-api-gateway/m8_gateway/routes/documents.py`, `m6-user-portal/src/`
 
 ---
 
