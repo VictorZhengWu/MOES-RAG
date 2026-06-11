@@ -362,7 +362,23 @@
       "Bash(DEEPSEEK_API_KEY=\"sk-fd22ed990ebf4c94b5ae11a108ac62ef\" PYTHONPATH=. timeout 180 python tests/e2e/test_full_pipeline.py)",
       "Bash(DEEPSEEK_API_KEY=\"sk-fd22ed990ebf4c94b5ae11a108ac62ef\" PYTHONPATH=. python tests/e2e/test_full_pipeline.py)",
       "Bash(python -c \"from m1_parser.standalone.web_server import _COMPONENTS; print\\('marker:', _COMPONENTS['backends']['marker']\\); print\\('mineru:', _COMPONENTS['backends']['mineru']\\)\")",
-      "Bash(timeout 60 python -m pytest m1-doc-parsing/tests/test_config.py m1-doc-parsing/tests/test_router.py -q)"
+      "Bash(timeout 60 python -m pytest m1-doc-parsing/tests/test_config.py m1-doc-parsing/tests/test_router.py -q)",
+      "Bash(python -c \"import redis; import fakeredis; print\\('redis', redis.__version__, 'fakeredis', fakeredis.__version__\\)\")",
+      "Bash(python -m pytest tests/test_redis_client.py tests/test_config.py -v)",
+      "Bash(mkdir -p E:/myCode/RAG/m6-user-portal/src/app/\\\\[locale\\\\]/\\\\\\(auth\\\\\\)/forgot-password)",
+      "Bash(mkdir -p E:/myCode/RAG/m6-user-portal/src/app/\\\\[locale\\\\]/\\\\\\(auth\\\\\\)/reset-password)",
+      "Bash(python -m pytest E:/myCode/RAG/m1-doc-parsing/tests/ -q)",
+      "Bash(python -m pytest E:/myCode/RAG/m3-retrieval/tests/ -q)",
+      "Bash(mkdir -p .dev/prd)",
+      "Bash(mv dev-docs/prd/prd-deep-research-2026-06-09.md .dev/prd/)",
+      "Bash(rmdir dev-docs/prd)",
+      "Bash(rmdir dev-docs *)",
+      "Bash(python -m pytest E:/myCode/RAG/m5-qa-engine/tests/ -q)",
+      "Bash(python -m pytest E:/myCode/RAG/m5-qa-engine/tests/test_report_generator.py -q)",
+      "Bash(python -m pytest E:/myCode/RAG/m8-api-gateway/tests/ -q)",
+      "Bash(python -m pytest E:/myCode/RAG/m2-storage/tests/ -q)",
+      "Bash(python -m pytest E:/myCode/RAG/m4-knowledge-graph/tests/ -q)",
+      "Bash(grep -E \"^\\\\\\\\.|=2|demo_|DNV|test_e2e|setup\\\\.|m1_parser|__pycache__\")"
     ]
   }
 }
