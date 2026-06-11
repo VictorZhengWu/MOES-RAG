@@ -1434,14 +1434,14 @@ def test_openai_python_sdk_chat():
 > **PRD**: `.dev/specs/prd-deep-research-2026-06-09.md`
 > **关联 PRD**: `.dev/specs/prd-projects-2026-06-09.md`
 
-### 🔲 00104 — M5 Deep Research 引擎
+### ✅ 00104 — M5 Deep Research 引擎
 
 > **依赖**：M3 (00070), M4 (00080), M5 (00090), M6 (00030)
 > **定位**：多步研究 Agent — Planner → 并行检索 → 交叉分析 → 结构化报告
 
 ---
 
-#### 🔲 00104-01 — 问题复杂度评分 (complexity.py)
+#### ✅ 00104-01 — 问题复杂度评分 (complexity.py)
 
 **功能描述：**
 - 实现 6 维度复杂度评分算法（FR-1）：
@@ -1468,7 +1468,7 @@ def test_openai_python_sdk_chat():
 
 ---
 
-#### 🔲 00104-02 — 研究规划器 (planner.py)
+#### ✅ 00104-02 — 研究规划器 (planner.py)
 
 **功能描述：**
 - 调用 LLM (`deepseek-chat`) 进行问题分解
@@ -1491,7 +1491,7 @@ def test_openai_python_sdk_chat():
 
 ---
 
-#### 🔲 00104-03 — Agent_规范 (agents/regulations.py)
+#### ✅ 00104-03 — Agent_规范 (agents/regulations.py)
 
 **功能描述：**
 - M3 双路检索：`retrieve()` (dense, top_k=20) + `retrieve()` (sparse, top_k=20)
@@ -1514,7 +1514,7 @@ def test_openai_python_sdk_chat():
 
 ---
 
-#### 🔲 00104-04 — Agent_Web (agents/web.py)
+#### ✅ 00104-04 — Agent_Web (agents/web.py)
 
 **功能描述：**
 - 复用 M5 已有的 Web Search 引擎（DuckDuckGo / Tavily / Brave）
@@ -1535,7 +1535,7 @@ def test_openai_python_sdk_chat():
 
 ---
 
-#### 🔲 00104-05 — 交叉分析器 (analyzer.py)
+#### ✅ 00104-05 — 交叉分析器 (analyzer.py)
 
 **功能描述：**
 - Step 1: 正则规则提取数值要求（多语言模式：中文/英文/DNV 句型/minimum 句型）
@@ -1560,7 +1560,7 @@ def test_openai_python_sdk_chat():
 
 ---
 
-#### 🔲 00104-06 — 报告生成器 (report_generator.py)
+#### ✅ 00104-06 — 报告生成器 (report_generator.py)
 
 **功能描述：**
 - 调用 LLM 生成 7 节 Markdown 报告（FR-5）
@@ -1584,7 +1584,7 @@ def test_openai_python_sdk_chat():
 
 ---
 
-#### 🔲 00104-07 — SSE 进度流 + M8 路由 (progress.py + routes)
+#### ✅ 00104-07 — SSE 进度流 + M8 路由 (progress.py + routes)
 
 **功能描述：**
 - `POST /api/v1/agent/research` SSE 流式端点
@@ -1609,7 +1609,7 @@ def test_openai_python_sdk_chat():
 
 ---
 
-#### 🔲 00104-08 — M6 研究界面 (入口 + 进度 + 报告渲染)
+#### ✅ 00104-08 — M6 研究界面 (入口 + 进度 + 报告渲染)
 
 **功能描述：**
 - 入口：Sidebar "🧠 Deep Research" 按钮 → 研究模式（全屏/大卡片）
@@ -1633,7 +1633,7 @@ def test_openai_python_sdk_chat():
 
 ---
 
-#### 🔲 00104-09 — 测试 + 集成验证
+#### ✅ 00104-09 — 测试 + 集成验证
 
 **功能描述：**
 - M5 全量回归：新增 research 模块不破坏现有 chat/retrieve 功能
