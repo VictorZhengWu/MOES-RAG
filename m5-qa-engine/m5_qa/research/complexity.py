@@ -16,8 +16,11 @@ DIMENSIONS:
     6. Domain complexity — marine-specific technical terms
 """
 
+import logging
 import re
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 # Known classification societies (case-insensitive matching)
@@ -109,7 +112,10 @@ def calculate_complexity(
         if re.search(rf"\b{term}\b", query_lower):
             score += 1
 
-    return min(score, 15)
+    capped = min(score, 15)
+    if score > 15:
+        logger.debug("Complexity score capped at 15 (raw: %d)", score)
+    return capped
 
 
 def should_suggest(
