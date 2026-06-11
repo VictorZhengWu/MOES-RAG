@@ -298,27 +298,32 @@ function QuestionConclusion({ report, reportId, token }: { report: string; repor
   const [question, setQuestion] = useState('');
   const [asking, setAsking] = useState(false);
   const [answer, setAnswer] = useState('');
+  const [evidence, setEvidence] = useState<any>(null);
   const [error, setError] = useState('');
 
-  // Extract conclusions from report (lines starting with "- **")
   const conclusions = report.split('\n').filter((l: string) => l.match(/^- \*\*|^-\s+\*\*|^##\s+/));
-
   if (conclusions.length === 0) return null;
 
   const handleAsk = async () => {
     if (!question.trim() || expanded === null) return;
-    setAsking(true); setError(''); setAnswer('');
+    setAsking(true); setError(''); setAnswer(''); setEvidence(null);
     try {
       const res = await fetch(`${BASE_URL}/api/v1/agent/research/${reportId}/question`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ conclusion_id: expanded, question: question.trim() }),
       });
-      if (!res.ok) { setError('AI re-analysis failed. Please try again.'); return; }
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        setError(`Re-analysis failed: ${res.status === 503 ? 'AI engine is not available. Please try again later.' : res.status === 400 ? 'Invalid question format. Please rephrase.' : `Server error (${res.status}). Please wait and retry.`}`);
+        return;
+      }
       const data = await res.json();
       setAnswer(data.updated_analysis || 'Analysis updated.');
-    } catch { setError('Cannot reach server.'); }
-    finally { setAsking(false); }
+      setEvidence(data.evidence || null);
+    } catch {
+      setError('Cannot reach the server. Check your network connection and try again.');
+    } finally { setAsking(false); }
   };
 
   return (
@@ -328,7 +333,7 @@ function QuestionConclusion({ report, reportId, token }: { report: string; repor
       <div className="space-y-1 max-h-40 overflow-y-auto mb-3">
         {conclusions.slice(0, 8).map((c: string, i: number) => (
           <div key={i} className={`text-xs px-2 py-1 rounded cursor-pointer ${expanded === i ? 'bg-primary/10 border border-primary/30' : 'hover:bg-muted'}`}
-            onClick={() => { setExpanded(expanded === i ? null : i); setQuestion(''); setAnswer(''); setError(''); }}>
+            onClick={() => { setExpanded(expanded === i ? null : i); setQuestion(''); setAnswer(''); setEvidence(null); setError(''); }}>
             {c.slice(0, 120)}{c.length > 120 ? '...' : ''}
           </div>
         ))}
@@ -346,6 +351,42 @@ function QuestionConclusion({ report, reportId, token }: { report: string; repor
             </button>
             {error && <span className="text-xs text-destructive">{error}</span>}
           </div>
+          {/* P0-4: Show evidence from research context */}
+          {evidence && (
+            <div className="space-y-2 mt-2">
+              {evidence.regulation_results?.length > 0 && (
+                <details className="text-xs"><summary className="cursor-pointer font-medium text-muted-foreground">Original Search Results ({evidence.regulation_results.length} items)</summary>
+                  <div className="mt-1 space-y-1 max-h-32 overflow-y-auto">
+                    {evidence.regulation_results.map((r: any, i: number) => (
+                      <div key={i} className="bg-muted/30 rounded px-2 py-1">
+                        <span className="text-[10px] text-muted-foreground">[{r.source}]</span> {r.text}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+              {evidence.web_results?.length > 0 && (
+                <details className="text-xs"><summary className="cursor-pointer font-medium text-muted-foreground">Web References ({evidence.web_results.length} items)</summary>
+                  <div className="mt-1 space-y-1">
+                    {evidence.web_results.map((r: any, i: number) => (
+                      <div key={i} className="bg-muted/30 rounded px-2 py-1">{r.title}: {r.snippet}</div>
+                    ))}
+                  </div>
+                </details>
+              )}
+              {evidence.conflicts?.length > 0 && (
+                <details className="text-xs"><summary className="cursor-pointer font-medium text-yellow-600">⚠ Conflicts Detected ({evidence.conflicts.length})</summary>
+                  <div className="mt-1 space-y-1">
+                    {evidence.conflicts.map((c: any, i: number) => (
+                      <div key={i} className="bg-yellow-50 dark:bg-yellow-900/20 rounded px-2 py-1">
+                        {c.parameter}: {c.society_a}={c.value_a} vs {c.society_b}={c.value_b} ({c.difference_pct}% diff)
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
           {answer && (
             <div className="text-xs bg-background rounded-lg p-2 border">
               <p className="font-medium text-green-600 mb-1">🕐 Updated analysis (manual review) — {new Date().toLocaleString()}</p>

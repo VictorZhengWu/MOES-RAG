@@ -176,6 +176,18 @@ async def question_research(
             "conclusion_id": body.conclusion_id,
             "updated_analysis": content,
             "has_context": ctx is not None,
+            # P0-4: Return original evidence so frontend can display it
+            "evidence": {
+                "regulation_results": [
+                    {"text": str(r.get("text", ""))[:200], "source": r.get("source", "?")}
+                    for r in ctx.get("regulation_results", [])[:5]
+                ] if ctx else [],
+                "web_results": [
+                    {"title": r.get("title", ""), "snippet": str(r.get("snippet", ""))[:200]}
+                    for r in ctx.get("web_results", [])[:3]
+                ] if ctx else [],
+                "conflicts": ctx.get("conflicts", []) if ctx else [],
+            },
         }
     except Exception as e:
         logger.exception("Research question failed")
