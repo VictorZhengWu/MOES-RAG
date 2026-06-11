@@ -1678,7 +1678,9 @@ def test_openai_python_sdk_chat():
 ### ✅ 00105 — M5 Projects 项目工作空间 (Phase 4-B)
 
 > **状态**: ✅ 全部完成
+> **设计决策**: 所有方法合并到单一 `manager.py`（非 PRD 中的 7 个文件），共享 aiosqlite 连接模式
 > **测试**: M1 118 + M2 58 + M3 70 + M4 73 + M5 159 + M8 58 = 536 passed
+> **延后至 4-C**: 文件夹树 UI (对话平铺→树形) / 看板拖放 / 项目归档案例库
 
 > **PRD**: `.dev/specs/prd-projects-2026-06-09.md`
 > **状态**: 🔲 占位 — Phase 4-A 完成后展开详细内容
@@ -1713,7 +1715,7 @@ def test_openai_python_sdk_chat():
 **依赖：** 00105-01
 **关联文件：** `m5-qa-engine/m5_qa/project/compliance.py`
 
-#### ✅ 00105-06 — 项目范围搜索 (search_scope.py)
+#### ✅ 00105-06 — 项目范围搜索 (M8 chat 上下文注入)
 
 **功能描述：** 混合搜索排序算法（项目文档 0.9 > 结论 0.85 > 对话 0.8 > 全局相关 > 全局其他）
 **当前状态：** 仅有 SQLite LIKE，未接入 M3
