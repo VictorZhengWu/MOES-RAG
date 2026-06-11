@@ -52,6 +52,8 @@ export default function ResearchPage() {
   const [conflictCount, setConflictCount] = useState(0);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const [reportId, setReportId] = useState('');
+  const [includeCases, setIncludeCases] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const handleStart = useCallback(async () => {
@@ -109,7 +111,7 @@ export default function ResearchPage() {
               const data = JSON.parse(line.slice(6));
               handleSSEEvent(data, setPhase, setProgress, setMessage,
                 setPlan, setRegCount, setWebCount, setConflictCount,
-                setReport, setDone, setError);
+                setReport, setDone, setError, setReportId);
             } catch { /* skip malformed */ }
           }
         }
@@ -156,10 +158,17 @@ export default function ResearchPage() {
               className="resize-none"
               disabled={running}
             />
-            <Button onClick={handleStart} disabled={!query.trim() || running} className="gap-2">
-              <Brain className="h-4 w-4" />
-              Start Research
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button onClick={handleStart} disabled={!query.trim() || running} className="gap-2">
+                <Brain className="h-4 w-4" />
+                Start Research
+              </Button>
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                <input type="checkbox" checked={includeCases} onChange={e => setIncludeCases(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded" />
+                Include case studies
+              </label>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -237,8 +246,9 @@ export default function ResearchPage() {
               Research complete
             </span>
             <SaveToProjectButton report={report} token={token || ''} />
+            <ExportPdfButton report={report} reportId={reportId} />
           </div>
-          <QuestionConclusion report={report} token={token || ''} />
+          <QuestionConclusion report={report} reportId={reportId} token={token || ''} />
         </div>
       )}
     </div>
@@ -259,10 +269,12 @@ function handleSSEEvent(
   setReport: (s: string | ((prev: string) => string)) => void,
   setDone: (b: boolean) => void,
   setError: (s: string) => void,
+  setReportId: (s: string) => void,
 ) {
   if (data.phase) setPhase(data.phase);
   if (data.progress !== undefined) setProgress(data.progress);
   if (data.message) setMessage(data.message);
+  if (data.report_id) setReportId(data.report_id);
   if (data.plan) setPlan(data.plan);
   if (data.regulation_count !== undefined) setRegCount(data.regulation_count);
   if (data.web_count !== undefined) setWebCount(data.web_count);
@@ -282,7 +294,7 @@ function handleSSEEvent(
 
 // ---- Simple Markdown renderer (bold, lists, headers, tables) ----
 
-function QuestionConclusion({ report, token }: { report: string; token: string }) {
+function QuestionConclusion({ report, reportId, token }: { report: string; reportId: string; token: string }) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [question, setQuestion] = useState('');
   const [asking, setAsking] = useState(false);
@@ -298,7 +310,7 @@ function QuestionConclusion({ report, token }: { report: string; token: string }
     if (!question.trim() || expanded === null) return;
     setAsking(true); setError(''); setAnswer('');
     try {
-      const res = await fetch(`${BASE_URL}/api/v1/agent/research/rpt-0/question`, {
+      const res = await fetch(`${BASE_URL}/api/v1/agent/research/${reportId}/question`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ conclusion_id: expanded, question: question.trim() }),
@@ -339,6 +351,26 @@ function QuestionConclusion({ report, token }: { report: string; token: string }
         </div>
       )}
     </div>
+  );
+}
+
+function ExportPdfButton({ report, reportId }: { report: string; reportId: string }) {
+  const [exporting, setExporting] = useState(false);
+  if (!reportId) return null;
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const url = `${BASE_URL}/api/v1/agent/research/${reportId}/export?report=${encodeURIComponent(report.slice(0, 5000))}`;
+      window.open(url, '_blank');
+    } catch {} finally { setExporting(false); }
+  };
+
+  return (
+    <button onClick={handleExport} disabled={exporting}
+      className="px-3 py-1 text-xs rounded border hover:bg-muted">
+      {exporting ? 'Exporting...' : 'Export PDF'}
+    </button>
   );
 }
 

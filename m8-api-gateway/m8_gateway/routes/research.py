@@ -153,3 +153,23 @@ async def question_research(
     except Exception as e:
         logger.exception("Research question failed")
         raise HTTPException(500, f"Failed to analyze question: {e}")
+
+
+@router.get("/research/{report_id}/export")
+async def export_research_pdf(
+    request: Request,
+    report_id: str,
+    api_key: APIKey = Depends(get_api_key),
+):
+    """GET /api/v1/agent/research/{id}/export — Export report as PDF."""
+    from m5_qa.research.export_pdf import export_report_pdf
+    # The report is typically stored in the conversation; for now, return a placeholder
+    report_md = request.query_params.get("report", "")
+    if not report_md:
+        raise HTTPException(400, "Report content required. Pass ?report=<markdown>")
+    pdf_bytes = await export_report_pdf(report_md)
+    from fastapi.responses import StreamingResponse
+    from io import BytesIO
+    return StreamingResponse(BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=research_{report_id}.pdf"})

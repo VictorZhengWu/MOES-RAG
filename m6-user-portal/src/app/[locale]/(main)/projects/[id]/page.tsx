@@ -80,7 +80,7 @@ export default function ProjectDetailPage() {
 
         {/* Issues tab — kanban-style */}
         <TabsContent value="issues">
-          <IssuesTab projectId={id} locale={locale} token={token} />
+          <IssuesTab projectId={id} locale={locale} token={token} router={router} />
         </TabsContent>
 
         {/* Compliance tab */}
@@ -173,7 +173,7 @@ function ConversationsTab({ projectId, locale, router, token }: any) {
 
 // ---- Issues Tab (Kanban) ----
 
-function IssuesTab({ projectId, locale, token }: any) {
+function IssuesTab({ projectId, locale, token, router }: any) {
   const [issues, setIssues] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const h: any = token ? { Authorization: `Bearer ${token}` } : {};
@@ -232,9 +232,10 @@ function IssuesTab({ projectId, locale, token }: any) {
                     <Badge variant="outline" className="text-[9px]">{i.priority}</Badge>
                     {i.assignee && <Badge variant="secondary" className="text-[9px]">{i.assignee}</Badge>}
                   </div>
-                  <Brain className="h-3 w-3 text-primary cursor-pointer hover:opacity-70"
-                    onClick={(e) => { e.stopPropagation(); router.push(`/${locale}/research?issue=${i.title}`); }}
-                    title="Start Deep Research on this issue" />
+                  <span className="cursor-pointer" onClick={(e) => { e.stopPropagation(); router.push(`/${locale}/research?issue=${encodeURIComponent(i.title)}`); }}
+                    title="Start Deep Research on this issue">
+                    <Brain className="h-3 w-3 text-primary hover:opacity-70" />
+                  </span>
                 </div>
               </Card>
             ))}
