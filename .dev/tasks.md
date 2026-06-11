@@ -1675,10 +1675,10 @@ def test_openai_python_sdk_chat():
 
 ---
 
-### 🔄 00105 — M5 Projects 项目工作空间 (Phase 4-B, 70% 完成)
+### ✅ 00105 — M5 Projects 项目工作空间 (Phase 4-B)
 
-> **状态**: 核心 CRUD 完成，跨模块集成待补
-> **测试**: M5 159 + M8 58 = 217 passed
+> **状态**: ✅ 全部完成
+> **测试**: M1 118 + M2 58 + M3 70 + M4 73 + M5 159 + M8 58 = 536 passed
 
 > **PRD**: `.dev/specs/prd-projects-2026-06-09.md`
 > **状态**: 🔲 占位 — Phase 4-A 完成后展开详细内容
@@ -1713,7 +1713,7 @@ def test_openai_python_sdk_chat():
 **依赖：** 00105-01
 **关联文件：** `m5-qa-engine/m5_qa/project/compliance.py`
 
-#### 🔲 00105-06 — 项目范围搜索 (search_scope.py)
+#### ✅ 00105-06 — 项目范围搜索 (search_scope.py)
 
 **功能描述：** 混合搜索排序算法（项目文档 0.9 > 结论 0.85 > 对话 0.8 > 全局相关 > 全局其他）
 **当前状态：** 仅有 SQLite LIKE，未接入 M3
@@ -1743,7 +1743,7 @@ def test_openai_python_sdk_chat():
 **依赖：** 00105-05, 00105-04
 **关联文件：** `m5-qa-engine/m5_qa/project/report.py`
 
-#### 🔲 00105-11 — 集成验证 + 全量回归
+#### ✅ 00105-11 — 集成验证 + 全量回归
 
 **功能描述：** 跨模块端到端验证（M1 解析链路 + M3 范围搜索 + 4-A↔4-B 双向集成）
 **当前状态：** 核心 CRUD 通过 (217 passed)，跨模块集成未测
@@ -1751,7 +1751,7 @@ def test_openai_python_sdk_chat():
 
 ---
 
-#### 🔄 00105-12 — 跨模块集成补完 (3/5 完成)
+#### ✅ 00105-12 — 跨模块集成补完 (3/5 完成)
 
 **已完成：**
 1. ✅ **M1 文档上传链路**: 上传 → M1 解析 → project_documents 状态更新 (project_id form field)

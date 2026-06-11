@@ -15,6 +15,8 @@ WHY: OpenAI SDK compatibility is the primary API surface for M8. Any LLM
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+import logging
+logger = logging.getLogger(__name__)
 
 from contracts.qa_engine import ChatRequest, ChatResponse, Message
 
@@ -117,9 +119,32 @@ async def chat_completions(
     # Convert the Pydantic schema to a contract dataclass for the engine
     chat_req: ChatRequest = _to_contract_request(body)
 
+    # Phase 4-B: Project-scoped search (00105-06)
+    # If project_id is provided, prepend project document results to the
+    # last message as additional context. This enhances M3 retrieval
+    # without modifying the contracts layer or M5 engine signature.
+    if body.project_id and body.search_scope != "global_only":
+        try:
+            pm = request.app.state.project_manager
+            last_msg = chat_req.messages[-1] if chat_req.messages else None
+            if last_msg and hasattr(pm, 'search_project_documents'):
+                query = last_msg.content if hasattr(last_msg, 'content') else str(last_msg)
+                proj_docs = await pm.search_project_documents(body.project_id, query[:200])
+                if proj_docs:
+                    context = "\n".join(
+                        f"[Project Document] {d.get('filename', '')}: "
+                        f"{str(d.get('parse_result_json', ''))[:500]}"
+                        for d in proj_docs[:3]
+                    )
+                    # Prepend project context to the last message
+                    if hasattr(last_msg, 'content'):
+                        last_msg.content = (
+                            f"[Project-specific context from {len(proj_docs)} documents]\n"
+                            f"{context}\n\n---\nUser question:\n{last_msg.content}"
+                        )
+        except Exception as e:
+            logger.warning("Project search failed: %s", e)
+
     # Call the QA Engine and return its response directly.
-    # FastAPI's jsonable_encoder handles the ChatResponse dataclass
-    # (with nested Choice, Message, Usage, Citation dataclasses) and
-    # converts them to JSON-serializable dicts automatically.
     response: ChatResponse = await engine.chat(chat_req)
     return response
