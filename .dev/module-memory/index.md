@@ -25,12 +25,16 @@
 
 3-A Propositional Indexing · 3-B Hierarchical Navigation · 3-C OAuth+Security · 3-D Placeholder Unlock · 3-E Config Store · 3-F VectorStore Expansion · 3-G Multi-Profile Deploy · 3-H Error Hardening · 3-I E2E Tests · 3-J M1 Alternative Engines · **3-K Redis Rate Limit Persistence** · **3-L PostgreSQL Backend** · **3-M Elasticsearch Backend** · **3-N MinIO/S3 Backend**
 
-## Phase 4: Deep Research + Projects (NEW)
+## Phase 4: 智能研究平台
 
 | Task | Name | Status |
 |------|------|--------|
 | 00104 | Deep Research 引擎 (9 sub-tasks) | ✅ 完成 (146 passed) |
 | 00105 | Projects 工作空间 (12 sub-tasks) | ✅ 完成 (536 passed) |
+| 00106 | P0 核心集成 (2 sub-tasks) | 🔲 待开始 |
+| 00107 | P1 体验完善 (4 sub-tasks) | 🔲 待开始 |
+| 00108 | P2 增强能力 (4 sub-tasks) | 🔲 待开始 |
+| 00109 | 集成验证 (1 sub-task) | 🔲 待开始 |
 
 ## Remaining Work
 

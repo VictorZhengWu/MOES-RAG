@@ -1767,6 +1767,148 @@ def test_openai_python_sdk_chat():
 
 ---
 
+## Phase 4-C: 增强与收尾
+
+> **PRD**: `.dev/specs/prd-phase-4c-2026-06-11.md`
+> **依赖**: 00104 (Deep Research), 00105 (Projects)
+
+### 🔲 00106 — P0 核心集成 (2 Task)
+
+#### 🔲 00106-01 — M3 项目范围搜索深度集成 (search_scope.py)
+
+**功能描述**: 在 M5 pipeline 中原生支持 `project_id` + `search_scope`。项目文档通过 M3 向量搜索 + 混合排序算法（项目 0.7-0.9 > 全局 0.5-0.8）。search_scope="project_only" 仅检索项目文档，"hybrid" 混合排序。
+
+**验证方法**: 项目内提问 → 验证搜索结果中项目文档排在全局规范之前
+**自动化验证命令**: `python -m pytest m5-qa-engine/tests/test_search_scope.py -v`
+**通过条件**: 全部 passed，0 failed
+**Task 类型**: 模块/服务类
+**依赖**: 00105 (Projects), M3
+**关联文件**: `m5-qa-engine/m5_qa/project/search_scope.py`
+
+#### 🔲 00106-02 — 对话自动分类触发 + project_id 传递
+
+**功能描述**: M5 engine.chat() 接收 project_id → 末尾调用 classify_conversation() → link_conversation()。M8 chat 路由传递 project_id 到 M5 engine（通过临时属性或 kwargs）。
+
+**验证方法**: 从项目详情页新建对话 → 验证对话自动出现在项目文件夹中
+**自动化验证命令**: `python -m pytest m5-qa-engine/tests/test_project_manager.py -v`
+**通过条件**: 自动分类测试通过
+**Task 类型**: 集成/跨模块类
+**依赖**: 00106-01
+**关联文件**: `m5-qa-engine/m5_qa/core/engine.py`, `m8-api-gateway/m8_gateway/routes/chat.py`
+
+---
+
+### 🔲 00107 — P1 体验完善 (4 Task, 可并行)
+
+#### 🔲 00107-01 — M6 文件夹树 UI (FolderTree)
+
+**功能描述**: 树形组件（阶段→专业→子文件夹→对话）。可折叠/展开，每节点显示对话计数，空文件夹占位，右键菜单（新建/重命名/删除空文件夹）。
+
+**验证方法**: Playwright — 点击文件夹展开、验证节点层级正确
+**自动化验证命令**: `npx playwright test --grep "folder-tree"`
+**通过条件**: 全部 passed，0 failed
+**Task 类型**: 前端
+**依赖**: 00106-02 (自动分类就绪后验证)
+**关联文件**: `m6-user-portal/src/components/project/FolderTree.tsx`
+
+#### 🔲 00107-02 — M6 看板拖放 (Kanban DnD)
+
+**功能描述**: HTML5 Drag and Drop API，拖放问题卡片改变状态，乐观更新 + 失败回滚。移动端降级为下拉选择。
+
+**验证方法**: Playwright — 拖放卡片到另一列、验证 API 调用 + UI 更新
+**自动化验证命令**: `npx playwright test --grep "kanban-drag"`
+**通过条件**: 全部 passed，0 failed
+**Task 类型**: 前端
+**依赖**: 00105 (Issues API 已就绪)
+**关联文件**: `m6-user-portal/src/app/[locale]/(main)/projects/[id]/page.tsx`
+
+#### 🔲 00107-03 — 合规自动更新
+
+**功能描述**: create_conclusion() 时如果 citation 包含规范引用 → 匹配 compliance_item → 自动设置 needs_review。verified 状态不被覆盖。
+
+**验证方法**: 创建带 citation 的结论 → 验证对应 compliance_item 状态更新为 needs_review
+**自动化验证命令**: `python -m pytest m5-qa-engine/tests/test_project_manager.py -v`
+**通过条件**: 全部 passed，0 failed
+**Task 类型**: 工具/原子函数类
+**依赖**: 00105 (Compliance API 已就绪)
+**关联文件**: `m5-qa-engine/m5_qa/project/manager.py`
+
+#### 🔲 00107-04 — Deep Research 质疑深入 (FR-7)
+
+**功能描述**: M6 报告中结论可点击 → 展开推导面板 → 输入疑点 → POST /research/{id}/question → AI 重新分析。M5 后端实现质疑分析逻辑。
+
+**验证方法**: 完成研究 → 点击结论 → 输入质疑 → 验证返回更新后的分析
+**自动化验证命令**: `python -m pytest m5-qa-engine/tests/test_research_question.py -v`
+**通过条件**: 全部 passed，0 failed
+**Task 类型**: 集成/跨模块类
+**依赖**: 00104 (Deep Research), M8 research route 已预留
+**关联文件**: `m5-qa-engine/m5_qa/research/`, `m6-user-portal/src/app/[locale]/(main)/research/`
+
+---
+
+### 🔲 00108 — P2 增强能力 (4 Task, 可并行)
+
+#### 🔲 00108-01 — Agent 标准/案例/法规 (Web Search 查询优化)
+
+**功能描述**: ISO 字典扩展至 30 个标准。Web Search 查询自动追加领域后缀（事故→"MAIB NTSB accident report"、法规→"IMO SOLAS MARPOL MSC MEPC"）。
+
+**验证方法**: Deep Research 执行 → 验证 Web Search 结果中包含事故/法规相关来源
+**自动化验证命令**: `python -m pytest m5-qa-engine/tests/test_agent_web.py -v`
+**通过条件**: 全部 passed，0 failed
+**Task 类型**: 工具/原子函数类
+**依赖**: 00104 (Agent_Web 已就绪)
+**关联文件**: `m5-qa-engine/m5_qa/research/agents/web.py`
+
+#### 🔲 00108-02 — 项目归档 + 案例库
+
+**功能描述**: 归档 API 已就绪。新增：标记案例、"Include case studies" Deep Research 复选框、GET /projects?archived=true&tag=case_study 检索。
+
+**验证方法**: 归档项目 → 标记案例 → Deep Research 勾选案例 → 验证案例被检索
+**自动化验证命令**: `python -m pytest m5-qa-engine/tests/test_project_manager.py -v`
+**通过条件**: 全部 passed，0 failed
+**Task 类型**: 模块/服务类
+**依赖**: 00105 (Project CRUD 已就绪)
+**关联文件**: `m5-qa-engine/m5_qa/project/manager.py`, `m6-user-portal/src/app/[locale]/(main)/research/`
+
+#### 🔲 00108-03 — PDF + Excel 导出
+
+**功能描述**: M8 端点 `GET /research/{id}/export` (PDF) + `GET /projects/{id}/report/export` (Excel)。使用 weasyprint (PDF) + openpyxl (Excel)。
+
+**验证方法**: 导出研究 PDF → 验证文件可打开且内容完整
+**自动化验证命令**: `python -m pytest m8-api-gateway/tests/test_export.py -v`
+**通过条件**: 全部 passed，0 failed
+**Task 类型**: 集成/跨模块类
+**依赖**: 00104 (Deep Research), 00105 (Projects), M8
+**关联文件**: `m5-qa-engine/m5_qa/research/export.py`, `m5-qa-engine/m5_qa/project/export.py`, `m8-api-gateway/m8_gateway/routes/`
+
+#### 🔲 00108-04 — M6 react-markdown 升级
+
+**功能描述**: 安装 react-markdown + remark-gfm，替换研究页面和项目报告页的简单正则 Markdown 渲染。保留当前渲染为 fallback。
+
+**验证方法**: Playwright — 验证报告中的表格/代码块/引用渲染正确
+**自动化验证命令**: `npm run build` (M6 构建验证)
+**通过条件**: 构建通过，无 TS 错误
+**Task 类型**: 前端
+**依赖**: 无 (纯前端改动)
+**关联文件**: `m6-user-portal/src/app/[locale]/(main)/research/page.tsx`
+
+---
+
+### 🔲 00109 — 集成验证 (1 Task)
+
+#### 🔲 00109-01 — 全模块集成验证 + 回归
+
+**功能描述**: 运行全部 6 模块测试套件，验证 P0+P1+P2 改动无回归。
+
+**验证方法**: 全量 pytest + Playwright
+**自动化验证命令**: `python -m pytest m5-qa-engine/tests/ m8-api-gateway/tests/ -q && npx playwright test`
+**通过条件**: 所有测试通过，无回归
+**Task 类型**: 集成/跨模块类
+**依赖**: 00106-01 ~ 00108-04
+**关联文件**: ALL
+
+---
+
 ### ✅ 00110 — deploy/ 部署配置
 
 **功能描述：**
