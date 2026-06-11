@@ -827,5 +827,6 @@ def _row_to_dict(row, cursor=None) -> dict:
                 except (json.JSONDecodeError, TypeError):
                     pass
         return d
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to deserialize row: %s", e)
         return {}
