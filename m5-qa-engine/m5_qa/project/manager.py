@@ -317,6 +317,205 @@ class ProjectManager:
         return f"{phase}/{discipline}"
 
     # ==================================================================
+    # DOCUMENTS (00105-03)
+    # ==================================================================
+
+    async def add_document(self, project_id: str, filename: str,
+                           file_key: str, uploaded_by: str,
+                           discipline: Optional[str] = None) -> dict:
+        """Add a document record to a project (pending parse)."""
+        doc_id = uuid.uuid4().hex[:12]
+        now = time.time()
+        async with aiosqlite.connect(self._db_path) as db:
+            await db.execute("""
+                INSERT INTO project_documents
+                    (project_id, document_id, filename, discipline,
+                     parse_status, file_key, version, uploaded_by, uploaded_at)
+                VALUES (?, ?, ?, ?, 'pending', ?, 1, ?, ?)
+            """, (project_id, doc_id, filename, discipline, file_key, uploaded_by, now))
+            await db.commit()
+        return {"document_id": doc_id, "filename": filename, "parse_status": "pending"}
+
+    async def list_documents(self, project_id: str) -> list[dict]:
+        """List all documents in a project."""
+        async with aiosqlite.connect(self._db_path) as db:
+            cursor = await db.execute(
+                "SELECT * FROM project_documents WHERE project_id = ? "
+                "ORDER BY uploaded_at DESC", (project_id,)
+            )
+            rows = await cursor.fetchall()
+        return [_row_to_dict(r, cursor) for r in rows]
+
+    async def update_document_status(self, project_id: str, doc_id: str,
+                                     status: str, parse_result: Optional[dict] = None) -> None:
+        """Update document parse status and result."""
+        async with aiosqlite.connect(self._db_path) as db:
+            await db.execute(
+                "UPDATE project_documents SET parse_status = ?, parse_result_json = ? "
+                "WHERE project_id = ? AND document_id = ?",
+                (status, json.dumps(parse_result) if parse_result else None,
+                 project_id, doc_id),
+            )
+            await db.commit()
+
+    async def delete_document(self, project_id: str, doc_id: str) -> bool:
+        """Delete a document from a project."""
+        async with aiosqlite.connect(self._db_path) as db:
+            await db.execute(
+                "DELETE FROM project_documents WHERE project_id = ? AND document_id = ?",
+                (project_id, doc_id),
+            )
+            await db.commit()
+        return True
+
+    # ==================================================================
+    # RESEARCH ISSUES (00105-04)
+    # ==================================================================
+
+    async def create_issue(self, project_id: str, data: dict) -> dict:
+        """Create a research issue."""
+        iid = uuid.uuid4().hex[:12]
+        now = time.time()
+        async with aiosqlite.connect(self._db_path) as db:
+            await db.execute("""
+                INSERT INTO research_issues
+                    (issue_id, project_id, title, description, status,
+                     priority, assignee, related_conversation_id,
+                     related_document_id, related_regulation, deadline,
+                     created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                iid, project_id, data.get("title", ""), data.get("description", ""),
+                data.get("status", "pending"), data.get("priority", "medium"),
+                data.get("assignee"), data.get("related_conversation_id"),
+                data.get("related_document_id"), data.get("related_regulation"),
+                data.get("deadline"), now, now,
+            ))
+            await db.commit()
+        return {"issue_id": iid, "status": "pending"}
+
+    async def list_issues(self, project_id: str) -> list[dict]:
+        """List all research issues in a project."""
+        async with aiosqlite.connect(self._db_path) as db:
+            cursor = await db.execute(
+                "SELECT * FROM research_issues WHERE project_id = ? "
+                "ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, "
+                "created_at DESC", (project_id,)
+            )
+            rows = await cursor.fetchall()
+        return [_row_to_dict(r, cursor) for r in rows]
+
+    async def update_issue(self, issue_id: str, data: dict) -> Optional[dict]:
+        """Update issue fields."""
+        async with aiosqlite.connect(self._db_path) as db:
+            sets = []
+            params = []
+            for k, v in data.items():
+                if k in ("title", "description", "status", "priority",
+                         "assignee", "related_conversation_id",
+                         "related_document_id", "related_regulation", "deadline"):
+                    sets.append(f"{k} = ?")
+                    params.append(v)
+            if not sets:
+                return None
+            sets.append("updated_at = ?")
+            params.append(time.time())
+            params.append(issue_id)
+            await db.execute(
+                f"UPDATE research_issues SET {', '.join(sets)} WHERE issue_id = ?",
+                params,
+            )
+            await db.commit()
+        return {"issue_id": issue_id, "updated": True}
+
+    # ==================================================================
+    # CONCLUSIONS (00105-04)
+    # ==================================================================
+
+    async def create_conclusion(self, project_id: str, data: dict) -> dict:
+        """Create a project conclusion (manual or from Deep Research)."""
+        cid = uuid.uuid4().hex[:12]
+        now = time.time()
+        async with aiosqlite.connect(self._db_path) as db:
+            await db.execute("""
+                INSERT INTO project_conclusions
+                    (conclusion_id, project_id, text, detail, source_type,
+                     source_conversation_id, source_report_id, citation,
+                     status, tags, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                cid, project_id, data.get("text", ""), data.get("detail", ""),
+                data.get("source_type", "manual"),
+                data.get("source_conversation_id"), data.get("source_report_id"),
+                json.dumps(data.get("citation", [])),
+                data.get("status", "general"),
+                json.dumps(data.get("tags", [])), now,
+            ))
+            await db.commit()
+        return {"conclusion_id": cid}
+
+    async def list_conclusions(self, project_id: str) -> list[dict]:
+        """List all conclusions in a project."""
+        async with aiosqlite.connect(self._db_path) as db:
+            cursor = await db.execute(
+                "SELECT * FROM project_conclusions WHERE project_id = ? "
+                "ORDER BY created_at DESC", (project_id,)
+            )
+            rows = await cursor.fetchall()
+        return [_row_to_dict(r, cursor) for r in rows]
+
+    # ==================================================================
+    # COMPLIANCE MATRIX (00105-05)
+    # ==================================================================
+
+    async def list_compliance(self, project_id: str) -> list[dict]:
+        """List all compliance items."""
+        async with aiosqlite.connect(self._db_path) as db:
+            cursor = await db.execute(
+                "SELECT * FROM compliance_items WHERE project_id = ? "
+                "ORDER BY clause_id", (project_id,)
+            )
+            rows = await cursor.fetchall()
+        return [_row_to_dict(r, cursor) for r in rows]
+
+    async def update_compliance(self, project_id: str, clause_id: str,
+                                data: dict) -> Optional[dict]:
+        """Update a single compliance item status."""
+        status = data.get("status", "unverified")
+        if status not in _COMPLIANCE_STATUSES:
+            raise ValueError(f"Invalid status: {status}")
+        now = time.time()
+        async with aiosqlite.connect(self._db_path) as db:
+            await db.execute("""
+                UPDATE compliance_items SET status = ?, verified_by = ?,
+                    verified_at = ?, deviation_note = ?, updated_at = ?
+                WHERE project_id = ? AND clause_id = ?
+            """, (
+                status, data.get("verified_by"), now if status == "verified" else None,
+                data.get("deviation_note"), now, project_id, clause_id,
+            ))
+            await db.commit()
+        return {"clause_id": clause_id, "status": status}
+
+    # ==================================================================
+    # SEARCH SCOPE (00105-06)
+    # ==================================================================
+
+    async def search_project_documents(self, project_id: str,
+                                       query: str) -> list[dict]:
+        """Simple full-text search across project document parse results."""
+        async with aiosqlite.connect(self._db_path) as db:
+            cursor = await db.execute(
+                "SELECT document_id, filename, parse_result_json "
+                "FROM project_documents WHERE project_id = ? "
+                "AND parse_status = 'done' AND parse_result_json LIKE ? "
+                "LIMIT 10",
+                (project_id, f"%{query}%"),
+            )
+            rows = await cursor.fetchall()
+        return [_row_to_dict(r, cursor) for r in rows]
+
+    # ==================================================================
     # INTERNAL HELPERS
     # ==================================================================
 

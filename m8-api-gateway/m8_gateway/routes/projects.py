@@ -187,3 +187,135 @@ async def list_conversations(
     """GET /api/v1/projects/{id}/conversations — List linked conversations."""
     pm = _get_project_manager(request)
     return await pm.list_conversations(project_id, folder)
+
+
+# -- Documents (00105-03) --
+
+class UploadDocumentRequest(BaseModel):
+    filename: str
+    file_key: str
+    discipline: Optional[str] = None
+
+
+@router.post("/{project_id}/documents")
+async def add_document(
+    project_id: str, body: UploadDocumentRequest,
+    request: Request, api_key: APIKey = Depends(get_api_key),
+):
+    """POST /api/v1/projects/{id}/documents — Add document to project."""
+    pm = _get_project_manager(request)
+    return await pm.add_document(project_id, body.filename, body.file_key,
+                                 api_key.user_id, body.discipline)
+
+
+@router.get("/{project_id}/documents")
+async def list_documents(
+    project_id: str, request: Request, api_key: APIKey = Depends(get_api_key),
+):
+    """GET /api/v1/projects/{id}/documents — List project documents."""
+    pm = _get_project_manager(request)
+    return await pm.list_documents(project_id)
+
+
+@router.delete("/{project_id}/documents/{doc_id}")
+async def delete_document(
+    project_id: str, doc_id: str,
+    request: Request, api_key: APIKey = Depends(get_api_key),
+):
+    """DELETE /api/v1/projects/{id}/documents/{did} — Delete document."""
+    pm = _get_project_manager(request)
+    await pm.delete_document(project_id, doc_id)
+    return {"status": "deleted"}
+
+
+# -- Issues (00105-04) --
+
+class CreateIssueRequest(BaseModel):
+    title: str
+    description: Optional[str] = None
+    priority: str = "medium"
+    assignee: Optional[str] = None
+    related_regulation: Optional[str] = None
+    deadline: Optional[float] = None
+
+
+@router.post("/{project_id}/issues")
+async def create_issue(
+    project_id: str, body: CreateIssueRequest,
+    request: Request, api_key: APIKey = Depends(get_api_key),
+):
+    """POST /api/v1/projects/{id}/issues — Create research issue."""
+    pm = _get_project_manager(request)
+    return await pm.create_issue(project_id, body.model_dump())
+
+
+@router.get("/{project_id}/issues")
+async def list_issues(
+    project_id: str, request: Request, api_key: APIKey = Depends(get_api_key),
+):
+    """GET /api/v1/projects/{id}/issues — List research issues."""
+    pm = _get_project_manager(request)
+    return await pm.list_issues(project_id)
+
+
+@router.patch("/{project_id}/issues/{issue_id}")
+async def update_issue(
+    project_id: str, issue_id: str,
+    request: Request, api_key: APIKey = Depends(get_api_key),
+):
+    """PATCH /api/v1/projects/{id}/issues/{iid} — Update issue."""
+    body = await request.json()
+    pm = _get_project_manager(request)
+    return await pm.update_issue(issue_id, body)
+
+
+# -- Conclusions (00105-04) --
+
+class CreateConclusionRequest(BaseModel):
+    text: str
+    detail: Optional[str] = None
+    source_type: str = "manual"
+    source_report_id: Optional[str] = None
+    citation: Optional[list[dict]] = None
+    status: str = "general"
+
+
+@router.post("/{project_id}/conclusions")
+async def create_conclusion(
+    project_id: str, body: CreateConclusionRequest,
+    request: Request, api_key: APIKey = Depends(get_api_key),
+):
+    """POST /api/v1/projects/{id}/conclusions — Add conclusion."""
+    pm = _get_project_manager(request)
+    return await pm.create_conclusion(project_id, body.model_dump())
+
+
+@router.get("/{project_id}/conclusions")
+async def list_conclusions(
+    project_id: str, request: Request, api_key: APIKey = Depends(get_api_key),
+):
+    """GET /api/v1/projects/{id}/conclusions — List conclusions."""
+    pm = _get_project_manager(request)
+    return await pm.list_conclusions(project_id)
+
+
+# -- Compliance (00105-05) --
+
+@router.get("/{project_id}/compliance")
+async def list_compliance(
+    project_id: str, request: Request, api_key: APIKey = Depends(get_api_key),
+):
+    """GET /api/v1/projects/{id}/compliance — List compliance matrix."""
+    pm = _get_project_manager(request)
+    return await pm.list_compliance(project_id)
+
+
+@router.patch("/{project_id}/compliance/{clause_id}")
+async def update_compliance(
+    project_id: str, clause_id: str,
+    request: Request, api_key: APIKey = Depends(get_api_key),
+):
+    """PATCH /api/v1/projects/{id}/compliance/{cid} — Update compliance status."""
+    body = await request.json()
+    pm = _get_project_manager(request)
+    return await pm.update_compliance(project_id, clause_id, body)
