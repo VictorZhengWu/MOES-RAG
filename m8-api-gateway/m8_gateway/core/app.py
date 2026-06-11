@@ -117,6 +117,11 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
         # the startup phase after the LLM backend configuration is loaded.
         app.state.qa_engine = None
 
+        # Initialize Project Manager (Phase 4-B) — always available
+        from m5_qa.project.manager import ProjectManager
+        app.state.project_manager = ProjectManager(config.db_path)
+        await app.state.project_manager.initialize()
+
         # Set restrictive DB file permissions (owner-only, prevents data leaks)
         import os as _os
         db_path = cfg.db_path
@@ -180,6 +185,10 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
     # Deep Research endpoint (Phase 4-A)
     from m8_gateway.routes import research
     app.include_router(research.router)
+
+    # Projects endpoints (Phase 4-B)
+    from m8_gateway.routes import projects
+    app.include_router(projects.router)
 
     # ------------------------------------------------------------------
     # Global error handler — catches all unhandled exceptions
