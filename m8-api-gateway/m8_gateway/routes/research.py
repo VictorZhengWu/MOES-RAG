@@ -29,8 +29,9 @@ router = APIRouter(prefix="/api/v1/agent", tags=["deep-research"])
 class ResearchRequest(BaseModel):
     """Request body for starting Deep Research."""
     query: str
-    sub_questions: Optional[list[dict]] = None  # Pre-defined plan (from M6 UI)
+    sub_questions: Optional[list[dict]] = None
     stream: bool = True
+    include_cases: bool = False  # P0-3: Include archived case studies
 
 
 class ResearchQuestion(BaseModel):
@@ -83,6 +84,7 @@ async def start_research(
                 m4_engine=m4_engine,
                 llm_client=llm_client,
                 web_search_config=web_config,
+                include_cases=body.include_cases,
             ):
                 yield event
         except Exception as e:
@@ -128,45 +130,88 @@ async def question_research(
     if llm_client is None:
         raise HTTPException(503, "LLM backend not configured")
 
-    prompt = (
-        f"A user has questioned conclusion #{body.conclusion_id} "
-        f"from a Deep Research report (ID: {report_id}).\n\n"
-        f"Their question: {body.question}\n\n"
-        f"Re-examine the evidence and provide an updated analysis. "
-        f"If the user's concern is valid, acknowledge it and provide "
-        f"the corrected conclusion. If the original conclusion stands, "
-        f"explain why the concern does not invalidate it."
-    )
+    # P0-1 fix: Retrieve stored research context for meaningful re-analysis
+    from m5_qa.research.progress import get_research_context
+    ctx = get_research_context(report_id)
+
+    if ctx:
+        reg_text = "\n".join(
+            f"[{r.get('source', '?')}] {str(r.get('text', ''))[:300]}"
+            for r in ctx.get("regulation_results", [])[:5]
+        ) or "No regulation results available."
+        web_text = "\n".join(
+            f"[web] {r.get('title', '')}: {str(r.get('snippet', ''))[:200]}"
+            for r in ctx.get("web_results", [])[:3]
+        ) or "No web results."
+        conflicts_text = str(ctx.get("conflicts", "None"))
+        prompt = (
+            f"A user has questioned a conclusion from a Deep Research report.\n\n"
+            f"=== ORIGINAL REPORT ===\n{ctx['report'][:3000]}\n\n"
+            f"=== REGULATION FINDINGS ===\n{reg_text}\n\n"
+            f"=== WEB FINDINGS ===\n{web_text}\n\n"
+            f"=== DETECTED CONFLICTS ===\n{conflicts_text}\n\n"
+            f"The user questions conclusion #{body.conclusion_id}:\n"
+            f"\"{body.question}\"\n\n"
+            f"Re-examine ALL the evidence above. If the user's concern is valid, "
+            f"acknowledge it and provide a corrected analysis with citations. "
+            f"If the original conclusion stands, explain why with specific evidence."
+        )
+    else:
+        prompt = (
+            f"A user has questioned conclusion #{body.conclusion_id} "
+            f"from a Deep Research report (ID: {report_id}).\n\n"
+            f"Their question: {body.question}\n\n"
+            f"Re-examine the evidence and provide an updated analysis."
+        )
 
     try:
         response = await llm_client.complete(
             [{"role": "user", "content": prompt}],
             temperature=0.3,
-            max_tokens=500,
+            max_tokens=800,
         )
         content = response["choices"][0]["message"]["content"]
         return {
             "report_id": report_id,
             "conclusion_id": body.conclusion_id,
             "updated_analysis": content,
+            "has_context": ctx is not None,
         }
     except Exception as e:
         logger.exception("Research question failed")
         raise HTTPException(500, f"Failed to analyze question: {e}")
 
 
-@router.get("/research/{report_id}/export")
+@router.post("/research/{report_id}/export")
 async def export_research_pdf(
     request: Request,
     report_id: str,
     api_key: APIKey = Depends(get_api_key),
 ):
-    """GET /api/v1/agent/research/{id}/export — Export report as PDF."""
+    """POST /api/v1/agent/research/{id}/export — Export report as PDF.
+
+    Accepts report markdown in request body (no URL length limit).
+    Falls back to stored research context if body is empty.
+    """
     from m5_qa.research.export_pdf import export_report_pdf
-    # The report is typically stored in the conversation; for now, return a placeholder
-    report_md = request.query_params.get("report", "")
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    report_md = body.get("report", "")
+
+    # Fallback: try stored research context
     if not report_md:
-        raise HTTPException(400, "Report content required. Pass ?report=<markdown>")
+        from m5_qa.research.progress import get_research_context
+        ctx = get_research_context(report_id)
+        if ctx:
+            report_md = ctx.get("report", "")
+
+    if not report_md:
+        raise HTTPException(400, "Report content required. Send as JSON body: {\"report\": \"...\"}")
+
     pdf_bytes = await export_report_pdf(report_md)
     from fastapi.responses import StreamingResponse
     from io import BytesIO

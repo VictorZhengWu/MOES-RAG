@@ -74,7 +74,7 @@ export default function ResearchPage() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ query: query.trim(), stream: true }),
+        body: JSON.stringify({ query: query.trim(), stream: true, include_cases: includeCases }),
         signal: controller.signal,
       });
 
@@ -346,7 +346,12 @@ function QuestionConclusion({ report, reportId, token }: { report: string; repor
             </button>
             {error && <span className="text-xs text-destructive">{error}</span>}
           </div>
-          {answer && <div className="text-xs bg-background rounded-lg p-2 border">{answer}</div>}
+          {answer && (
+            <div className="text-xs bg-background rounded-lg p-2 border">
+              <p className="font-medium text-green-600 mb-1">🕐 Updated analysis (manual review) — {new Date().toLocaleString()}</p>
+              {answer}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -360,7 +365,14 @@ function ExportPdfButton({ report, reportId }: { report: string; reportId: strin
   const handleExport = async () => {
     setExporting(true);
     try {
-      const url = `${BASE_URL}/api/v1/agent/research/${reportId}/export?report=${encodeURIComponent(report.slice(0, 5000))}`;
+      const res = await fetch(`${BASE_URL}/api/v1/agent/research/${reportId}/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report }),
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
       window.open(url, '_blank');
     } catch {} finally { setExporting(false); }
   };

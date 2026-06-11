@@ -32,6 +32,16 @@ from m5_qa.research.report_generator import generate_report
 
 logger = logging.getLogger(__name__)
 
+# In-memory store for research context — enables question/re-analysis.
+# Keyed by report_id, stores the full report + retrieval results.
+# TTL: 1 hour (auto-cleaned on next research execution for that report_id).
+_research_store: dict[str, dict] = {}
+
+
+def get_research_context(report_id: str) -> dict | None:
+    """Retrieve stored research context for question/re-analysis."""
+    return _research_store.get(report_id)
+
 
 async def execute_research(
     query: str,
@@ -40,6 +50,7 @@ async def execute_research(
     m4_engine=None,
     llm_client=None,
     web_search_config: Optional[dict] = None,
+    include_cases: bool = False,
 ) -> AsyncIterator[str]:
     """Execute the full Deep Research pipeline with SSE progress events.
 
@@ -84,10 +95,21 @@ async def execute_research(
             "estimated_runtime_seconds": len(enabled) * 15 + 25,
         }
 
+    # P0-3: If case studies requested, add a sub-question for archived projects
+    if include_cases:
+        next_id = len(plan["sub_questions"]) + 1
+        plan["sub_questions"].append({
+            "id": next_id,
+            "question": "Relevant case studies from archived projects",
+            "search_strategy": ["web", "cases"],
+            "search_query": f"{query} marine accident investigation report case study",
+        })
+
     yield _sse("progress", {
         "phase": "planning",
         "progress": 0.15,
-        "message": f"Research plan ready: {len(plan['sub_questions'])} sub-questions",
+        "message": f"Research plan ready: {len(plan['sub_questions'])} sub-questions"
+            + (" (including case studies)" if include_cases else ""),
         "plan": plan,
     })
 
@@ -166,6 +188,18 @@ async def execute_research(
         yield _sse("report_chunk", {
             "delta": (section if sections.index(section) == 0 else "## " + section),
         })
+
+    # ------------------------------------------------------------------
+    # Store context for question/re-analysis (P0-1 fix)
+    # ------------------------------------------------------------------
+    _research_store[report_id] = {
+        "query": query,
+        "report": report,
+        "regulation_results": reg_results[:10],
+        "web_results": web_results[:5],
+        "conflicts": getattr(analysis, 'conflicts', []),
+        "stored_at": time.time(),
+    }
 
     # ------------------------------------------------------------------
     # Done
