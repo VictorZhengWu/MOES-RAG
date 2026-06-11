@@ -85,7 +85,7 @@ export interface UserProfile {
   username: string;
   email: string;
   avatar_url?: string;
-  role: 'admin' | 'editor' | 'viewer';
+  role: 'admin' | 'editor' | 'viewer' | 'basic' | 'pro';
 }
 
 export type AuthStatus = 'loading' | 'guest' | 'authenticated';
