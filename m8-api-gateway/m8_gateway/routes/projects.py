@@ -384,22 +384,14 @@ async def export_project_report(
     """GET /api/v1/projects/{id}/report/export — Export compliance Excel."""
     pm = _get_project_manager(request)
     try:
-        import openpyxl
-        from io import BytesIO
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Compliance"
-        ws.append(["Clause", "Status", "Deviation", "Verified By"])
-        items = await pm.list_compliance(project_id)
-        for item in items:
-            ws.append([item.get("clause_ref", ""), item.get("status", ""),
-                       item.get("deviation_note", ""), item.get("verified_by", "")])
-        output = BytesIO()
-        wb.save(output)
-        output.seek(0)
+        from m5_qa.project.export import export_compliance_excel
+        data = await export_compliance_excel(pm, project_id)
         from fastapi.responses import StreamingResponse
-        return StreamingResponse(output,
+        from io import BytesIO
+        return StreamingResponse(BytesIO(data),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": f"attachment; filename=compliance_{project_id}.xlsx"})
-    except ImportError:
-        raise HTTPException(501, "Excel export requires openpyxl. Install: pip install openpyxl")
+    except ImportError as e:
+        raise HTTPException(501, str(e))
+    except ValueError as e:
+        raise HTTPException(404, str(e))

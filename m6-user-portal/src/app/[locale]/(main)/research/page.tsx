@@ -230,12 +230,15 @@ export default function ResearchPage() {
 
       {/* Done state */}
       {done && (
-        <div className="mt-4 flex items-center gap-3">
-          <span className="text-sm text-muted-foreground flex items-center gap-1">
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-            Research complete
-          </span>
-          <SaveToProjectButton report={report} token={token || ''} />
+        <div className="mt-4 space-y-4">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground flex items-center gap-1">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              Research complete
+            </span>
+            <SaveToProjectButton report={report} token={token || ''} />
+          </div>
+          <QuestionConclusion report={report} token={token || ''} />
         </div>
       )}
     </div>
@@ -278,6 +281,66 @@ function handleSSEEvent(
 }
 
 // ---- Simple Markdown renderer (bold, lists, headers, tables) ----
+
+function QuestionConclusion({ report, token }: { report: string; token: string }) {
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const [question, setQuestion] = useState('');
+  const [asking, setAsking] = useState(false);
+  const [answer, setAnswer] = useState('');
+  const [error, setError] = useState('');
+
+  // Extract conclusions from report (lines starting with "- **")
+  const conclusions = report.split('\n').filter((l: string) => l.match(/^- \*\*|^-\s+\*\*|^##\s+/));
+
+  if (conclusions.length === 0) return null;
+
+  const handleAsk = async () => {
+    if (!question.trim() || expanded === null) return;
+    setAsking(true); setError(''); setAnswer('');
+    try {
+      const res = await fetch(`${BASE_URL}/api/v1/agent/research/rpt-0/question`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ conclusion_id: expanded, question: question.trim() }),
+      });
+      if (!res.ok) { setError('AI re-analysis failed. Please try again.'); return; }
+      const data = await res.json();
+      setAnswer(data.updated_analysis || 'Analysis updated.');
+    } catch { setError('Cannot reach server.'); }
+    finally { setAsking(false); }
+  };
+
+  return (
+    <div className="rounded-lg border bg-muted/20 p-4">
+      <p className="text-sm font-medium mb-2">Question a Conclusion</p>
+      <p className="text-xs text-muted-foreground mb-3">Click a conclusion to expand it, then ask a follow-up question.</p>
+      <div className="space-y-1 max-h-40 overflow-y-auto mb-3">
+        {conclusions.slice(0, 8).map((c: string, i: number) => (
+          <div key={i} className={`text-xs px-2 py-1 rounded cursor-pointer ${expanded === i ? 'bg-primary/10 border border-primary/30' : 'hover:bg-muted'}`}
+            onClick={() => { setExpanded(expanded === i ? null : i); setQuestion(''); setAnswer(''); setError(''); }}>
+            {c.slice(0, 120)}{c.length > 120 ? '...' : ''}
+          </div>
+        ))}
+      </div>
+      {expanded !== null && (
+        <div className="space-y-2">
+          <textarea value={question} onChange={e => setQuestion(e.target.value.slice(0, 500))}
+            placeholder="What's your question about this conclusion? (max 500 chars)"
+            rows={2} className="w-full rounded-lg border px-3 py-2 text-xs resize-none"
+            disabled={asking} />
+          <div className="flex items-center gap-2">
+            <button onClick={handleAsk} disabled={asking || !question.trim()}
+              className="px-3 py-1 text-xs rounded bg-primary text-primary-foreground disabled:opacity-50">
+              {asking ? 'Analyzing...' : 'Ask'}
+            </button>
+            {error && <span className="text-xs text-destructive">{error}</span>}
+          </div>
+          {answer && <div className="text-xs bg-background rounded-lg p-2 border">{answer}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SaveToProjectButton({ report, token }: { report: string; token: string }) {
   const [projects, setProjects] = useState<any[]>([]);

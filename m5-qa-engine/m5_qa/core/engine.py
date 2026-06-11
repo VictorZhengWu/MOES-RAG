@@ -304,15 +304,18 @@ class QAEngine:
         project_id = getattr(self, '_project_id', None)
         if project_id:
             try:
-                from m5_qa.project.manager import ProjectManager
-                pm = ProjectManager(self._config.db_path)
-                await pm.initialize()
+                pm = getattr(self, '_pm', None)
+                if pm is None:
+                    from m5_qa.project.manager import ProjectManager
+                    pm = ProjectManager(self._config.db_path)
+                    await pm.initialize()
+                    self._pm = pm  # Cache for reuse
                 proj = await pm.get_project(project_id)
                 if proj:
                     folder = await pm.classify_conversation(user_msg, proj)
                     await pm.link_conversation(project_id, response.id, folder, [])
                     logger.info("Auto-classified conv %s to %s", response.id, folder)
-                self._project_id = None  # Clean up
+                self._project_id = None
             except Exception as e:
                 logger.warning("Auto-classify failed (non-fatal): %s", e)
 

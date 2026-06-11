@@ -69,15 +69,21 @@ export function FolderTree({
   conversations,
   onSelect,
   onLinkConversation,
+  onDeleteFolder,
+  onCreateFolder,
 }: {
   conversations: Conversation[];
   onSelect: (convId: string) => void;
   onLinkConversation?: (convId: string, folderPath: string) => void;
+  onDeleteFolder?: (folderPath: string) => void;
+  onCreateFolder?: (parentPath: string, name: string) => void;
 }) {
   const tree = buildTree(conversations);
   const [expanded, setExpanded] = useState<Set<string>>(new Set(tree.children.map(c => c.path)));
   const [dragOverPath, setDragOverPath] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string } | null>(null);
+  const [newFolderInput, setNewFolderInput] = useState<{ parentPath: string } | null>(null);
+  const [newFolderName, setNewFolderName] = useState('');
 
   const toggleExpand = (path: string) => {
     setExpanded(prev => {
@@ -169,6 +175,35 @@ export function FolderTree({
         <p className="text-xs text-muted-foreground text-center py-4">No conversations yet</p>
       )}
 
+      {/* Inline new-folder dialog */}
+      {newFolderInput && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={() => setNewFolderInput(null)}>
+          <div className="bg-background border rounded-lg shadow-lg p-4 w-72" onClick={e => e.stopPropagation()}>
+            <p className="text-sm font-medium mb-2">New folder in: {newFolderInput.parentPath || 'root'}</p>
+            <input type="text" value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && newFolderName.trim() && onCreateFolder) {
+                  onCreateFolder(newFolderInput.parentPath, newFolderName.trim());
+                  setNewFolderInput(null); setNewFolderName('');
+                }
+                if (e.key === 'Escape') { setNewFolderInput(null); setNewFolderName(''); }
+              }}
+              placeholder="Folder name" className="w-full rounded-lg border px-3 py-2 text-sm mb-2" autoFocus />
+            <div className="flex gap-2 justify-end">
+              <button className="px-3 py-1 text-xs rounded bg-primary text-primary-foreground"
+                onClick={() => {
+                  if (newFolderName.trim() && onCreateFolder) {
+                    onCreateFolder(newFolderInput.parentPath, newFolderName.trim());
+                  }
+                  setNewFolderInput(null); setNewFolderName('');
+                }}>Create</button>
+              <button className="px-3 py-1 text-xs rounded border"
+                onClick={() => { setNewFolderInput(null); setNewFolderName(''); }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Context menu */}
       {contextMenu && (
         <>
@@ -176,11 +211,23 @@ export function FolderTree({
           <div className="fixed z-50 bg-background border rounded-lg shadow-lg py-1 text-xs"
             style={{ left: contextMenu.x, top: contextMenu.y }}>
             <button className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-muted w-full text-left"
-              onClick={() => { setContextMenu(null); }}>
+              onClick={() => {
+                const path = contextMenu.path;
+                setContextMenu(null);
+                setNewFolderInput({ parentPath: path });
+                setNewFolderName('');
+              }}>
               <Plus className="h-3 w-3" /> New Sub-folder
             </button>
             <button className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-muted w-full text-left text-destructive"
-              onClick={() => { setContextMenu(null); }}>
+              onClick={() => {
+                const path = contextMenu.path;
+                setContextMenu(null);
+                const isEmpty = !conversations.some(c => c.folder_path === path || c.folder_path?.startsWith(path + '/'));
+                if (isEmpty && onDeleteFolder) {
+                  onDeleteFolder(path);
+                }
+              }}>
               <Trash2 className="h-3 w-3" /> Delete (if empty)
             </button>
           </div>
