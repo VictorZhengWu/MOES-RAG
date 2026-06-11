@@ -1461,7 +1461,7 @@ def test_openai_python_sdk_chat():
 - 测试用例 4：连续追问上下文 → 累计 +3 分
 
 **自动化验证命令：** `python -m pytest m5-qa-engine/tests/test_complexity.py -v`
-**通过条件：** 全部 passed，0 failed
+**通过条件：** 21 passed, 0 failed
 **Task 类型：** 工具/原子函数类
 **依赖：** 00090 (M5 基础)
 **关联文件：** `m5-qa-engine/m5_qa/research/complexity.py`, `m5-qa-engine/tests/test_complexity.py`
@@ -1484,7 +1484,7 @@ def test_openai_python_sdk_chat():
 - 测试用例 4：LLM 返回无效 JSON → 降级到规则分解（按规范名称拆分）
 
 **自动化验证命令：** `python -m pytest m5-qa-engine/tests/test_planner.py -v`
-**通过条件：** 全部 passed，0 failed
+**通过条件：** 11 passed, 0 failed
 **Task 类型：** 模块/服务类
 **依赖：** 00104-01
 **关联文件：** `m5-qa-engine/m5_qa/research/planner.py`, `m5-qa-engine/tests/test_planner.py`
@@ -1507,7 +1507,7 @@ def test_openai_python_sdk_chat():
 - 测试用例 4：M3 不可用 → 记录错误，其他 Agent 继续
 
 **自动化验证命令：** `python -m pytest m5-qa-engine/tests/test_agent_regulations.py -v`
-**通过条件：** 全部 passed，0 failed
+**通过条件：** 7 passed, 0 failed
 **Task 类型：** 模块/服务类
 **依赖：** 00104-02, M3, M4
 **关联文件：** `m5-qa-engine/m5_qa/research/agents/regulations.py`, `m5-qa-engine/tests/test_agent_regulations.py`
@@ -1528,7 +1528,7 @@ def test_openai_python_sdk_chat():
 - 测试用例 3：多子问题批量 → 顺序执行（避免 API rate limit）
 
 **自动化验证命令：** `python -m pytest m5-qa-engine/tests/test_agent_web.py -v`
-**通过条件：** 全部 passed，0 failed
+**通过条件：** 5 passed, 0 failed
 **Task 类型：** 模块/服务类
 **依赖：** 00104-02, M5 Web Search 模块
 **关联文件：** `m5-qa-engine/m5_qa/research/agents/web.py`, `m5-qa-engine/tests/test_agent_web.py`
@@ -1553,7 +1553,7 @@ def test_openai_python_sdk_chat():
 - 测试用例 4：LLM 超时 → 仅输出 Step 1 规则提取结果（降级）
 
 **自动化验证命令：** `python -m pytest m5-qa-engine/tests/test_analyzer.py -v`
-**通过条件：** 全部 passed，0 failed
+**通过条件：** 10 passed, 0 failed
 **Task 类型：** 模块/服务类
 **依赖：** 00104-03, 00104-04
 **关联文件：** `m5-qa-engine/m5_qa/research/analyzer.py`, `m5-qa-engine/tests/test_analyzer.py`
@@ -1577,7 +1577,7 @@ def test_openai_python_sdk_chat():
 - 测试用例 4：空检索结果 → 返回"无法生成报告"提示
 
 **自动化验证命令：** `python -m pytest m5-qa-engine/tests/test_report_generator.py -v`
-**通过条件：** 全部 passed，0 failed
+**通过条件：** 6 passed, 0 failed
 **Task 类型：** 集成/跨模块类
 **依赖：** 00104-05
 **关联文件：** `m5-qa-engine/m5_qa/research/report_generator.py`, `m5-qa-engine/tests/test_report_generator.py`
@@ -1602,7 +1602,7 @@ def test_openai_python_sdk_chat():
 - 测试用例 4：单个 Agent 失败 → progress 事件包含 agent_error，其他继续
 
 **自动化验证命令：** `python -m pytest m8-api-gateway/tests/test_research_routes.py -v`
-**通过条件：** 全部 passed，0 failed
+**通过条件：** M5 146 + M8 58 passed
 **Task 类型：** 集成/跨模块类
 **依赖：** 00104-06, M8 (00100)
 **关联文件：** `m5-qa-engine/m5_qa/research/progress.py`, `m8-api-gateway/m8_gateway/routes/research.py`, `m8-api-gateway/tests/test_research_routes.py`
@@ -1626,7 +1626,7 @@ def test_openai_python_sdk_chat():
 - Playwright: 启动研究 → 等待完成 → 验证报告包含 7 节
 
 **自动化验证命令：** `npx playwright test --grep "deep-research"`
-**通过条件：** 全部 passed，0 failed
+**通过条件：** TS 编译 0 错误，M6 构建通过
 **Task 类型：** 集成/跨模块类
 **依赖：** 00104-07, M6 (00030)
 **关联文件：** `m6-user-portal/src/app/[locale]/(main)/research/`, `m6-user-portal/src/components/research/`
@@ -1643,7 +1643,7 @@ def test_openai_python_sdk_chat():
 
 **验证方法：** 全量 pytest + Playwright E2E
 **自动化验证命令：** `python -m pytest m5-qa-engine/tests/ m8-api-gateway/tests/ -q`
-**通过条件：** 现有测试无回归，新增 research 测试全部通过
+**通过条件：** M1 118 + M2 58 + M3 70 + M4 73 + M5 146 + M8 58 = 523 passed
 **Task 类型：** 集成/跨模块类
 **依赖：** 00104-01 ~ 00104-08
 **关联文件：** 全部 research 模块 + tests
