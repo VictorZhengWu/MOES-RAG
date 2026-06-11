@@ -176,7 +176,7 @@
       "submit": "Send reset link",
       "sent": {
         "title": "Check your email",
-        "message": "If an account exists, we've sent a password reset link."
+        "message": "If an account exists, we've sent a password reset link. The link expires in 24 hours."
       }
     },
     "resetPassword": {
