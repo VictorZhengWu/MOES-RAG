@@ -1846,6 +1846,30 @@ def test_openai_python_sdk_chat():
 
 ---
 
+#### 🔲 00107-05 — 结论删除时合规状态回滚
+
+**功能描述**: delete_conclusion() 检查 citation → 找到 compliance_items → 如果无其他结论引用同一条款 → 回退到 unverified。verified 不自动回退。
+
+**验证方法**: 创建 2 个结论引用同一条款 → 删除 1 个 → 验证状态不变
+**自动化验证命令**: `python -m pytest m5-qa-engine/tests/test_project_manager.py -v`
+**通过条件**: 全部 passed，0 failed
+**Task 类型**: 工具/原子函数类
+**依赖**: 00107-03 (合规自动更新)
+**关联文件**: `m5-qa-engine/m5_qa/project/manager.py`
+
+#### 🔲 00107-06 — M6 文件夹树拖放对话 (FolderTree DnD)
+
+**功能描述**: 拖放对话到文件夹 → link_conversation() 更新 folder_path。批量拖放（多选）+ 目标高亮 + 乐观更新。移动端长按选择目标。
+
+**验证方法**: Playwright — 拖放对话到文件夹，验证 API 调用 + UI 更新
+**自动化验证命令**: `npx playwright test --grep "folder-drag"`
+**通过条件**: 全部 passed，0 failed
+**Task 类型**: 前端
+**依赖**: 00107-01 (FolderTree 组件)
+**关联文件**: `m6-user-portal/src/components/project/FolderTree.tsx`
+
+---
+
 ### 🔲 00108 — P2 增强能力 (4 Task, 可并行)
 
 #### 🔲 00108-01 — Agent 标准/案例/法规 (Web Search 查询优化)
