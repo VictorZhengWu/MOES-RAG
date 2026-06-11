@@ -1675,72 +1675,72 @@ def test_openai_python_sdk_chat():
 
 ---
 
-### 🔲 00105 — M5 Projects 项目工作空间 (Phase 4-B 占位)
+### ✅ 00105 — M5 Projects 项目工作空间 (Phase 4-B)
 
 > **PRD**: `.dev/specs/prd-projects-2026-06-09.md`
 > **状态**: 🔲 占位 — Phase 4-A 完成后展开详细内容
 
-#### 🔲 00105-01 — 项目 CRUD + SQLite 建表 + M8 路由 (manager.py)
+#### ✅ 00105-01 — 项目 CRUD + SQLite 建表 + M8 路由 (manager.py)
 
 **功能描述：** 项目创建/读取/更新/删除/归档 API + 6 张新表 (projects / project_conversations / project_documents / research_issues / project_conclusions / compliance_items)
 **依赖：** 00090 (M5)
 **关联文件：** `m5-qa-engine/m5_qa/project/manager.py`
 
-#### 🔲 00105-02 — 对话关联 + 文件夹 + 标签 + 自动分类 (conversations.py)
+#### ✅ 00105-02 — 对话关联 + 文件夹 + 标签 + 自动分类 (conversations.py)
 
 **功能描述：** 对话关联到项目文件夹、标签系统、FR-10 自动分类（关键词映射+阶段推断）
 **依赖：** 00105-01
 **关联文件：** `m5-qa-engine/m5_qa/project/conversations.py`
 
-#### 🔲 00105-03 — 文档上传 + M1 集成 + 版本管理 (documents.py)
+#### ✅ 00105-03 — 文档上传 + M1 集成 + 版本管理 (documents.py)
 
 **功能描述：** 项目文档上传、M1 异步解析、专业自动分类、版本管理
 **依赖：** 00105-01, M1 (00060)
 **关联文件：** `m5-qa-engine/m5_qa/project/documents.py`
 
-#### 🔲 00105-04 — 待研究问题 + 结论提取 (issues.py + conclusions.py)
+#### ✅ 00105-04 — 待研究问题 + 结论提取 (issues.py + conclusions.py)
 
 **功能描述：** 问题看板 CRUD + AI 结论自动提取 + 人工标注
 **依赖：** 00105-01
 **关联文件：** `m5-qa-engine/m5_qa/project/issues.py`, `m5-qa-engine/m5_qa/project/conclusions.py`
 
-#### 🔲 00105-05 — 合规矩阵 + 偏差清单 + 规范模板库 (compliance.py)
+#### ✅ 00105-05 — 合规矩阵 + 偏差清单 + 规范模板库 (compliance.py)
 
 **功能描述：** 规范满足度矩阵、偏差清单、硬编码 10 个规范模板库（按船型+入级社）
 **依赖：** 00105-01
 **关联文件：** `m5-qa-engine/m5_qa/project/compliance.py`
 
-#### 🔲 00105-06 — 项目范围搜索 (search_scope.py)
+#### ✅ 00105-06 — 项目范围搜索 (search_scope.py)
 
 **功能描述：** 混合搜索排序算法（项目文档 0.9 > 结论 0.85 > 对话 0.8 > 全局相关 > 全局其他）
 **依赖：** 00105-01
 **关联文件：** `m5-qa-engine/m5_qa/project/search_scope.py`
 
-#### 🔲 00105-07 — M6 项目列表 + 仪表板 Overview (FR-12/FR-13)
+#### ✅ 00105-07 — M6 项目列表 + 仪表板 Overview (FR-12/FR-13)
 
 **功能描述：** 项目列表页 + 项目仪表板（进度统计/最近活动/待办/风险告警）
 **依赖：** 00105-01
 **关联文件：** `m6-user-portal/src/app/[locale]/(main)/projects/`
 
-#### 🔲 00105-08 — M6 文件夹树 + 对话面板 + 文档管理 (FR-14/FR-15/FR-16)
+#### ✅ 00105-08 — M6 文件夹树 + 对话面板 + 文档管理 (FR-14/FR-15/FR-16)
 
 **功能描述：** 文件夹树（阶段→专业→子文件夹）、项目内对话面板、文档列表+上传
 **依赖：** 00105-02, 00105-03
 **关联文件：** `m6-user-portal/src/components/project/`
 
-#### 🔲 00105-09 — M6 问题看板 + 合规面板 + Deep Research 入口 (FR-17/FR-18)
+#### ✅ 00105-09 — M6 问题看板 + 合规面板 + Deep Research 入口 (FR-17/FR-18)
 
 **功能描述：** 待研究问题看板（Kanban）、合规追踪面板（规范树+进度条）、[启动 Deep Research] 按钮
 **依赖：** 00105-04, 00105-05
 **关联文件：** `m6-user-portal/src/components/project/`
 
-#### 🔲 00105-10 — 项目总结报告生成 (FR-9 Markdown)
+#### ✅ 00105-10 — 项目总结报告生成 (FR-9 Markdown)
 
 **功能描述：** 项目总结报告 Markdown 生成（项目信息+合规状态+关键结论+待研究问题+合规矩阵）
 **依赖：** 00105-05, 00105-04
 **关联文件：** `m5-qa-engine/m5_qa/project/report.py`
 
-#### 🔲 00105-11 — 测试 + 集成验证（含 Phase 4-A 集成测试）
+#### ✅ 00105-11 — 测试 + 集成验证（含 Phase 4-A 集成测试）
 
 **功能描述：** 全量回归 + 双向集成测试（Deep Research → Projects 保存, Projects → Deep Research 启动）
 **依赖：** 00105-01 ~ 00105-10

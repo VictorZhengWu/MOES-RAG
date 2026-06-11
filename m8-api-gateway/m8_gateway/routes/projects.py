@@ -319,3 +319,15 @@ async def update_compliance(
     body = await request.json()
     pm = _get_project_manager(request)
     return await pm.update_compliance(project_id, clause_id, body)
+
+
+# -- Report (00105-10) --
+
+@router.get("/{project_id}/report")
+async def project_report(
+    project_id: str, request: Request, api_key: APIKey = Depends(get_api_key),
+):
+    """GET /api/v1/projects/{id}/report — Generate project summary report."""
+    pm = _get_project_manager(request)
+    report_md = await pm.generate_report(project_id)
+    return {"markdown": report_md}
