@@ -299,6 +299,17 @@ async def list_conclusions(
     return await pm.list_conclusions(project_id)
 
 
+@router.delete("/{project_id}/conclusions/{c_id}")
+async def delete_conclusion(
+    project_id: str, c_id: str,
+    request: Request, api_key: APIKey = Depends(get_api_key),
+):
+    """DELETE /api/v1/projects/{id}/conclusions/{cid} — Delete with rollback."""
+    pm = _get_project_manager(request)
+    ok = await pm.delete_conclusion(project_id, c_id)
+    return {"status": "deleted"} if ok else {"status": "not_found"}
+
+
 # -- Compliance (00105-05) --
 
 @router.get("/{project_id}/compliance")
@@ -331,3 +342,64 @@ async def project_report(
     pm = _get_project_manager(request)
     report_md = await pm.generate_report(project_id)
     return {"markdown": report_md}
+
+
+# -- Case Library (00108-02) --
+
+@router.get("/cases")
+async def list_case_studies(
+    request: Request, api_key: APIKey = Depends(get_api_key),
+):
+    """GET /api/v1/projects/cases — List archived case studies."""
+    pm = _get_project_manager(request)
+    cases = await pm.list_projects()  # All non-archived
+    # Filter for archived + tagged case_study
+    return [c for c in cases if c.get("is_archived") and "case_study" in (c.get("tags") or [])]
+
+
+@router.post("/{project_id}/mark-case")
+async def mark_as_case_study(
+    project_id: str, request: Request, api_key: APIKey = Depends(get_api_key),
+):
+    """POST /api/v1/projects/{id}/mark-case — Mark project as case study."""
+    pm = _get_project_manager(request)
+    proj = await pm.get_project(project_id)
+    if not proj:
+        raise HTTPException(404, "Project not found")
+    tags = proj.get("tags", []) or []
+    if isinstance(tags, str):
+        import json; tags = json.loads(tags)
+    if "case_study" not in tags:
+        tags.append("case_study")
+    await pm.update_project(project_id, {"tags": tags})
+    return {"status": "marked", "project_id": project_id}
+
+
+# -- Export (00108-03) --
+
+@router.get("/{project_id}/report/export")
+async def export_project_report(
+    project_id: str, request: Request, api_key: APIKey = Depends(get_api_key),
+):
+    """GET /api/v1/projects/{id}/report/export — Export compliance Excel."""
+    pm = _get_project_manager(request)
+    try:
+        import openpyxl
+        from io import BytesIO
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Compliance"
+        ws.append(["Clause", "Status", "Deviation", "Verified By"])
+        items = await pm.list_compliance(project_id)
+        for item in items:
+            ws.append([item.get("clause_ref", ""), item.get("status", ""),
+                       item.get("deviation_note", ""), item.get("verified_by", "")])
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+        from fastapi.responses import StreamingResponse
+        return StreamingResponse(output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename=compliance_{project_id}.xlsx"})
+    except ImportError:
+        raise HTTPException(501, "Excel export requires openpyxl. Install: pip install openpyxl")

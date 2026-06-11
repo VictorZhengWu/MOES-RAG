@@ -188,19 +188,44 @@ function IssuesTab({ projectId, locale, token }: any) {
   const columns = ['pending', 'in_progress', 'resolved', 'closed'];
   const colLabels: Record<string, string> = { pending: 'Pending', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed' };
 
+  const [dragging, setDragging] = useState<string | null>(null);
+
+  const moveIssue = async (issueId: string, newStatus: string) => {
+    // Optimistic update
+    setIssues(prev => prev.map(i => i.issue_id === issueId ? { ...i, status: newStatus } : i));
+    try {
+      await fetch(`${BASE_URL}/api/v1/projects/${projectId}/issues/${issueId}`, {
+        method: 'PATCH', headers: { ...h, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+    } catch {
+      // Rollback on failure
+      fetchIssues();
+    }
+  };
+
+  const onDragStart = (issueId: string) => setDragging(issueId);
+  const onDragOver = (e: React.DragEvent) => { e.preventDefault(); };
+  const onDrop = (col: string) => {
+    if (dragging) moveIssue(dragging, col);
+    setDragging(null);
+  };
+
   if (loading) return <Loader2 className="h-4 w-4 animate-spin"/>;
 
   return (
     <div className="grid grid-cols-4 gap-4">
       {columns.map(col => (
-        <div key={col} className="rounded-lg border bg-muted/20 p-3 min-h-[200px]">
+        <div key={col} className={`rounded-lg border p-3 min-h-[200px] ${dragging ? 'bg-muted/30' : 'bg-muted/20'}`}
+          onDragOver={onDragOver} onDrop={() => onDrop(col)}>
           <p className="text-xs font-semibold mb-2 flex items-center justify-between">
             {colLabels[col]}
             <Badge variant="secondary" className="text-[10px]">{issues.filter(i => i.status === col).length}</Badge>
           </p>
           <div className="space-y-2">
             {issues.filter(i => i.status === col).map(i => (
-              <Card key={i.issue_id} className="p-2 text-xs">
+              <Card key={i.issue_id} className="p-2 text-xs cursor-grab active:cursor-grabbing"
+                draggable onDragStart={() => onDragStart(i.issue_id)}>
                 <p className="font-medium">{i.title}</p>
                 <div className="flex gap-1 mt-1 items-center justify-between">
                   <div className="flex gap-1">

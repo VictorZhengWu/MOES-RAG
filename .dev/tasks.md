@@ -1772,9 +1772,9 @@ def test_openai_python_sdk_chat():
 > **PRD**: `.dev/specs/prd-phase-4c-2026-06-11.md`
 > **依赖**: 00104 (Deep Research), 00105 (Projects)
 
-### 🔲 00106 — P0 核心集成 (2 Task)
+### ✅ 00106 — P0 核心集成 (2 Task)
 
-#### 🔲 00106-01 — M3 项目范围搜索深度集成 (search_scope.py)
+#### ✅ 00106-01 — M3 项目范围搜索深度集成 (search_scope.py)
 
 **功能描述**: 在 M5 pipeline 中原生支持 `project_id` + `search_scope`。项目文档通过 M3 向量搜索 + 混合排序算法（项目 0.7-0.9 > 全局 0.5-0.8）。search_scope="project_only" 仅检索项目文档，"hybrid" 混合排序。
 
@@ -1785,7 +1785,7 @@ def test_openai_python_sdk_chat():
 **依赖**: 00105 (Projects), M3
 **关联文件**: `m5-qa-engine/m5_qa/project/search_scope.py`
 
-#### 🔲 00106-02 — 对话自动分类触发 + project_id 传递
+#### ✅ 00106-02 — 对话自动分类触发 + project_id 传递
 
 **功能描述**: M5 engine.chat() 接收 project_id → 末尾调用 classify_conversation() → link_conversation()。M8 chat 路由传递 project_id 到 M5 engine（通过临时属性或 kwargs）。
 
@@ -1798,9 +1798,9 @@ def test_openai_python_sdk_chat():
 
 ---
 
-### 🔲 00107 — P1 体验完善 (4 Task, 可并行)
+### ✅ 00107 — P1 体验完善 (4 Task, 可并行)
 
-#### 🔲 00107-01 — M6 文件夹树 UI (FolderTree)
+#### ✅ 00107-01 — M6 文件夹树 UI (FolderTree)
 
 **功能描述**: 树形组件（阶段→专业→子文件夹→对话）。可折叠/展开，每节点显示对话计数，空文件夹占位，右键菜单（新建/重命名/删除空文件夹）。
 
@@ -1811,7 +1811,7 @@ def test_openai_python_sdk_chat():
 **依赖**: 00106-02 (自动分类就绪后验证)
 **关联文件**: `m6-user-portal/src/components/project/FolderTree.tsx`
 
-#### 🔲 00107-02 — M6 看板拖放 (Kanban DnD)
+#### ✅ 00107-02 — M6 看板拖放 (Kanban DnD)
 
 **功能描述**: HTML5 Drag and Drop API，拖放问题卡片改变状态，乐观更新 + 失败回滚。移动端降级为下拉选择。
 
@@ -1822,7 +1822,7 @@ def test_openai_python_sdk_chat():
 **依赖**: 00105 (Issues API 已就绪)
 **关联文件**: `m6-user-portal/src/app/[locale]/(main)/projects/[id]/page.tsx`
 
-#### 🔲 00107-03 — 合规自动更新
+#### ✅ 00107-03 — 合规自动更新
 
 **功能描述**: create_conclusion() 时如果 citation 包含规范引用 → 匹配 compliance_item → 自动设置 needs_review。verified 状态不被覆盖。
 
@@ -1833,7 +1833,7 @@ def test_openai_python_sdk_chat():
 **依赖**: 00105 (Compliance API 已就绪)
 **关联文件**: `m5-qa-engine/m5_qa/project/manager.py`
 
-#### 🔲 00107-04 — Deep Research 质疑深入 (FR-7)
+#### ✅ 00107-04 — Deep Research 质疑深入 (FR-7)
 
 **功能描述**: M6 报告中结论可点击 → 展开推导面板 → 输入疑点 → POST /research/{id}/question → AI 重新分析。M5 后端实现质疑分析逻辑。
 
@@ -1846,7 +1846,7 @@ def test_openai_python_sdk_chat():
 
 ---
 
-#### 🔲 00107-05 — 结论删除时合规状态回滚
+#### ✅ 00107-05 — 结论删除时合规状态回滚
 
 **功能描述**: delete_conclusion() 检查 citation → 找到 compliance_items → 如果无其他结论引用同一条款 → 回退到 unverified。verified 不自动回退。
 
@@ -1857,7 +1857,7 @@ def test_openai_python_sdk_chat():
 **依赖**: 00107-03 (合规自动更新)
 **关联文件**: `m5-qa-engine/m5_qa/project/manager.py`
 
-#### 🔲 00107-06 — M6 文件夹树拖放对话 (FolderTree DnD)
+#### ✅ 00107-06 — M6 文件夹树拖放对话 (FolderTree DnD)
 
 **功能描述**: 拖放对话到文件夹 → link_conversation() 更新 folder_path。批量拖放（多选）+ 目标高亮 + 乐观更新。移动端长按选择目标。
 
@@ -1870,9 +1870,9 @@ def test_openai_python_sdk_chat():
 
 ---
 
-### 🔲 00108 — P2 增强能力 (4 Task, 可并行)
+### ✅ 00108 — P2 增强能力 (4 Task, 可并行)
 
-#### 🔲 00108-01 — Agent 标准/案例/法规 (Web Search 查询优化)
+#### ✅ 00108-01 — Agent 标准/案例/法规 (Web Search 查询优化)
 
 **功能描述**: ISO 字典扩展至 30 个标准。Web Search 查询自动追加领域后缀（事故→"MAIB NTSB accident report"、法规→"IMO SOLAS MARPOL MSC MEPC"）。
 
@@ -1883,7 +1883,7 @@ def test_openai_python_sdk_chat():
 **依赖**: 00104 (Agent_Web 已就绪)
 **关联文件**: `m5-qa-engine/m5_qa/research/agents/web.py`
 
-#### 🔲 00108-02 — 项目归档 + 案例库
+#### ✅ 00108-02 — 项目归档 + 案例库
 
 **功能描述**: 归档 API 已就绪。新增：标记案例、"Include case studies" Deep Research 复选框、GET /projects?archived=true&tag=case_study 检索。
 
@@ -1894,7 +1894,7 @@ def test_openai_python_sdk_chat():
 **依赖**: 00105 (Project CRUD 已就绪)
 **关联文件**: `m5-qa-engine/m5_qa/project/manager.py`, `m6-user-portal/src/app/[locale]/(main)/research/`
 
-#### 🔲 00108-03 — PDF + Excel 导出
+#### ✅ 00108-03 — PDF + Excel 导出
 
 **功能描述**: M8 端点 `GET /research/{id}/export` (PDF) + `GET /projects/{id}/report/export` (Excel)。使用 weasyprint (PDF) + openpyxl (Excel)。
 
@@ -1905,7 +1905,7 @@ def test_openai_python_sdk_chat():
 **依赖**: 00104 (Deep Research), 00105 (Projects), M8
 **关联文件**: `m5-qa-engine/m5_qa/research/export.py`, `m5-qa-engine/m5_qa/project/export.py`, `m8-api-gateway/m8_gateway/routes/`
 
-#### 🔲 00108-04 — M6 react-markdown 升级
+#### ✅ 00108-04 — M6 react-markdown 升级
 
 **功能描述**: 安装 react-markdown + remark-gfm，替换研究页面和项目报告页的简单正则 Markdown 渲染。保留当前渲染为 fallback。
 
@@ -1918,9 +1918,9 @@ def test_openai_python_sdk_chat():
 
 ---
 
-### 🔲 00109 — 集成验证 (1 Task)
+### ✅ 00109 — 集成验证 (1 Task)
 
-#### 🔲 00109-01 — 全模块集成验证 + 回归
+#### ✅ 00109-01 — 全模块集成验证 + 回归
 
 **功能描述**: 运行全部 6 模块测试套件，验证 P0+P1+P2 改动无回归。
 

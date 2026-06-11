@@ -145,6 +145,10 @@ async def chat_completions(
         except Exception as e:
             logger.warning("Project search failed: %s", e)
 
+    # Phase 4-C: Pass project_id to M5 engine for auto-classify (00106-02)
+    if body.project_id:
+        engine._project_id = body.project_id
+
     # Call the QA Engine and return its response directly.
     response: ChatResponse = await engine.chat(chat_req)
     return response

@@ -12,6 +12,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Brain, FileText, Globe, CheckCircle2, AlertCircle } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ResearchPlan {
   sub_questions: Array<{ id: number; question: string; search_strategy: string[]; search_query: string }>;
@@ -219,7 +221,9 @@ export default function ResearchPage() {
       {report && (
         <Card>
           <CardContent className="p-6 prose prose-sm dark:prose-invert max-w-none">
-            <div dangerouslySetInnerHTML={{ __html: renderMarkdown(report) }} />
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {report}
+            </ReactMarkdown>
           </CardContent>
         </Card>
       )}

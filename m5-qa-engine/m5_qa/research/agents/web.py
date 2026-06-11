@@ -46,6 +46,18 @@ async def agent_web(
     all_results: list[dict] = []
     seen_urls: set[str] = set()
 
+    # Phase 4-C (00108-01): Domain-aware query suffix for standards/cases/regulations
+    for sq in sub_questions:
+        query = sq["search_query"]
+        # Append domain suffixes based on search strategy
+        if "standards" in sq.get("search_strategy", []):
+            query = f"{query} ISO ASTM API standard"
+        if "cases" in sq.get("search_strategy", []):
+            query = f"{query} marine accident report MAIB NTSB"
+        if "regulations_imo" in sq.get("search_strategy", []):
+            query = f"{query} IMO SOLAS MARPOL MSC MEPC circular"
+        sq["search_query"] = query
+
     for sq in sub_questions:
         if "web" not in sq.get("search_strategy", []):
             continue

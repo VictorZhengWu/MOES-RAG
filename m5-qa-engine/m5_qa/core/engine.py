@@ -300,6 +300,22 @@ class QAEngine:
             token_count=response.usage.total_tokens if response.usage else 0,
         )
 
+        # Phase 4-C (00106-02): Auto-classify + link conversation to project
+        project_id = getattr(self, '_project_id', None)
+        if project_id:
+            try:
+                from m5_qa.project.manager import ProjectManager
+                pm = ProjectManager(self._config.db_path)
+                await pm.initialize()
+                proj = await pm.get_project(project_id)
+                if proj:
+                    folder = await pm.classify_conversation(user_msg, proj)
+                    await pm.link_conversation(project_id, response.id, folder, [])
+                    logger.info("Auto-classified conv %s to %s", response.id, folder)
+                self._project_id = None  # Clean up
+            except Exception as e:
+                logger.warning("Auto-classify failed (non-fatal): %s", e)
+
         return response
 
     async def chat_stream(self, request: ChatRequest) -> AsyncIterator[str]:

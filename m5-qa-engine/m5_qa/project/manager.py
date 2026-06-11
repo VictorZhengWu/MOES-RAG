@@ -452,7 +452,43 @@ class ProjectManager:
                 json.dumps(data.get("tags", [])), now,
             ))
             await db.commit()
+
+        # Phase 4-C (00107-03): Auto-update compliance on citation
+        citation = data.get("citation", [])
+        if citation:
+            await self._auto_update_compliance(project_id, citation, cid)
+
         return {"conclusion_id": cid}
+
+    async def delete_conclusion(self, project_id: str, conclusion_id: str) -> bool:
+        """Delete a conclusion with compliance rollback (00107-05)."""
+        # Get the conclusion's citations before deleting
+        async with aiosqlite.connect(self._db_path) as db:
+            cursor = await db.execute(
+                "SELECT citation FROM project_conclusions "
+                "WHERE project_id = ? AND conclusion_id = ?",
+                (project_id, conclusion_id),
+            )
+            row = await cursor.fetchone()
+            if not row:
+                return False
+            try:
+                citations = json.loads(row[0]) if isinstance(row[0], str) else []
+            except (json.JSONDecodeError, TypeError):
+                citations = []
+
+            # Delete
+            await db.execute(
+                "DELETE FROM project_conclusions WHERE project_id = ? AND conclusion_id = ?",
+                (project_id, conclusion_id),
+            )
+            await db.commit()
+
+        # Rollback compliance: check if any other conclusion references these clauses
+        if citations:
+            await self._rollback_compliance(project_id, citations)
+
+        return True
 
     async def list_conclusions(self, project_id: str) -> list[dict]:
         """List all conclusions in a project."""
@@ -463,6 +499,70 @@ class ProjectManager:
             )
             rows = await cursor.fetchall()
         return [_row_to_dict(r, cursor) for r in rows]
+
+    async def _auto_update_compliance(self, project_id: str, citations: list, conclusion_id: str) -> None:
+        """00107-03: Auto-set compliance needs_review when conclusion cites a clause."""
+        for ref in citations:
+            clause_ref = ref.get("clause", ref.get("clause_ref", ""))
+            if not clause_ref:
+                continue
+            # Find matching compliance item
+            async with aiosqlite.connect(self._db_path) as db:
+                cursor = await db.execute(
+                    "SELECT clause_id, status, linked_conclusions FROM compliance_items "
+                    "WHERE project_id = ? AND (clause_ref = ? OR clause_id LIKE ?)",
+                    (project_id, clause_ref, f"%{clause_ref[:20]}%"),
+                )
+                row = await cursor.fetchone()
+                if not row:
+                    continue
+                cid = row["clause_id"]
+                current_status = row["status"]
+                if current_status == "verified":
+                    continue  # Don't override verified
+                linked = json.loads(row["linked_conclusions"]) if isinstance(row["linked_conclusions"], str) else []
+                if conclusion_id not in linked:
+                    linked.append(conclusion_id)
+                await db.execute(
+                    "UPDATE compliance_items SET status = 'needs_review', "
+                    "linked_conclusions = ?, updated_at = ? "
+                    "WHERE project_id = ? AND clause_id = ?",
+                    (json.dumps(linked), time.time(), project_id, cid),
+                )
+                await db.commit()
+
+    async def _rollback_compliance(self, project_id: str, citations: list) -> None:
+        """00107-05: Rollback compliance if no other conclusion references clause."""
+        for ref in citations:
+            clause_ref = ref.get("clause", ref.get("clause_ref", ""))
+            if not clause_ref:
+                continue
+            async with aiosqlite.connect(self._db_path) as db:
+                cursor = await db.execute(
+                    "SELECT clause_id, status, linked_conclusions FROM compliance_items "
+                    "WHERE project_id = ? AND (clause_ref = ? OR clause_id LIKE ?)",
+                    (project_id, clause_ref, f"%{clause_ref[:20]}%"),
+                )
+                row = await cursor.fetchone()
+                if not row:
+                    continue
+                cid = row["clause_id"]
+                current_status = row["status"]
+                if current_status in ("verified", "not_applicable"):
+                    continue  # Don't rollback these
+                linked = json.loads(row["linked_conclusions"]) if isinstance(row["linked_conclusions"], str) else []
+                # Check if other conclusions still reference this
+                if len(linked) > 0:
+                    # There are still linked conclusions → keep current status
+                    continue
+                # No more references → revert to unverified
+                await db.execute(
+                    "UPDATE compliance_items SET status = 'unverified', "
+                    "linked_conclusions = '[]', updated_at = ? "
+                    "WHERE project_id = ? AND clause_id = ?",
+                    (time.time(), project_id, cid),
+                )
+                await db.commit()
 
     # ==================================================================
     # COMPLIANCE MATRIX (00105-05)
