@@ -14,9 +14,9 @@
 | M2 | Storage Abstraction Layer | ✅ 6 Backends | 3 | 2026-06-09 | PostgreSQL + ES + MinIO/S3 complete |
 | M3 | Retrieval Engine | ✅ Enhanced | 2 | 2026-06-07 | Propositions + hierarchical nav |
 | M4 | Knowledge Graph Engine | ✅ Complete | 4 | 2026-06-03 | — |
-| M5 | RAG QA Engine | ✅ Enhanced | 7 | 2026-06-11 | Deep Research (Phase 4-A complete) |
-| M6 | User Web Portal | 🔄 17/28 unlocked | ~10 | 2026-06-07 | Backend integrated |
-| M7 | Admin Web Portal | 🔄 Config UI done | 5 | 2026-06-07 | PG/ES/MinIO config fields added |
+| M5 | RAG QA Engine | 🔄 Enhanced | 8 | 2026-06-11 | Projects 70% (3 integrations pending) |
+| M6 | User Web Portal | ✅ Complete | ~10 | 2026-06-11 | 21/21 placeholders resolved |
+| M7 | Admin Web Portal | ✅ Complete | 5 | 2026-06-11 | PG/ES/MinIO config + monitoring done |
 | M8 | API Gateway | ✅ Enhanced | 4 | 2026-06-09 | Redis rate limit + Test Connection endpoints |
 | — | contracts/ | ✅ | 1 | 2026-05-12 | 00010 |
 | — | deploy/ | ✅ | 1 | 2026-06-09 | 3 profiles + Redis + PG/ES/MinIO config |
@@ -30,7 +30,7 @@
 | Task | Name | Status |
 |------|------|--------|
 | 00104 | Deep Research 引擎 (9 sub-tasks) | ✅ 完成 (146 passed) |
-| 00105 | Projects 工作空间 (11 sub-tasks) | ✅ 完成 (217 passed) |
+| 00105 | Projects 工作空间 (12 sub-tasks) | 🔄 70% (3 integrations pending) |
 
 ## Remaining Work (Post Phase 4)
 

@@ -1675,7 +1675,10 @@ def test_openai_python_sdk_chat():
 
 ---
 
-### ✅ 00105 — M5 Projects 项目工作空间 (Phase 4-B)
+### 🔄 00105 — M5 Projects 项目工作空间 (Phase 4-B, 70% 完成)
+
+> **状态**: 核心 CRUD 完成，跨模块集成待补
+> **测试**: M5 159 + M8 58 = 217 passed
 
 > **PRD**: `.dev/specs/prd-projects-2026-06-09.md`
 > **状态**: 🔲 占位 — Phase 4-A 完成后展开详细内容
@@ -1710,11 +1713,11 @@ def test_openai_python_sdk_chat():
 **依赖：** 00105-01
 **关联文件：** `m5-qa-engine/m5_qa/project/compliance.py`
 
-#### ✅ 00105-06 — 项目范围搜索 (search_scope.py)
+#### 🔲 00105-06 — 项目范围搜索 (search_scope.py)
 
 **功能描述：** 混合搜索排序算法（项目文档 0.9 > 结论 0.85 > 对话 0.8 > 全局相关 > 全局其他）
-**依赖：** 00105-01
-**关联文件：** `m5-qa-engine/m5_qa/project/search_scope.py`
+**当前状态：** 仅有 SQLite LIKE，未接入 M3
+**依赖：** 00105-01, M3 (00070)
 
 #### ✅ 00105-07 — M6 项目列表 + 仪表板 Overview (FR-12/FR-13)
 
@@ -1740,11 +1743,25 @@ def test_openai_python_sdk_chat():
 **依赖：** 00105-05, 00105-04
 **关联文件：** `m5-qa-engine/m5_qa/project/report.py`
 
-#### ✅ 00105-11 — 测试 + 集成验证（含 Phase 4-A 集成测试）
+#### 🔲 00105-11 — 集成验证 + 全量回归
 
-**功能描述：** 全量回归 + 双向集成测试（Deep Research → Projects 保存, Projects → Deep Research 启动）
-**依赖：** 00105-01 ~ 00105-10
-**关联文件：** `m5-qa-engine/tests/test_project*.py`
+**功能描述：** 跨模块端到端验证（M1 解析链路 + M3 范围搜索 + 4-A↔4-B 双向集成）
+**当前状态：** 核心 CRUD 通过 (217 passed)，跨模块集成未测
+**依赖：** 00105-12 (跨模块集成)
+
+---
+
+#### 🔲 00105-12 — 跨模块集成补完
+
+**功能描述：**
+1. **M1 文档上传链路**: 上传 → M1 异步解析 → M2 → project_documents 状态更新
+2. **M3 项目范围搜索**: chat 带 `project_id` + `search_scope` → 混合排序
+3. **4-A → 4-B**: Deep Research 报告 → "保存到项目" → POST conclusions + compliance
+4. **4-B → 4-A**: 问题看板 [启动 Deep Research] → 带问题标题跳转
+5. **对话自动分类**: 新建对话 → classify_conversation() → auto-link 到项目
+
+**依赖：** 00105-10, M1, M3, 00104 (Deep Research)
+**关联文件：** `m5-qa-engine/m5_qa/project/integration.py`, `m6-user-portal/src/`
 
 ---
 

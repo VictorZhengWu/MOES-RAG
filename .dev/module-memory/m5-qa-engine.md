@@ -8,15 +8,35 @@
 
 | Field | Value |
 |-------|-------|
-| Status | ✅ Enhanced (Deep Research added) |
-| Active Tasks | — |
+| Status | 🔄 Enhanced (Projects 70% done) |
+| Active Tasks | 00105-12 (跨模块集成) |
 | First Dev Date | 2026-06-03 |
 | Last Session Date | 2026-06-11 |
-| Total Sessions | 7 |
+| Total Sessions | 8 |
 
 ---
 
 ## 2. Session History
+
+### Session 8 — 2026-06-11: Phase 4-B Projects (00105, 70% complete)
+
+**Tasks completed**: 00105-01~10 (core CRUD)
+**Key decisions**:
+- Projects uses M5's own SQLite (aisqlite, same as ConversationManager) — not M2 RelationalDB
+- 6 tables: projects / project_conversations / project_documents / research_issues / project_conclusions / compliance_items
+- 23 M8 REST endpoints (CRUD + conversations + documents + issues + conclusions + compliance + report)
+- Auto-classification: keyword-based discipline/phase detection (Chinese + English)
+- 4 built-in regulation templates (bulk_carrier/lng_carrier/tanker/offshore)
+- M6: project list + 5-tab detail page (Overview/Conversations/Issues Kanban/Compliance/Documents)
+
+**Test results**: M5 159 + M8 58 = 217 passed
+
+**Remaining (00105-12)**:
+- M1 document upload pipeline (upload → parse → store → status update)
+- M3 project-scoped search with hybrid ranking
+- Deep Research → Projects save flow (report → conclusions + compliance)
+- Projects → Deep Research launch (issue → research page with title)
+- Auto-classify-and-link on new conversations
 
 ### Session 7 — 2026-06-11: Phase 4-A Deep Research (00104)
 
