@@ -59,7 +59,6 @@ export default function ProjectsPage() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [createErr, setCreateErr] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
 
   useEffect(() => {
     if (showCreate && templates.length === 0) {

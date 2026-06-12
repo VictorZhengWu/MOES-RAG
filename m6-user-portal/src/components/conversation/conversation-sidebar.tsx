@@ -32,6 +32,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { NotificationBell } from '@/components/layout/notification-bell';
 import {
   Plus,
   Brain,
@@ -47,7 +48,7 @@ export function ConversationSidebar() {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
-  const { authStatus, user, logout } = useAuthStore();
+  const { authStatus, user, token, logout } = useAuthStore();
   const {
     conversations,
     activeId,
@@ -162,8 +163,13 @@ export function ConversationSidebar() {
 
       <Separator />
 
-      {/* ── Bottom: Settings, Help, Login/Avatar ── */}
+      {/* ── Bottom: Notifications, Settings, Help, Login/Avatar ── */}
       <div className="space-y-1 p-3">
+        {isLoggedIn && (
+          <div className="flex justify-center py-1">
+            <NotificationBell token={token || ''} />
+          </div>
+        )}
         <Button
           variant="ghost"
           className="w-full justify-start gap-2 h-9 text-sm text-muted-foreground"
