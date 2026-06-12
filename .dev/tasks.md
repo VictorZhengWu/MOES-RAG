@@ -1933,7 +1933,79 @@ def test_openai_python_sdk_chat():
 
 ---
 
-### ✅ 00110 — deploy/ 部署配置
+## Phase 4-D: 协作平台与知识沉淀
+
+> **PRD**: `.dev/specs/prd-phase-4d-2026-06-12.md`
+> **依赖**: 00104 (DR), 00105 (Projects), 00106-00109 (4-C)
+
+### 🔲 00110 — Phase 4-D (9 Task)
+
+#### 🔲 00110-01 — Schema 扩展 (4 新表 + projects 扩展)
+
+**功能描述**: 
+- projects 表: case_challenge / case_solution / case_lessons 字段
+- 新表: project_templates / project_comments / notifications
+- project_conclusions: linked_projects 字段
+- compliance_items: verified_by_reference 状态 + reference_source
+
+**验证方法**: INSERT+SELECT 各新表 → 验证数据完整性
+**自动化验证命令**: `python -m pytest m5-qa-engine/tests/test_project_manager.py -v`
+**通过条件**: 全部 passed，0 failed
+**Task 类型**: 工具/原子函数类
+**依赖**: 00105 (Projects)
+**关联文件**: `m5-qa-engine/m5_qa/project/manager.py`
+
+#### 🔲 00110-02 — 案例库深度 API (结构化字段 + 排序 + 过滤)
+
+**功能描述**: 案例结构化详情 CRUD、相关性排序算法（同船型+3/同入级社+2/关键词+1）、GET /cases 过滤参数
+**依赖**: 00110-01
+**通过条件**: 相关性排序测试通过
+
+#### 🔲 00110-03 — 模板管理 API (CRUD + save-as-template)
+
+**功能描述**: 用户模板 CRUD、内置模板标记、save-as-template 从项目提取 regulation_list
+**依赖**: 00110-01
+**通过条件**: 模板 CRUD 测试通过
+
+#### 🔲 00110-04 — 评论 + 通知 API (@提及 + 讨论串 + 通知)
+
+**功能描述**: 结论/问题评论 CRUD、@mention 解析+存储、notifications 写入、GET/PATCH notifications
+**依赖**: 00110-01
+**通过条件**: 评论 + 通知流程测试通过
+
+#### 🔲 00110-05 — 项目间链接 API (linked_projects + verified_by_reference)
+
+**功能描述**: 结论跨项目引用、双向追溯、合规条款 verified_by_reference
+**依赖**: 00110-01
+**通过条件**: 跨项目引用测试通过
+
+#### 🔲 00110-06 — 权限中间件 (check_project_access)
+
+**功能描述**: Owner/Editor/Viewer 三级权限、成员管理 API、API 层强制检查
+**依赖**: 00110-01
+**通过条件**: 权限拒绝 + 允许场景测试通过
+
+#### 🔲 00110-07 — M6 案例面板 + 模板 UI + 权限面板
+
+**功能描述**: 项目详情 "Case Study" tab、创建对话框模板下拉（内置+自定义）、项目设置成员管理
+**依赖**: 00110-02, 00110-03, 00110-06
+**通过条件**: Playwright — 案例详情 + 模板选择 + 成员管理
+
+#### 🔲 00110-08 — M6 讨论串 + @提及 + 通知中心
+
+**功能描述**: 结论/问题下评论列表+输入框、@键入触发团队成员下拉、导航栏通知 badge+下拉
+**依赖**: 00110-04
+**通过条件**: Playwright — 评论 + @提及 + 通知
+
+#### 🔲 00110-09 — 集成验证 + 全量回归
+
+**功能描述**: 6 模块全量测试
+**依赖**: 00110-01~08
+**通过条件**: 全部 passed，0 failed
+
+---
+
+### ✅ 00120 — deploy/ 部署配置 (原 00110, 编号让位给 4-D)
 
 **功能描述：**
 - `deploy/docker-compose.yml`：6 个服务（m8, m1, meilisearch, searxng, ollama）

@@ -35,6 +35,7 @@
 | 00107 | P1 体验完善 (6 sub-tasks) | ✅ 完成 |
 | 00108 | P2 增强能力 (4 sub-tasks) | ✅ 完成 |
 | 00109 | 集成验证 (1 sub-task) | ✅ 完成 (536 passed) |
+| 00110 | Phase 4-D 协作与知识沉淀 (9 sub-tasks) | 🔲 待开始 |
 
 ## Remaining Work
 
