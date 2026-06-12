@@ -59,6 +59,15 @@ export default function ProjectsPage() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [createErr, setCreateErr] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+
+  useEffect(() => {
+    if (showCreate && templates.length === 0) {
+      const h: any = token ? { Authorization: `Bearer ${token}` } : {};
+      fetch(`${BASE_URL}/api/v1/projects/templates`, { headers: h })
+        .then(r => r.json()).then(setTemplates).catch(() => {});
+    }
+  }, [showCreate, token]);
 
   const fetchProjects = useCallback(async () => {
     setLoading(true);
@@ -139,6 +148,17 @@ export default function ProjectsPage() {
             </select>
             <Input placeholder="Vessel type (optional)" value={newVessel} onChange={(e) => setNewVessel(e.target.value)} className="h-8 text-sm" />
           </div>
+          {templates.length > 0 && (
+            <select value={selectedTemplate} onChange={e => setSelectedTemplate(e.target.value)}
+              className="rounded-lg border px-3 py-1 h-8 text-sm w-full">
+              <option value="">No template</option>
+              {templates.map((t: any) => (
+                <option key={t.template_id} value={t.template_id}>
+                  {t.is_builtin ? '🔒' : '👤'} {t.name}
+                </option>
+              ))}
+            </select>
+          )}
           <Textarea placeholder="Description (optional)" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} rows={2} className="resize-none text-sm" />
           {createErr && <p className="text-xs text-destructive">{createErr}</p>}
           <div className="flex gap-2">

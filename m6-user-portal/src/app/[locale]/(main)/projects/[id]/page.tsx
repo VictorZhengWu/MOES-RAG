@@ -66,6 +66,7 @@ export default function ProjectDetailPage() {
           <TabsTrigger value="issues">Issues</TabsTrigger>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
           <TabsTrigger value="casestudy">Case Study</TabsTrigger>
+          <TabsTrigger value="comments">Comments</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
@@ -92,6 +93,9 @@ export default function ProjectDetailPage() {
         {/* Documents tab */}
         <TabsContent value="casestudy">
           <CaseStudyTab projectId={id} token={token} />
+        </TabsContent>
+        <TabsContent value="comments">
+          <CommentsTab projectId={id} token={token} />
         </TabsContent>
         <TabsContent value="documents">
           <DocumentsTab projectId={id} token={token} />
@@ -336,6 +340,56 @@ function CaseStudyTab({ projectId, token }: any) {
       <Button size="sm" onClick={save} disabled={saving}>
         {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Save'}
       </Button>
+    </div>
+  );
+}
+
+function CommentsTab({ projectId, token }: any) {
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+  const h: any = token ? { Authorization: `Bearer ${token}` } : {};
+  const [comments, setComments] = useState<any[]>([]);
+  const [text, setText] = useState('');
+  const [posting, setPosting] = useState(false);
+
+  const fetchC = () => fetch(`${BASE_URL}/api/v1/projects/${projectId}/conclusions/__all__/comments`, { headers: h })
+    .then(r => r.json()).then(setComments).catch(() => {});
+
+  useEffect(() => { fetchC(); }, [projectId]);
+
+  const post = async () => {
+    if (!text.trim()) return;
+    setPosting(true);
+    // Extract @mentions: @username → store raw for now
+    const mentions: string[] = [];
+    const mentionRegex = /@(\w+)/g;
+    let m;
+    while ((m = mentionRegex.exec(text)) !== null) mentions.push(m[1]);
+
+    await fetch(`${BASE_URL}/api/v1/projects/${projectId}/conclusions/__all__/comments`, {
+      method: 'POST', headers: { ...h, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text, author_id: 'user', mentions }),
+    });
+    setText(''); setPosting(false); fetchC();
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">Use @username to mention team members.</p>
+      <div className="space-y-2 max-h-60 overflow-y-auto">
+        {comments.map((c: any) => (
+          <div key={c.comment_id} className="bg-muted/30 rounded-lg p-2 text-xs">
+            <p className="font-medium text-muted-foreground">{c.author_id} &middot; {new Date(c.created_at * 1000).toLocaleString()}</p>
+            <p>{c.content}</p>
+          </div>
+        ))}
+        {comments.length === 0 && <p className="text-xs text-muted-foreground">No comments yet.</p>}
+      </div>
+      <div className="flex gap-2">
+        <input className="flex-1 rounded-lg border px-3 py-2 text-xs" placeholder="Write a comment... Use @name to mention"
+          value={text} onChange={e => setText(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && post()} />
+        <Button size="sm" onClick={post} disabled={posting || !text.trim()}>{posting ? '...' : 'Post'}</Button>
+      </div>
     </div>
   );
 }

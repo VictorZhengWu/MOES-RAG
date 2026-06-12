@@ -1043,14 +1043,38 @@ _JSON_FIELDS = {"disciplines", "team_members", "regulation_list", "tags",
                 "linked_conversations"}
 
 
-def _detect_circular(current_project: str, target_conclusion: str,
+async def _detect_circular(current_project: str, target_conclusion: str,
                      pm, visited: set, max_depth: int) -> bool:
-    """Detect circular cross-project references (DFS, max_depth)."""
-    if current_project in visited or max_depth <= 0:
-        return True
+    """Detect circular cross-project references via async DFS (max_depth=5)."""
+    if max_depth <= 0:
+        return True  # Conservative: assume circular at max depth
+    if current_project in visited:
+        return True  # Already visited → cycle detected
     visited.add(current_project)
-    # Check if target conclusion references back to us — simplified check
-    return False  # Full DFS requires async, simplified for now
+
+    # Check if target conclusion's project references back to us
+    # Simplified: check linked_projects field on the target conclusion
+    try:
+        async with aiosqlite.connect(pm._db_path) as db:
+            cursor = await db.execute(
+                "SELECT linked_projects FROM project_conclusions WHERE conclusion_id = ?",
+                (target_conclusion,))
+            row = await cursor.fetchone()
+            if row:
+                linked = json.loads(row[0]) if isinstance(row[0], str) else []
+                for ref in linked:
+                    ref_pid = ref.get("project_id", "")
+                    if ref_pid == current_project:
+                        return True  # Direct back-reference → cycle
+                    # Recurse deeper
+                    if ref_pid not in visited:
+                        ref_cid = ref.get("conclusion_id", "")
+                        if await _detect_circular(current_project, ref_cid,
+                                                   pm, visited.copy(), max_depth - 1):
+                            return True
+    except Exception:
+        return False  # On error, allow the link (fail-open for usability)
+    return False
 
 
 def _row_to_dict(row, cursor=None) -> dict:

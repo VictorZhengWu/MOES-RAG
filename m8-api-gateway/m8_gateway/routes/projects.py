@@ -11,8 +11,12 @@ from typing import Optional
 
 from m8_gateway.auth.key_manager import APIKey
 from m8_gateway.auth.middleware import get_api_key
+from m8_gateway.auth.project_permissions import check_project_access
 
 router = APIRouter(prefix="/api/v1/projects", tags=["projects"])
+
+def _uid(api_key: APIKey) -> str:
+    return getattr(api_key, 'user_id', 'unknown')
 
 
 class CreateProjectRequest(BaseModel):
@@ -106,6 +110,7 @@ async def update_project(
     api_key: APIKey = Depends(get_api_key),
 ):
     """PATCH /api/v1/projects/{id} — Update project fields."""
+    await check_project_access(request, project_id, _uid(api_key), 'write')
     pm = _get_project_manager(request)
     data = {k: v for k, v in body.model_dump().items() if v is not None}
     project = await pm.update_project(project_id, data)
@@ -121,6 +126,7 @@ async def delete_project(
     api_key: APIKey = Depends(get_api_key),
 ):
     """DELETE /api/v1/projects/{id} — Delete a project."""
+    await check_project_access(request, project_id, _uid(api_key), 'admin')
     pm = _get_project_manager(request)
     await pm.delete_project(project_id)
     return {"status": "deleted"}
