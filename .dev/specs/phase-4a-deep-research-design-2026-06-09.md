@@ -480,7 +480,7 @@ if not request.disable_suggestions:
   → 新项目可引用历史结论 → 知识持续积累 → 组织能力提升
 ```
 
-详见 [Projects PRD §9](./prd-projects-2026-06-09.md)。
+详见 [Projects PRD §9](./phase-4b-projects-design-2026-06-09.md)。
 
 ---
 

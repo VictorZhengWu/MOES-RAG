@@ -2,7 +2,7 @@
 
 > **版本**: v1.0 | **日期**: 2026-06-09 | **父功能**: Phase 4-B
 > **依赖**: M1 (Doc Parsing), M2 (Storage), M5 (QA Engine), M6 (User Portal), M7 (Admin Portal)
-> **关联 PRD**: [Deep Research](./prd-deep-research-2026-06-09.md) (Phase 4-A)
+> **关联 PRD**: [Deep Research](./phase-4a-deep-research-design-2026-06-09.md) (Phase 4-A)
 
 ---
 
@@ -577,7 +577,7 @@ REGULATION_TEMPLATES = {
   → 新项目引用历史结论 → 知识持续积累 → 组织能力提升
 ```
 
-详见 [Deep Research PRD §9](./prd-deep-research-2026-06-09.md)。
+详见 [Deep Research PRD §9](./phase-4a-deep-research-design-2026-06-09.md)。
 
 ---
 
@@ -771,7 +771,7 @@ classification_feedback = {
 
 ### 11.4 未来演进路线图
 
-详见 [Deep Research PRD §6.1](./prd-deep-research-2026-06-09.md)。Projects 特有演进:
+详见 [Deep Research PRD §6.1](./phase-4a-deep-research-design-2026-06-09.md)。Projects 特有演进:
 
 | Phase | Projects 特有 |
 |-------|-------------|

@@ -1431,8 +1431,8 @@ def test_openai_python_sdk_chat():
 
 ## Phase 4: 智能研究平台
 
-> **PRD**: `.dev/specs/prd-deep-research-2026-06-09.md`
-> **关联 PRD**: `.dev/specs/prd-projects-2026-06-09.md`
+> **PRD**: `.dev/specs/phase-4a-deep-research-design-2026-06-09.md`
+> **关联 PRD**: `.dev/specs/phase-4b-projects-design-2026-06-09.md`
 
 ### ✅ 00104 — M5 Deep Research 引擎
 
@@ -1682,7 +1682,7 @@ def test_openai_python_sdk_chat():
 > **测试**: M1 118 + M2 58 + M3 70 + M4 73 + M5 159 + M8 58 = 536 passed
 > **延后至 4-C**: 文件夹树 UI (对话平铺→树形) / 看板拖放 / 项目归档案例库
 
-> **PRD**: `.dev/specs/prd-projects-2026-06-09.md`
+> **PRD**: `.dev/specs/phase-4b-projects-design-2026-06-09.md`
 > **状态**: 🔲 占位 — Phase 4-A 完成后展开详细内容
 
 #### ✅ 00105-01 — 项目 CRUD + SQLite 建表 + M8 路由 (manager.py)
@@ -1769,7 +1769,7 @@ def test_openai_python_sdk_chat():
 
 ## Phase 4-C: 增强与收尾
 
-> **PRD**: `.dev/specs/prd-phase-4c-2026-06-11.md`
+> **PRD**: `.dev/specs/phase-4c-enhancements-design-2026-06-11.md`
 > **依赖**: 00104 (Deep Research), 00105 (Projects)
 
 ### ✅ 00106 — P0 核心集成 (2 Task)
@@ -1935,7 +1935,7 @@ def test_openai_python_sdk_chat():
 
 ## Phase 4-D: 协作平台与知识沉淀
 
-> **PRD**: `.dev/specs/prd-phase-4d-2026-06-12.md`
+> **PRD**: `.dev/specs/phase-4d-collaboration-design-2026-06-12.md`
 > **依赖**: 00104 (DR), 00105 (Projects), 00106-00109 (4-C)
 
 ### 🔲 00110 — Phase 4-D (9 Task)
