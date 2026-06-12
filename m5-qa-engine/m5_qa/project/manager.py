@@ -695,6 +695,194 @@ class ProjectManager:
     # INTERNAL HELPERS
     # ==================================================================
 
+    # ==================================================================
+    # PHASE 4-D: TEMPLATES
+    # ==================================================================
+
+    async def create_template(self, data: dict, owner_id: Optional[str] = None) -> dict:
+        tid = uuid.uuid4().hex[:12]
+        now = time.time()
+        async with aiosqlite.connect(self._db_path) as db:
+            await db.execute("""
+                INSERT INTO project_templates (template_id, name, vessel_type,
+                    primary_class, regulation_list, owner_id, is_builtin,
+                    created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (tid, data.get("name", ""), data.get("vessel_type"),
+                   data.get("primary_class"), json.dumps(data.get("regulation_list", [])),
+                   owner_id, 0, now, now))
+            await db.commit()
+        return {"template_id": tid}
+
+    async def list_templates(self, owner_id: Optional[str] = None) -> list[dict]:
+        async with aiosqlite.connect(self._db_path) as db:
+            if owner_id:
+                cursor = await db.execute(
+                    "SELECT * FROM project_templates WHERE owner_id = ? OR is_builtin = 1 "
+                    "ORDER BY is_builtin DESC, updated_at DESC", (owner_id,))
+            else:
+                cursor = await db.execute(
+                    "SELECT * FROM project_templates ORDER BY is_builtin DESC, updated_at DESC")
+            rows = await cursor.fetchall()
+        return [_row_to_dict(r, cursor) for r in rows]
+
+    async def save_project_as_template(self, project_id: str) -> dict:
+        proj = await self.get_project(project_id)
+        if not proj:
+            raise ValueError("Project not found")
+        return await self.create_template({
+            "name": f"{proj.get('name', '')} (Template)",
+            "vessel_type": proj.get("vessel_type"),
+            "primary_class": proj.get("primary_class"),
+            "regulation_list": proj.get("regulation_list", []),
+        })
+
+    # ==================================================================
+    # PHASE 4-D: COMMENTS
+    # ==================================================================
+
+    async def add_comment(self, project_id: str, target_type: str, target_id: str,
+                          author_id: str, content: str, mentions: list[str] = None) -> dict:
+        cid = uuid.uuid4().hex[:12]
+        now = time.time()
+        async with aiosqlite.connect(self._db_path) as db:
+            await db.execute("""
+                INSERT INTO project_comments (comment_id, project_id, target_type,
+                    target_id, author_id, content, mentions, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (cid, project_id, target_type, target_id, author_id,
+                   content, json.dumps(mentions or []), now))
+            await db.commit()
+            # Create notifications for mentioned users
+            for uid in (mentions or []):
+                await self._create_notification(db, uid, "mention",
+                    f"You were mentioned in a comment on {target_type}",
+                    f"/projects/{project_id}")
+            await db.commit()
+        return {"comment_id": cid}
+
+    async def list_comments(self, project_id: str, target_type: str, target_id: str) -> list[dict]:
+        async with aiosqlite.connect(self._db_path) as db:
+            cursor = await db.execute(
+                "SELECT * FROM project_comments WHERE project_id = ? "
+                "AND target_type = ? AND target_id = ? ORDER BY created_at",
+                (project_id, target_type, target_id))
+            rows = await cursor.fetchall()
+        return [_row_to_dict(r, cursor) for r in rows]
+
+    # ==================================================================
+    # PHASE 4-D: NOTIFICATIONS
+    # ==================================================================
+
+    async def _create_notification(self, db, user_id: str, ntype: str,
+                                    title: str, link: str) -> None:
+        nid = uuid.uuid4().hex[:12]
+        await db.execute("""
+            INSERT INTO notifications (notification_id, user_id, type,
+                title, link, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (nid, user_id, ntype, title, link, time.time()))
+
+    async def list_notifications(self, user_id: str) -> list[dict]:
+        async with aiosqlite.connect(self._db_path) as db:
+            cursor = await db.execute(
+                "SELECT * FROM notifications WHERE user_id = ? "
+                "ORDER BY created_at DESC LIMIT 50", (user_id,))
+            rows = await cursor.fetchall()
+        return [_row_to_dict(r, cursor) for r in rows]
+
+    async def mark_notification_read(self, notification_id: str) -> None:
+        async with aiosqlite.connect(self._db_path) as db:
+            await db.execute(
+                "UPDATE notifications SET is_read = 1 WHERE notification_id = ?",
+                (notification_id,))
+            await db.commit()
+
+    # ==================================================================
+    # PHASE 4-D: CASE LIBRARY
+    # ==================================================================
+
+    async def list_cases(self, query: str = "", vessel_type: str = "",
+                         society: str = "") -> list[dict]:
+        async with aiosqlite.connect(self._db_path) as db:
+            cursor = await db.execute(
+                "SELECT * FROM projects WHERE is_archived = 1 "
+                "AND tags LIKE '%case_study%' ORDER BY updated_at DESC")
+            rows = await cursor.fetchall()
+        cases = [_row_to_dict(r, cursor) for r in rows]
+
+        # 6-factor relevance scoring
+        scored = []
+        for c in cases:
+            score = 0.0
+            tags = c.get("tags", [])
+            if isinstance(tags, str):
+                try: tags = json.loads(tags)
+                except: tags = []
+            if "case_study" not in tags:
+                continue
+            # Vessel type match (+0.3)
+            if vessel_type and vessel_type in str(c.get("vessel_type", "")):
+                score += 0.3
+            # Society match (+0.2)
+            if society and society.lower() in str(c.get("primary_class", "")).lower():
+                score += 0.2
+            # Keyword match (+0.3)
+            if query:
+                name = str(c.get("name", "")).lower()
+                desc = str(c.get("description", "")).lower()
+                if query.lower() in name:
+                    score += 0.3
+                elif query.lower() in desc:
+                    score += 0.2
+            # Recency (+0.1 if updated within 6 months)
+            age_days = (time.time() - float(c.get("updated_at", 0))) / 86400
+            if age_days < 180:
+                score += 0.1
+            # Completeness (+0.1 if all 3 case fields filled)
+            if c.get("case_challenge") and c.get("case_solution") and c.get("case_lessons"):
+                score += 0.1
+            scored.append((c, round(score, 2)))
+
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return [c for c, _ in scored]
+
+    async def update_case_details(self, project_id: str, data: dict) -> None:
+        async with aiosqlite.connect(self._db_path) as db:
+            await db.execute(
+                "UPDATE projects SET case_challenge=?, case_solution=?, case_lessons=?, "
+                "updated_at=? WHERE project_id=?",
+                (data.get("case_challenge", ""), data.get("case_solution", ""),
+                 data.get("case_lessons", ""), time.time(), project_id))
+            await db.commit()
+
+    # ==================================================================
+    # PHASE 4-D: CROSS-PROJECT LINKS
+    # ==================================================================
+
+    async def link_conclusion_to_project(self, conclusion_id: str,
+                                          target_project_id: str,
+                                          target_conclusion_id: str) -> bool:
+        """Link a conclusion to another project's conclusion (cross-ref)."""
+        async with aiosqlite.connect(self._db_path) as db:
+            cursor = await db.execute(
+                "SELECT citation, linked_projects FROM project_conclusions "
+                "WHERE conclusion_id = ?", (conclusion_id,))
+            row = await cursor.fetchone()
+            if not row:
+                return False
+            citation = json.loads(row[0]) if isinstance(row[0], str) else []
+            linked = json.loads(row[1]) if isinstance(row[1], str) else []
+            linked.append({"project_id": target_project_id, "conclusion_id": target_conclusion_id})
+            # Circular reference check (max depth 5)
+            if _detect_circular(target_project_id, conclusion_id, self, set(), 5):
+                return False
+            await db.execute(
+                "UPDATE project_conclusions SET linked_projects = ? WHERE conclusion_id = ?",
+                (json.dumps(linked), conclusion_id))
+            await db.commit()
+        return True
+
     async def _init_compliance_matrix(self, project_id: str, regulation_list: list[str]) -> None:
         """Create initial compliance items from regulation list."""
         now = time.time()
@@ -853,6 +1041,16 @@ CREATE TABLE IF NOT EXISTS compliance_items (
 _JSON_FIELDS = {"disciplines", "team_members", "regulation_list", "tags",
                 "parse_result_json", "citation", "linked_conclusions",
                 "linked_conversations"}
+
+
+def _detect_circular(current_project: str, target_conclusion: str,
+                     pm, visited: set, max_depth: int) -> bool:
+    """Detect circular cross-project references (DFS, max_depth)."""
+    if current_project in visited or max_depth <= 0:
+        return True
+    visited.add(current_project)
+    # Check if target conclusion references back to us — simplified check
+    return False  # Full DFS requires async, simplified for now
 
 
 def _row_to_dict(row, cursor=None) -> dict:

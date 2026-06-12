@@ -375,6 +375,99 @@ async def mark_as_case_study(
     return {"status": "marked", "project_id": project_id}
 
 
+# -- Templates (00110-03) --
+
+@router.post("/templates")
+async def create_template(request: Request, api_key: APIKey = Depends(get_api_key)):
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON")
+    pm = _get_project_manager(request)
+    return await pm.create_template(body)
+
+
+@router.get("/templates")
+async def list_templates(request: Request, api_key: APIKey = Depends(get_api_key)):
+    return await _get_project_manager(request).list_templates()
+
+
+@router.post("/{project_id}/save-as-template")
+async def save_as_template(project_id: str, request: Request,
+                            api_key: APIKey = Depends(get_api_key)):
+    return await _get_project_manager(request).save_project_as_template(project_id)
+
+
+# -- Comments (00110-04) --
+
+@router.post("/{project_id}/conclusions/{cid}/comments")
+async def add_comment(project_id: str, cid: str, request: Request,
+                       api_key: APIKey = Depends(get_api_key)):
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON")
+    pm = _get_project_manager(request)
+    return await pm.add_comment(project_id, "conclusion", cid,
+        body.get("author_id", "unknown"), body.get("content", ""),
+        body.get("mentions", []))
+
+
+@router.get("/{project_id}/conclusions/{cid}/comments")
+async def list_comments(project_id: str, cid: str, request: Request,
+                         api_key: APIKey = Depends(get_api_key)):
+    return await _get_project_manager(request).list_comments(project_id, "conclusion", cid)
+
+
+# -- Notifications (00110-04) --
+
+@router.get("/notifications")
+async def list_notifications(request: Request, api_key: APIKey = Depends(get_api_key)):
+    return await _get_project_manager(request).list_notifications(
+        api_key.user_id if hasattr(api_key, 'user_id') else 'unknown')
+
+
+@router.patch("/notifications/{nid}/read")
+async def mark_read(nid: str, request: Request, api_key: APIKey = Depends(get_api_key)):
+    await _get_project_manager(request).mark_notification_read(nid)
+    return {"status": "read"}
+
+
+# -- Case library (00110-02) --
+
+@router.get("/cases")
+async def list_cases(request: Request, query: str = "", vessel_type: str = "",
+                      society: str = "", api_key: APIKey = Depends(get_api_key)):
+    return await _get_project_manager(request).list_cases(query, vessel_type, society)
+
+
+@router.patch("/{project_id}/case-details")
+async def update_case_details(project_id: str, request: Request,
+                               api_key: APIKey = Depends(get_api_key)):
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON")
+    await _get_project_manager(request).update_case_details(project_id, body)
+    return {"status": "updated"}
+
+
+# -- Cross-project links (00110-05) --
+
+@router.post("/conclusions/{cid}/link")
+async def link_conclusion(cid: str, request: Request,
+                           api_key: APIKey = Depends(get_api_key)):
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON")
+    ok = await _get_project_manager(request).link_conclusion_to_project(
+        cid, body.get("target_project_id", ""), body.get("target_conclusion_id", ""))
+    if not ok:
+        raise HTTPException(400, "Circular reference detected or conclusion not found")
+    return {"status": "linked"}
+
+
 # -- Export (00108-03) --
 
 @router.get("/{project_id}/report/export")
