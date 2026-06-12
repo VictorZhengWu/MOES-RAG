@@ -1069,7 +1069,7 @@ async def _detect_circular(current_project: str, target_conclusion: str,
                     # Recurse deeper
                     if ref_pid not in visited:
                         ref_cid = ref.get("conclusion_id", "")
-                        if await _detect_circular(current_project, ref_cid,
+                        if await _detect_circular(ref_pid, ref_cid,
                                                    pm, visited.copy(), max_depth - 1):
                             return True
     except Exception:

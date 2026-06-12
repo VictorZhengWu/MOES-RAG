@@ -139,6 +139,7 @@ async def archive_project(
     api_key: APIKey = Depends(get_api_key),
 ):
     """POST /api/v1/projects/{id}/archive — Archive a project."""
+    await check_project_access(request, project_id, _uid(api_key), 'write')
     pm = _get_project_manager(request)
     project = await pm.archive_project(project_id)
     if not project:
