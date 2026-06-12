@@ -65,6 +65,7 @@ export default function ProjectDetailPage() {
           <TabsTrigger value="conversations">Conversations</TabsTrigger>
           <TabsTrigger value="issues">Issues</TabsTrigger>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
+          <TabsTrigger value="casestudy">Case Study</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
@@ -89,6 +90,9 @@ export default function ProjectDetailPage() {
         </TabsContent>
 
         {/* Documents tab */}
+        <TabsContent value="casestudy">
+          <CaseStudyTab projectId={id} token={token} />
+        </TabsContent>
         <TabsContent value="documents">
           <DocumentsTab projectId={id} token={token} />
         </TabsContent>
@@ -292,6 +296,49 @@ function ComplianceTab({ projectId, token }: any) {
 }
 
 // ---- Documents Tab ----
+
+function CaseStudyTab({ projectId, token }: any) {
+  const h: any = token ? { Authorization: `Bearer ${token}` } : {};
+  const [challenge, setChallenge] = useState('');
+  const [solution, setSolution] = useState('');
+  const [lessons, setLessons] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/v1/projects/${projectId}`, { headers: h })
+      .then(r => r.json()).then(p => {
+        setChallenge(p.case_challenge || ''); setSolution(p.case_solution || ''); setLessons(p.case_lessons || '');
+      }).catch(() => {});
+  }, [projectId]);
+
+  const save = async () => {
+    setSaving(true);
+    await fetch(`${BASE_URL}/api/v1/projects/${projectId}/case-details`, {
+      method: 'PATCH', headers: { ...h, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ case_challenge: challenge, case_solution: solution, case_lessons: lessons }),
+    });
+    setSaving(false); setSaved(true);
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">Document key challenges, solutions, and lessons learned from this project.</p>
+      <textarea className="w-full rounded-lg border px-3 py-2 text-sm" rows={3}
+        placeholder="Key Challenge: What was the main technical challenge?" value={challenge}
+        onChange={e => setChallenge(e.target.value)} />
+      <textarea className="w-full rounded-lg border px-3 py-2 text-sm" rows={3}
+        placeholder="Solution: How was it resolved?" value={solution}
+        onChange={e => setSolution(e.target.value)} />
+      <textarea className="w-full rounded-lg border px-3 py-2 text-sm" rows={3}
+        placeholder="Lessons Learned: What would you do differently?" value={lessons}
+        onChange={e => setLessons(e.target.value)} />
+      <Button size="sm" onClick={save} disabled={saving}>
+        {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Save'}
+      </Button>
+    </div>
+  );
+}
 
 function DocumentsTab({ projectId, token }: any) {
   const [docs, setDocs] = useState<any[]>([]);

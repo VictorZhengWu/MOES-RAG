@@ -56,6 +56,8 @@ export default function ProjectsPage() {
   const [newVessel, setNewVessel] = useState('');
   const [newClass, setNewClass] = useState('DNV');
   const [newDesc, setNewDesc] = useState('');
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
   const [createErr, setCreateErr] = useState('');
 
   const fetchProjects = useCallback(async () => {
