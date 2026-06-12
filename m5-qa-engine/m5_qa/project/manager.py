@@ -113,8 +113,11 @@ class ProjectManager:
                 INSERT INTO projects (project_id, name, type, vessel_type, dwt,
                     primary_class, secondary_class, regulation_year, phase,
                     disciplines, description, owner_id, team_members,
-                    regulation_list, tags, is_archived, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                    regulation_list, tags, is_archived,
+                    case_challenge, case_solution, case_lessons,
+                    created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0,
+                    '', '', '', ?, ?)
             """, (
                 pid, data.get("name", "Untitled"), data.get("type", "custom"),
                 data.get("vessel_type"), data.get("dwt"),
@@ -172,7 +175,9 @@ class ProjectManager:
                 UPDATE projects SET name=?, type=?, vessel_type=?, dwt=?,
                     primary_class=?, secondary_class=?, regulation_year=?,
                     phase=?, disciplines=?, description=?, team_members=?,
-                    regulation_list=?, tags=?, updated_at=?
+                    regulation_list=?, tags=?,
+                    case_challenge=?, case_solution=?, case_lessons=?,
+                    updated_at=?
                 WHERE project_id=?
             """, (
                 merged["name"], merged["type"], merged.get("vessel_type"),
@@ -183,6 +188,8 @@ class ProjectManager:
                 json.dumps(merged.get("team_members", [])),
                 json.dumps(merged.get("regulation_list", [])),
                 json.dumps(merged.get("tags", [])),
+                merged.get("case_challenge", ""), merged.get("case_solution", ""),
+                merged.get("case_lessons", ""),
                 merged["updated_at"], project_id,
             ))
             await db.commit()
@@ -724,8 +731,45 @@ CREATE TABLE IF NOT EXISTS projects (
     regulation_list TEXT DEFAULT '[]',
     tags TEXT DEFAULT '[]',
     is_archived INTEGER DEFAULT 0,
+    case_challenge TEXT DEFAULT '',
+    case_solution TEXT DEFAULT '',
+    case_lessons TEXT DEFAULT '',
     created_at REAL NOT NULL,
     updated_at REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS project_templates (
+    template_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    vessel_type TEXT,
+    primary_class TEXT,
+    regulation_list TEXT DEFAULT '[]',
+    owner_id TEXT,
+    is_builtin INTEGER DEFAULT 0,
+    created_at REAL NOT NULL,
+    updated_at REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS project_comments (
+    comment_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    target_type TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    author_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    mentions TEXT DEFAULT '[]',
+    created_at REAL NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(project_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS notifications (
+    notification_id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    link TEXT,
+    is_read INTEGER DEFAULT 0,
+    created_at REAL NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS project_conversations (
@@ -781,6 +825,7 @@ CREATE TABLE IF NOT EXISTS project_conclusions (
     citation TEXT DEFAULT '[]',
     status TEXT DEFAULT 'general',
     tags TEXT DEFAULT '[]',
+    linked_projects TEXT DEFAULT '[]',
     created_at REAL NOT NULL,
     FOREIGN KEY (project_id) REFERENCES projects(project_id) ON DELETE CASCADE
 );
@@ -796,6 +841,7 @@ CREATE TABLE IF NOT EXISTS compliance_items (
     deviation_note TEXT,
     linked_conclusions TEXT DEFAULT '[]',
     linked_conversations TEXT DEFAULT '[]',
+    reference_source TEXT,
     created_at REAL NOT NULL,
     updated_at REAL NOT NULL,
     PRIMARY KEY (project_id, clause_id),
