@@ -875,8 +875,8 @@ class ProjectManager:
             linked = json.loads(row[1]) if isinstance(row[1], str) else []
             linked.append({"project_id": target_project_id, "conclusion_id": target_conclusion_id})
             # Circular reference check (max depth 5)
-            if _detect_circular(target_project_id, conclusion_id, self, set(), 5):
-                return False
+            if await _detect_circular(target_project_id, conclusion_id, self, set(), 5):
+                return False  # Circular reference detected — reject
             await db.execute(
                 "UPDATE project_conclusions SET linked_projects = ? WHERE conclusion_id = ?",
                 (json.dumps(linked), conclusion_id))
