@@ -378,7 +378,13 @@
       "Bash(python -m pytest E:/myCode/RAG/m8-api-gateway/tests/ -q)",
       "Bash(python -m pytest E:/myCode/RAG/m2-storage/tests/ -q)",
       "Bash(python -m pytest E:/myCode/RAG/m4-knowledge-graph/tests/ -q)",
-      "Bash(grep -E \"^\\\\\\\\.|=2|demo_|DNV|test_e2e|setup\\\\.|m1_parser|__pycache__\")"
+      "Bash(grep -E \"^\\\\\\\\.|=2|demo_|DNV|test_e2e|setup\\\\.|m1_parser|__pycache__\")",
+      "Bash(python -m pytest E:/myCode/RAG/m5-qa-engine/tests/test_project_manager.py::test_create_project -v)",
+      "Bash(python -m pytest E:/myCode/RAG/m5-qa-engine/tests/ E:/myCode/RAG/m8-api-gateway/tests/ -q)",
+      "Bash(python -m pytest m5-qa-engine/tests/test_project_manager.py -q)",
+      "Bash(python -m pytest m8-api-gateway/tests/test_openai_compat.py::test_error_response_format -v)",
+      "Bash(python -m pytest m8-api-gateway/tests/test_openai_compat.py::test_error_response_format -v --tb=short)",
+      "Bash(python -m pytest m8-api-gateway/tests/test_openai_compat.py::test_error_response_format -v --tb=long)"
     ]
   }
 }

@@ -63,6 +63,25 @@ def _get_project_manager(request: Request):
     return pm
 
 
+def _get_project_manager_with_access(action: str = 'read'):
+    """Create a dependency that validates project access and returns the ProjectManager.
+
+    Args:
+        action: Required permission level ('read', 'write', 'admin').
+
+    Usage:
+        pm = Depends(_get_project_manager_with_access('write'))
+    """
+    async def dependency(
+        project_id: str,
+        request: Request,
+        api_key: APIKey = Depends(get_api_key)
+    ):
+        await check_project_access(request, project_id, _uid(api_key), action)
+        return _get_project_manager(request)
+    return dependency
+
+
 @router.post("")
 async def create_project(
     body: CreateProjectRequest,
@@ -91,11 +110,9 @@ async def list_projects(
 @router.get("/{project_id}")
 async def get_project(
     project_id: str,
-    request: Request,
-    api_key: APIKey = Depends(get_api_key),
+    pm = Depends(_get_project_manager_with_access('read'))
 ):
     """GET /api/v1/projects/{id} — Get project details."""
-    pm = _get_project_manager(request)
     project = await pm.get_project(project_id)
     if not project:
         raise HTTPException(404, "Project not found")
@@ -106,12 +123,9 @@ async def get_project(
 async def update_project(
     project_id: str,
     body: UpdateProjectRequest,
-    request: Request,
-    api_key: APIKey = Depends(get_api_key),
+    pm = Depends(_get_project_manager_with_access('write'))
 ):
     """PATCH /api/v1/projects/{id} — Update project fields."""
-    await check_project_access(request, project_id, _uid(api_key), 'write')
-    pm = _get_project_manager(request)
     data = {k: v for k, v in body.model_dump().items() if v is not None}
     project = await pm.update_project(project_id, data)
     if not project:
@@ -122,12 +136,9 @@ async def update_project(
 @router.delete("/{project_id}")
 async def delete_project(
     project_id: str,
-    request: Request,
-    api_key: APIKey = Depends(get_api_key),
+    pm = Depends(_get_project_manager_with_access('admin'))
 ):
     """DELETE /api/v1/projects/{id} — Delete a project."""
-    await check_project_access(request, project_id, _uid(api_key), 'admin')
-    pm = _get_project_manager(request)
     await pm.delete_project(project_id)
     return {"status": "deleted"}
 
@@ -135,12 +146,9 @@ async def delete_project(
 @router.post("/{project_id}/archive")
 async def archive_project(
     project_id: str,
-    request: Request,
-    api_key: APIKey = Depends(get_api_key),
+    pm = Depends(_get_project_manager_with_access('write'))
 ):
     """POST /api/v1/projects/{id}/archive — Archive a project."""
-    await check_project_access(request, project_id, _uid(api_key), 'write')
-    pm = _get_project_manager(request)
     project = await pm.archive_project(project_id)
     if not project:
         raise HTTPException(404, "Project not found")
@@ -150,11 +158,9 @@ async def archive_project(
 @router.get("/{project_id}/dashboard")
 async def project_dashboard(
     project_id: str,
-    request: Request,
-    api_key: APIKey = Depends(get_api_key),
+    pm = Depends(_get_project_manager_with_access('read'))
 ):
     """GET /api/v1/projects/{id}/dashboard — Project dashboard stats."""
-    pm = _get_project_manager(request)
     return await pm.get_dashboard(project_id)
 
 
@@ -164,11 +170,9 @@ async def project_dashboard(
 async def link_conversation(
     project_id: str,
     body: LinkConversationRequest,
-    request: Request,
-    api_key: APIKey = Depends(get_api_key),
+    pm = Depends(_get_project_manager_with_access('write'))
 ):
     """POST /api/v1/projects/{id}/conversations — Link conversation to project."""
-    pm = _get_project_manager(request)
     await pm.link_conversation(project_id, body.conversation_id, body.folder_path, body.tags)
     return {"status": "linked"}
 
@@ -176,10 +180,9 @@ async def link_conversation(
 @router.delete("/{project_id}/conversations/{conv_id}")
 async def unlink_conversation(
     project_id: str, conv_id: str,
-    request: Request, api_key: APIKey = Depends(get_api_key),
+    pm = Depends(_get_project_manager_with_access('write'))
 ):
     """DELETE /api/v1/projects/{id}/conversations/{cid} — Unlink conversation."""
-    pm = _get_project_manager(request)
     await pm.unlink_conversation(project_id, conv_id)
     return {"status": "unlinked"}
 
@@ -187,12 +190,10 @@ async def unlink_conversation(
 @router.get("/{project_id}/conversations")
 async def list_conversations(
     project_id: str,
-    request: Request,
     folder: Optional[str] = None,
-    api_key: APIKey = Depends(get_api_key),
+    pm = Depends(_get_project_manager_with_access('read'))
 ):
     """GET /api/v1/projects/{id}/conversations — List linked conversations."""
-    pm = _get_project_manager(request)
     return await pm.list_conversations(project_id, folder)
 
 
@@ -207,30 +208,29 @@ class UploadDocumentRequest(BaseModel):
 @router.post("/{project_id}/documents")
 async def add_document(
     project_id: str, body: UploadDocumentRequest,
-    request: Request, api_key: APIKey = Depends(get_api_key),
+    pm = Depends(_get_project_manager_with_access('write')),
+    api_key: APIKey = Depends(get_api_key),
 ):
     """POST /api/v1/projects/{id}/documents — Add document to project."""
-    pm = _get_project_manager(request)
     return await pm.add_document(project_id, body.filename, body.file_key,
                                  api_key.user_id, body.discipline)
 
 
 @router.get("/{project_id}/documents")
 async def list_documents(
-    project_id: str, request: Request, api_key: APIKey = Depends(get_api_key),
+    project_id: str,
+    pm = Depends(_get_project_manager_with_access('read'))
 ):
     """GET /api/v1/projects/{id}/documents — List project documents."""
-    pm = _get_project_manager(request)
     return await pm.list_documents(project_id)
 
 
 @router.delete("/{project_id}/documents/{doc_id}")
 async def delete_document(
     project_id: str, doc_id: str,
-    request: Request, api_key: APIKey = Depends(get_api_key),
+    pm = Depends(_get_project_manager_with_access('write'))
 ):
     """DELETE /api/v1/projects/{id}/documents/{did} — Delete document."""
-    pm = _get_project_manager(request)
     await pm.delete_document(project_id, doc_id)
     return {"status": "deleted"}
 
@@ -249,30 +249,29 @@ class CreateIssueRequest(BaseModel):
 @router.post("/{project_id}/issues")
 async def create_issue(
     project_id: str, body: CreateIssueRequest,
-    request: Request, api_key: APIKey = Depends(get_api_key),
+    pm = Depends(_get_project_manager_with_access('write'))
 ):
     """POST /api/v1/projects/{id}/issues — Create research issue."""
-    pm = _get_project_manager(request)
     return await pm.create_issue(project_id, body.model_dump())
 
 
 @router.get("/{project_id}/issues")
 async def list_issues(
-    project_id: str, request: Request, api_key: APIKey = Depends(get_api_key),
+    project_id: str,
+    pm = Depends(_get_project_manager_with_access('read'))
 ):
     """GET /api/v1/projects/{id}/issues — List research issues."""
-    pm = _get_project_manager(request)
     return await pm.list_issues(project_id)
 
 
 @router.patch("/{project_id}/issues/{issue_id}")
 async def update_issue(
     project_id: str, issue_id: str,
-    request: Request, api_key: APIKey = Depends(get_api_key),
+    request: Request,
+    pm = Depends(_get_project_manager_with_access('write'))
 ):
     """PATCH /api/v1/projects/{id}/issues/{iid} — Update issue."""
     body = await request.json()
-    pm = _get_project_manager(request)
     return await pm.update_issue(issue_id, body)
 
 
@@ -290,29 +289,27 @@ class CreateConclusionRequest(BaseModel):
 @router.post("/{project_id}/conclusions")
 async def create_conclusion(
     project_id: str, body: CreateConclusionRequest,
-    request: Request, api_key: APIKey = Depends(get_api_key),
+    pm = Depends(_get_project_manager_with_access('write'))
 ):
     """POST /api/v1/projects/{id}/conclusions — Add conclusion."""
-    pm = _get_project_manager(request)
     return await pm.create_conclusion(project_id, body.model_dump())
 
 
 @router.get("/{project_id}/conclusions")
 async def list_conclusions(
-    project_id: str, request: Request, api_key: APIKey = Depends(get_api_key),
+    project_id: str,
+    pm = Depends(_get_project_manager_with_access('read'))
 ):
     """GET /api/v1/projects/{id}/conclusions — List conclusions."""
-    pm = _get_project_manager(request)
     return await pm.list_conclusions(project_id)
 
 
 @router.delete("/{project_id}/conclusions/{c_id}")
 async def delete_conclusion(
     project_id: str, c_id: str,
-    request: Request, api_key: APIKey = Depends(get_api_key),
+    pm = Depends(_get_project_manager_with_access('write'))
 ):
     """DELETE /api/v1/projects/{id}/conclusions/{cid} — Delete with rollback."""
-    pm = _get_project_manager(request)
     ok = await pm.delete_conclusion(project_id, c_id)
     return {"status": "deleted"} if ok else {"status": "not_found"}
 
@@ -321,21 +318,21 @@ async def delete_conclusion(
 
 @router.get("/{project_id}/compliance")
 async def list_compliance(
-    project_id: str, request: Request, api_key: APIKey = Depends(get_api_key),
+    project_id: str,
+    pm = Depends(_get_project_manager_with_access('read'))
 ):
     """GET /api/v1/projects/{id}/compliance — List compliance matrix."""
-    pm = _get_project_manager(request)
     return await pm.list_compliance(project_id)
 
 
 @router.patch("/{project_id}/compliance/{clause_id}")
 async def update_compliance(
     project_id: str, clause_id: str,
-    request: Request, api_key: APIKey = Depends(get_api_key),
+    request: Request,
+    pm = Depends(_get_project_manager_with_access('write'))
 ):
     """PATCH /api/v1/projects/{id}/compliance/{cid} — Update compliance status."""
     body = await request.json()
-    pm = _get_project_manager(request)
     return await pm.update_compliance(project_id, clause_id, body)
 
 
@@ -343,10 +340,10 @@ async def update_compliance(
 
 @router.get("/{project_id}/report")
 async def project_report(
-    project_id: str, request: Request, api_key: APIKey = Depends(get_api_key),
+    project_id: str,
+    pm = Depends(_get_project_manager_with_access('read'))
 ):
     """GET /api/v1/projects/{id}/report — Generate project summary report."""
-    pm = _get_project_manager(request)
     report_md = await pm.generate_report(project_id)
     return {"markdown": report_md}
 
@@ -366,10 +363,10 @@ async def list_case_studies(
 
 @router.post("/{project_id}/mark-case")
 async def mark_as_case_study(
-    project_id: str, request: Request, api_key: APIKey = Depends(get_api_key),
+    project_id: str,
+    pm = Depends(_get_project_manager_with_access('write'))
 ):
     """POST /api/v1/projects/{id}/mark-case — Mark project as case study."""
-    pm = _get_project_manager(request)
     proj = await pm.get_project(project_id)
     if not proj:
         raise HTTPException(404, "Project not found")
@@ -400,30 +397,31 @@ async def list_templates(request: Request, api_key: APIKey = Depends(get_api_key
 
 
 @router.post("/{project_id}/save-as-template")
-async def save_as_template(project_id: str, request: Request,
-                            api_key: APIKey = Depends(get_api_key)):
-    return await _get_project_manager(request).save_project_as_template(project_id)
+async def save_as_template(project_id: str,
+                               pm = Depends(_get_project_manager_with_access('write'))
+):
+    return await pm.save_project_as_template(project_id)
 
 
 # -- Comments (00110-04) --
 
 @router.post("/{project_id}/conclusions/{cid}/comments")
 async def add_comment(project_id: str, cid: str, request: Request,
-                       api_key: APIKey = Depends(get_api_key)):
+                       pm = Depends(_get_project_manager_with_access('comment'))):
     try:
         body = await request.json()
     except Exception:
         raise HTTPException(400, "Invalid JSON")
-    pm = _get_project_manager(request)
     return await pm.add_comment(project_id, "conclusion", cid,
         body.get("author_id", "unknown"), body.get("content", ""),
         body.get("mentions", []))
 
 
 @router.get("/{project_id}/conclusions/{cid}/comments")
-async def list_comments(project_id: str, cid: str, request: Request,
-                         api_key: APIKey = Depends(get_api_key)):
-    return await _get_project_manager(request).list_comments(project_id, "conclusion", cid)
+async def list_comments(project_id: str, cid: str,
+                         pm = Depends(_get_project_manager_with_access('read'))
+):
+    return await pm.list_comments(project_id, "conclusion", cid)
 
 
 # -- Notifications (00110-04) --
@@ -479,10 +477,10 @@ async def link_conclusion(cid: str, request: Request,
 
 @router.get("/{project_id}/report/export")
 async def export_project_report(
-    project_id: str, request: Request, api_key: APIKey = Depends(get_api_key),
+    project_id: str,
+    pm = Depends(_get_project_manager_with_access('read'))
 ):
     """GET /api/v1/projects/{id}/report/export — Export compliance Excel."""
-    pm = _get_project_manager(request)
     try:
         from m5_qa.project.export import export_compliance_excel
         data = await export_compliance_excel(pm, project_id)
@@ -495,3 +493,70 @@ async def export_project_report(
         raise HTTPException(501, str(e))
     except ValueError as e:
         raise HTTPException(404, str(e))
+
+
+# -- Member Management (US-011) --
+
+class AddMemberRequest(BaseModel):
+    user_id: str
+    role: str = "viewer"
+
+
+class UpdateMemberRequest(BaseModel):
+    user_id: str
+    role: str
+
+
+@router.get("/{project_id}/members")
+async def list_members(
+    project_id: str,
+    pm = Depends(_get_project_manager_with_access('read'))
+):
+    """GET /api/v1/projects/{id}/members — List all members."""
+    return await pm.list_members(project_id)
+
+
+@router.post("/{project_id}/members")
+async def add_member(
+    project_id: str, body: AddMemberRequest,
+    pm = Depends(_get_project_manager_with_access('admin'))
+):
+    """POST /api/v1/projects/{id}/members — Add a new member."""
+    if body.role not in ("viewer", "editor", "owner"):
+        raise HTTPException(400, "Invalid role. Must be viewer, editor, or owner.")
+    try:
+        project = await pm.add_member(project_id, body.user_id, body.role)
+        if not project:
+            raise HTTPException(404, "Project not found")
+        return project
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.patch("/{project_id}/members")
+async def update_member_role(
+    project_id: str, body: UpdateMemberRequest,
+    pm = Depends(_get_project_manager_with_access('admin'))
+):
+    """PATCH /api/v1/projects/{id}/members — Update member role."""
+    if body.role not in ("viewer", "editor", "owner"):
+        raise HTTPException(400, "Invalid role. Must be viewer, editor, or owner.")
+    try:
+        project = await pm.update_member_role(project_id, body.user_id, body.role)
+        if not project:
+            raise HTTPException(404, "Project not found")
+        return project
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.delete("/{project_id}/members/{user_id}")
+async def remove_member(
+    project_id: str, user_id: str,
+    pm = Depends(_get_project_manager_with_access('admin'))
+):
+    """DELETE /api/v1/projects/{id}/members/{uid} — Remove a member."""
+    project = await pm.remove_member(project_id, user_id)
+    if not project:
+        raise HTTPException(404, "Project not found")
+    return project

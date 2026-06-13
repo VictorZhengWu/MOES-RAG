@@ -162,6 +162,86 @@ class ProjectManager:
             rows = await cursor.fetchall()
         return [_row_to_dict(r, cursor) for r in rows]
 
+    # ==================================================================
+    # MEMBER MANAGEMENT (US-011)
+    # ==================================================================
+
+    async def list_members(self, project_id: str) -> list[dict]:
+        """List all members of a project with their roles."""
+        project = await self.get_project(project_id)
+        if not project:
+            return []
+        members = project.get("team_members", [])
+        return members if isinstance(members, list) else []
+
+    async def add_member(self, project_id: str, user_id: str, role: str = "viewer") -> Optional[dict]:
+        """Add a member to the project. Role: viewer|editor|owner."""
+        if role not in ("viewer", "editor", "owner"):
+            raise ValueError(f"Invalid role: {role}. Must be viewer, editor, or owner.")
+
+        project = await self.get_project(project_id)
+        if not project:
+            return None
+
+        members = project.get("team_members", [])
+        if isinstance(members, str):
+            members = json.loads(members) if members else []
+        elif not isinstance(members, list):
+            members = []
+
+        # Check if member already exists
+        for m in members:
+            if m.get("user_id") == user_id:
+                raise ValueError(f"User {user_id} is already a member of this project.")
+
+        members.append({"user_id": user_id, "role": role})
+        return await self.update_project(project_id, {"team_members": members})
+
+    async def update_member_role(self, project_id: str, user_id: str, role: str) -> Optional[dict]:
+        """Update a member's role. Role: viewer|editor|owner."""
+        if role not in ("viewer", "editor", "owner"):
+            raise ValueError(f"Invalid role: {role}. Must be viewer, editor, or owner.")
+
+        project = await self.get_project(project_id)
+        if not project:
+            return None
+
+        members = project.get("team_members", [])
+        if isinstance(members, str):
+            members = json.loads(members) if members else []
+        elif not isinstance(members, list):
+            members = []
+
+        # Find and update the member
+        found = False
+        for m in members:
+            if m.get("user_id") == user_id:
+                m["role"] = role
+                found = True
+                break
+
+        if not found:
+            raise ValueError(f"User {user_id} is not a member of this project.")
+
+        return await self.update_project(project_id, {"team_members": members})
+
+    async def remove_member(self, project_id: str, user_id: str) -> Optional[dict]:
+        """Remove a member from the project."""
+        project = await self.get_project(project_id)
+        if not project:
+            return None
+
+        members = project.get("team_members", [])
+        if isinstance(members, str):
+            members = json.loads(members) if members else []
+        elif not isinstance(members, list):
+            members = []
+
+        # Filter out the member
+        updated_members = [m for m in members if m.get("user_id") != user_id]
+
+        return await self.update_project(project_id, {"team_members": updated_members})
+
     async def update_project(self, project_id: str, data: dict) -> Optional[dict]:
         """Update project fields. Only updates provided keys."""
         existing = await self.get_project(project_id)
