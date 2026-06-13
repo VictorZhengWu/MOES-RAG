@@ -49,6 +49,9 @@ RUN pip install -e /app/contracts/ && \
     pip install -e /app/m5-qa-engine/ && \
     pip install -e /app/m8-api-gateway/
 
+# Install FastAPI extras for file upload
+RUN pip install python-multipart
+
 # Install FlagEmbedding for BGE-M3 (the heavy ML dependency)
 RUN pip install FlagEmbedding sentence-transformers
 
