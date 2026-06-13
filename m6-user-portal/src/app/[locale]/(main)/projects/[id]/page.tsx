@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useAuthStore } from '@/lib/stores/auth-store';
@@ -350,16 +350,63 @@ function CommentsTab({ projectId, token }: any) {
   const [comments, setComments] = useState<any[]>([]);
   const [text, setText] = useState('');
   const [posting, setPosting] = useState(false);
+  const [members, setMembers] = useState<any[]>([]);
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState('');
+  const [mentionIdx, setMentionIdx] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const fetchC = () => fetch(`${BASE_URL}/api/v1/projects/${projectId}/conclusions/__all__/comments`, { headers: h })
     .then(r => r.json()).then(setComments).catch(() => {});
 
   useEffect(() => { fetchC(); }, [projectId]);
 
+  // Load members for @mention autocomplete
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/v1/projects/${projectId}/members`, { headers: h })
+      .then(r => r.json()).then(setMembers).catch(() => {});
+  }, [projectId]);
+
+  const handleTextChange = (value: string) => {
+    setText(value);
+    const lastAt = value.lastIndexOf('@');
+    if (lastAt >= 0 && (lastAt === 0 || value[lastAt - 1] === ' ')) {
+      const afterAt = value.slice(lastAt + 1);
+      if (!afterAt.includes(' ')) {
+        setMentionFilter(afterAt.toLowerCase());
+        setMentionOpen(true);
+        setMentionIdx(0);
+        return;
+      }
+    }
+    setMentionOpen(false);
+  };
+
+  const insertMention = (username: string) => {
+    const lastAt = text.lastIndexOf('@');
+    const before = text.slice(0, lastAt);
+    const after = text.slice(lastAt + 1).replace(/^\w*/, '');
+    setText(`${before}@${username} ${after}`);
+    setMentionOpen(false);
+    inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!mentionOpen) return;
+    const filtered = members.filter((m: any) =>
+      (m.username || m.user_id || '').toLowerCase().includes(mentionFilter));
+    if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIdx(i => Math.min(i + 1, filtered.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIdx(i => Math.max(i - 1, 0)); }
+    else if (e.key === 'Enter' && filtered[mentionIdx]) {
+      e.preventDefault();
+      insertMention(filtered[mentionIdx].username || filtered[mentionIdx].user_id);
+    }
+    else if (e.key === 'Escape') { setMentionOpen(false); }
+  };
+
   const post = async () => {
     if (!text.trim()) return;
     setPosting(true);
-    // Extract @mentions: @username → store raw for now
     const mentions: string[] = [];
     const mentionRegex = /@(\w+)/g;
     let m;
@@ -384,11 +431,32 @@ function CommentsTab({ projectId, token }: any) {
         ))}
         {comments.length === 0 && <p className="text-xs text-muted-foreground">No comments yet.</p>}
       </div>
-      <div className="flex gap-2">
-        <input className="flex-1 rounded-lg border px-3 py-2 text-xs" placeholder="Write a comment... Use @name to mention"
-          value={text} onChange={e => setText(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && post()} />
+      <div className="flex gap-2 relative">
+        <input ref={inputRef} className="flex-1 rounded-lg border px-3 py-2 text-xs"
+          placeholder="Write a comment... Use @name to mention"
+          value={text} onChange={e => handleTextChange(e.target.value)}
+          onKeyDown={e => { handleKeyDown(e); if (e.key === 'Enter' && !e.shiftKey && !mentionOpen) post(); }} />
         <Button size="sm" onClick={post} disabled={posting || !text.trim()}>{posting ? '...' : 'Post'}</Button>
+        {/* @mention autocomplete dropdown */}
+        {mentionOpen && (() => {
+          const filtered = members.filter((m: any) =>
+            (m.username || m.user_id || '').toLowerCase().includes(mentionFilter));
+          if (filtered.length === 0) return null;
+          return (
+            <div className="absolute bottom-full left-0 mb-1 w-48 bg-background border rounded-lg shadow-lg z-50 max-h-36 overflow-y-auto">
+              {filtered.map((m: any, i: number) => (
+                <div key={m.user_id} className={`px-3 py-1.5 text-xs cursor-pointer flex items-center gap-2 ${i === mentionIdx ? 'bg-primary/10' : 'hover:bg-muted'}`}
+                  onClick={() => insertMention(m.username || m.user_id)}>
+                  <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[10px]">
+                    {(m.username || m.user_id || '?')[0].toUpperCase()}
+                  </span>
+                  <span>{m.username || m.user_id}</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">{m.role || 'viewer'}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
