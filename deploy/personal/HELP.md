@@ -21,11 +21,13 @@ First run downloads Docker images (5-10 minutes). Subsequent starts take ~30 sec
 
 ### Access
 
-| URL | Purpose |
-|-----|---------|
-| `http://localhost:3000` | User Portal |
-| `http://localhost:8000/docs` | API Documentation |
-| `http://localhost:3000/help` | Online Help |
+| URL | Purpose | Notes |
+|-----|---------|-------|
+| `http://localhost:8000/docs` | API Documentation | Swagger UI - 推荐首次使用 |
+| `http://localhost:3000` | User Portal | 需手动启动前端（见下方） |
+| `http://localhost:8000/health` | Health Check | 系统状态检查 |
+
+**重要提示**: Docker 部署仅包含后端服务（M1-M8）。要使用完整的 Web UI，请按照下方 **"启动前端门户"** 操作。
 
 ## Common Issues
 
@@ -47,6 +49,38 @@ Your computer doesn't have enough RAM. Try:
 ### "Cannot connect" or "Connection refused"
 
 Services may still be starting. Wait 60 seconds and try again.
+
+### Starting Frontend Portals (Optional)
+
+Docker deployment only includes backend services. To use the full Web UI, start the frontend manually:
+
+**Prerequisites**: Node.js 20+ and npm
+
+**User Portal (M6)**:
+```bash
+cd ../../m6-user-portal
+npm install
+npm run dev
+```
+Then visit `http://localhost:3000`
+
+**Admin Portal (M7)**:
+```bash
+cd ../../m7-admin-portal
+npm install
+npm run dev
+```
+Then visit `http://localhost:3001`
+
+**Quick Start (Recommended for New Users)**:
+
+If you just want to test the system, use the **API Documentation** instead:
+- Visit `http://localhost:8000/docs`
+- No frontend installation needed
+- Interactive API testing interface
+- Same functionality as Web UI
+
+---
 
 ### Using document parsing
 

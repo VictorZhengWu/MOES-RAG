@@ -4,6 +4,8 @@ Professional Retrieval-Augmented Generation (RAG) intelligent Q&A system for the
 
 **Languages**: English | 中文 | 한국어 | 日本語 | Norsk
 
+**📘 New User?** Start with [Deployment Guide](DEPLOYMENT_GUIDE.md) or [Quick Start](QUICKSTART.md)
+
 ---
 
 ## Overview
@@ -73,7 +75,9 @@ Frontend
 
 ## Quick Start (Personal Edition)
 
-**Prerequisites**: [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+> **📘 For detailed instructions, see [Deployment Guide](DEPLOYMENT_GUIDE.md)**
+
+**Prerequisites**: [Docker Desktop](https://www.docker.com/products/docker-desktop/) (8GB RAM minimum)
 
 ### One-Click Start
 
@@ -84,22 +88,15 @@ Mac/Linux: cd deploy/personal && ./start.sh
 
 First run downloads Docker images (5-10 min). Subsequent starts take ~30 seconds.
 
-### Manual Start
-
-```bash
-cd deploy/personal
-docker compose up -d
-```
-
 ### Access
 
-| URL | Purpose |
-|-----|---------|
-| `http://localhost:3000` | User Portal |
-| `http://localhost:8000/docs` | API Documentation |
-| `http://localhost:3000/help` | Online Help & Troubleshooting |
+| URL | Purpose | Notes |
+|-----|---------|-------|
+| `http://localhost:8000/docs` | **API Documentation (Swagger)** | ✅ Works out-of-the-box |
+| `http://localhost:8000/health` | Health Check | System status |
+| `http://localhost:3000` | User Portal | ⚠️ Requires manual frontend start (see HELP.md) |
 
-**Offline help**: see `deploy/personal/HELP.md`
+**⚠️ Important**: Docker deployment includes backend services only. For the full Web UI experience, you need to start the frontend portals manually (see [deploy/personal/HELP.md](deploy/personal/HELP.md)). For quick testing, use the Swagger UI at `http://localhost:8000/docs`.
 
 ### Stop
 
@@ -109,7 +106,10 @@ docker compose down
 # Or double-click stop.bat (Windows)
 ```
 
-The Personal edition uses embedded backends (ChromaDB, SQLite, LocalFS) with no external services required. Features include file parsing (optional, via `--profile parsing`) and local LLM (optional, via `--profile llm`).
+**For complete installation guide, troubleshooting, and frontend setup**, see:
+- 📘 [Deployment Guide](DEPLOYMENT_GUIDE.md) - Step-by-step installation for new users
+- ⚡ [Quick Start](QUICKSTART.md) - 5-minute setup guide
+- 📖 [HELP.md](deploy/personal/HELP.md) - Docker-specific help
 
 ## API Access
 
