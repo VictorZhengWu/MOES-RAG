@@ -143,7 +143,7 @@ print(response.choices[0].message.content)
 - 📖 阅读完整部署指南: [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
 - 🌐 查看在线帮助: http://localhost:3000/help （需启动前端）
 - 📚 浏览 API 文档: http://localhost:8000/docs
-- 💬 加入社区讨论: [GitHub Discussions](https://github.com/your-org/marine-offshore-expert-system/discussions)
+- 💬 加入社区讨论: [GitHub Discussions](https://github.com/victorzhengwu/MOES-RAG/discussions)
 
 ---
 

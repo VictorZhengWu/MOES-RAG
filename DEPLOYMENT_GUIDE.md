@@ -46,7 +46,7 @@
 
 1. 访问项目 GitHub 页面：
    ```
-   https://github.com/your-org/marine-offshore-expert-system
+   https://github.com/victorzhengwu/MOES-RAG
    ```
 
 2. 点击页面右上角的 **"Code"** 按钮，选择 **"Download ZIP"**
@@ -69,7 +69,7 @@
 
 3. 运行命令：
    ```bash
-   git clone https://github.com/your-org/marine-offshore-expert-system.git
+   git clone https://github.com/victorzhengwu/MOES-RAG.git
    cd marine-offshore-expert-system
    ```
 
@@ -192,7 +192,7 @@
 
 ```bash
 # 使用 Git 克隆（推荐）
-git clone https://github.com/your-org/marine-offshore-expert-system.git
+git clone https://github.com/victorzhengwu/MOES-RAG.git
 cd marine-offshore-expert-system
 ```
 
@@ -502,7 +502,7 @@ rmdir /s m7-admin-portal\node_modules
 1. **阅读在线帮助**: http://localhost:3000/help
 2. **查看 API 文档**: http://localhost:8000/docs
 3. **尝试示例问题**: 在帮助页面有常用问题示例
-4. **加入社区**: [GitHub Discussions](https://github.com/your-org/marine-offshore-expert-system/discussions)
+4. **加入社区**: [GitHub Discussions](https://github.com/victorzhengwu/MOES-RAG/discussions)
 
 ---
 
@@ -511,7 +511,7 @@ rmdir /s m7-admin-portal\node_modules
 如果遇到问题：
 
 1. 查看 `deploy/personal/HELP.md`
-2. 查看 [GitHub Issues](https://github.com/your-org/marine-offshore-expert-system/issues)
+2. 查看 [GitHub Issues](https://github.com/victorzhengwu/MOES-RAG/issues)
 3. 在 GitHub Discussions 提问
 4. 查看日志：
    ```bash

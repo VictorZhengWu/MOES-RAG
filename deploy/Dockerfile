@@ -40,7 +40,6 @@ COPY m3-retrieval/ /app/m3-retrieval/
 COPY m4-knowledge-graph/ /app/m4-knowledge-graph/
 COPY m5-qa-engine/ /app/m5-qa-engine/
 COPY m8-api-gateway/ /app/m8-api-gateway/
-COPY deploy.yaml /app/
 
 # Install all modules in development mode
 RUN pip install -e /app/contracts/ && \
@@ -74,7 +73,6 @@ RUN pip install docling docling-core
 COPY contracts/ /app/contracts/
 COPY m1-doc-parsing/ /app/m1-doc-parsing/
 COPY m2-storage/ /app/m2-storage/
-COPY deploy.yaml /app/
 
 RUN pip install -e /app/contracts/ && \
     pip install -e /app/m2-storage/ && \
