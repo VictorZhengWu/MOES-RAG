@@ -73,23 +73,43 @@ Frontend
 
 ## Quick Start (Personal Edition)
 
-**Prerequisites**: Docker Desktop
+**Prerequisites**: [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
-```bash
-# 1. Start all services
-cd deploy
-docker compose -f personal/docker-compose.yml up -d
+### One-Click Start
 
-# 2. Open browser
-# User Portal:  http://localhost:3000
-# Admin Portal: http://localhost:3001
-# API:          http://localhost:8000
-
-# 3. Stop
-docker compose -f personal/docker-compose.yml down
+```
+Windows:  double-click deploy/personal/start.bat
+Mac/Linux: cd deploy/personal && ./start.sh
 ```
 
-The Personal edition uses embedded backends (ChromaDB, SQLite, LocalFS) — zero external services needed.
+First run downloads Docker images (5-10 min). Subsequent starts take ~30 seconds.
+
+### Manual Start
+
+```bash
+cd deploy/personal
+docker compose up -d
+```
+
+### Access
+
+| URL | Purpose |
+|-----|---------|
+| `http://localhost:3000` | User Portal |
+| `http://localhost:8000/docs` | API Documentation |
+| `http://localhost:3000/help` | Online Help & Troubleshooting |
+
+**Offline help**: see `deploy/personal/HELP.md`
+
+### Stop
+
+```bash
+cd deploy/personal
+docker compose down
+# Or double-click stop.bat (Windows)
+```
+
+The Personal edition uses embedded backends (ChromaDB, SQLite, LocalFS) with no external services required. Features include file parsing (optional, via `--profile parsing`) and local LLM (optional, via `--profile llm`).
 
 ## API Access
 

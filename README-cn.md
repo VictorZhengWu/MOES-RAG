@@ -73,23 +73,43 @@
 
 ## 快速开始（个人版）
 
-**前提条件**：安装 Docker Desktop
+**前提条件**：[Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
-```bash
-# 1. 启动全部服务
-cd deploy
-docker compose -f personal/docker-compose.yml up -d
+### 一键启动
 
-# 2. 浏览器打开
-# 用户端：http://localhost:3000
-# 管理端：http://localhost:3001
-# API ：http://localhost:8000
-
-# 3. 停止
-docker compose -f personal/docker-compose.yml down
+```
+Windows:  双击 deploy/personal/start.bat
+Mac/Linux: cd deploy/personal && ./start.sh
 ```
 
-个人版使用嵌入式后端（ChromaDB、SQLite、LocalFS），无需安装任何外部数据库。
+首次运行会下载 Docker 镜像（约 5-10 分钟），后续启动约 30 秒。
+
+### 手动启动
+
+```bash
+cd deploy/personal
+docker compose up -d
+```
+
+### 访问地址
+
+| URL | 用途 |
+|-----|------|
+| `http://localhost:3000` | 用户端 |
+| `http://localhost:8000/docs` | API 文档 |
+| `http://localhost:3000/help` | 在线帮助 |
+
+**离线帮助**：参见 `deploy/personal/HELP.md`
+
+### 停止
+
+```bash
+cd deploy/personal
+docker compose down
+# Windows 用户可双击 stop.bat
+```
+
+个人版使用嵌入式后端（ChromaDB、SQLite、LocalFS），无需安装任何外部数据库。可选启用文件解析（`--profile parsing`）和本地大模型（`--profile llm`）。
 
 ## API 接入
 

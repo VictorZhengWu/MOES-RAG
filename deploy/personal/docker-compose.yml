@@ -1,0 +1,161 @@
+# Marine & Offshore Expert System — Personal Edition
+# ============================================================================
+# Quick start:
+#   Windows:  double-click start.bat
+#   Mac/Linux: ./start.sh
+#   Or:        docker compose up -d
+#
+# Minimum:     8 GB RAM (12 GB recommended)
+# Disk:        5 GB free space
+# No external databases or services needed — everything is embedded.
+# ============================================================================
+
+version: "3.9"
+
+services:
+  # ── API Gateway + QA Engine + Retrieval + KG ──────────────────────────
+  m8:
+    build:
+      context: ../..
+      dockerfile: deploy/Dockerfile
+      target: m8
+    container_name: marine-m8
+    ports:
+      - "8000:8000"
+    environment:
+      - DEPLOYMENT_MODE=personal
+      - FEATURE_WEB_SEARCH=true
+      - FEATURE_DEEP_RESEARCH=true
+      - FEATURE_BILLING=false
+      - FEATURE_MULTI_TENANT=false
+      - WEB_SEARCH_ENGINE=duckduckgo
+      - M5_DB_PATH=/data/m5_qa.db
+      - M3_CHROMADB_DIR=/data/chromadb
+      - M4_KUZU_DIR=/data/graph
+      - M1_PARSE_URL=http://m1:8007/parse
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - marine_data:/data
+      - ../../m8-api-gateway:/app/m8-api-gateway
+      - ../../m5-qa-engine:/app/m5-qa-engine
+      - ../../m3-retrieval:/app/m3-retrieval
+      - ../../m4-knowledge-graph:/app/m4-knowledge-graph
+      - ../../m2-storage:/app/m2-storage
+      - ../../contracts:/app/contracts
+      - ../../deploy/personal/deploy.yaml:/app/deploy.yaml
+    depends_on:
+      meilisearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── Full-text search ──────────────────────────────────────────────────
+  meilisearch:
+    image: getmeili/meilisearch:v1.10
+    container_name: marine-meilisearch
+    ports:
+      - "7700:7700"
+    environment:
+      - MEILI_NO_ANALYTICS=true
+    volumes:
+      - meili_data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  # ── Rate limiter ──────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: marine-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Optional: Document Parsing Engine (heavy, 8 GB RAM) ───────────────
+  # Start with: docker compose --profile parsing up
+  m1:
+    build:
+      context: ../..
+      dockerfile: deploy/Dockerfile
+      target: m1
+    container_name: marine-m1
+    profiles: ["parsing"]
+    ports:
+      - "8007:8007"
+    environment:
+      - M1_OUTPUT_DIR=/data/output
+      - M1_DEPLOY_YAML=/app/deploy.yaml
+    volumes:
+      - marine_data:/data
+      - ../../m1-doc-parsing:/app/m1-doc-parsing
+      - ../../m2-storage:/app/m2-storage
+      - ../../contracts:/app/contracts
+      - ../../deploy/personal/deploy.yaml:/app/deploy.yaml
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+
+  # ── Optional: Local LLM ──────────────────────────────────────────────
+  # Start with: docker compose --profile llm up
+  # Then pull a model: docker exec -it marine-ollama ollama pull qwen2.5:7b
+  ollama:
+    image: ollama/ollama:latest
+    container_name: marine-ollama
+    profiles: ["llm"]
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_HOST=0.0.0.0
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # ── Optional: Self-hosted web search ──────────────────────────────────
+  searxng:
+    image: searxng/searxng:latest
+    container_name: marine-searxng
+    profiles: ["search"]
+    ports:
+      - "8888:8080"
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8888/
+    volumes:
+      - searxng_data:/etc/searxng
+    restart: unless-stopped
+
+volumes:
+  marine_data:
+  meili_data:
+  redis_data:
+  ollama_data:
+  searxng_data:
