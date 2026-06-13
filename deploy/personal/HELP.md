@@ -23,9 +23,9 @@ First run downloads Docker images (5-10 minutes). Subsequent starts take ~30 sec
 
 | URL | Purpose | Notes |
 |-----|---------|-------|
-| `http://localhost:8000/docs` | API Documentation | Swagger UI - 推荐首次使用 |
+| `http://localhost:18000/docs` | API Documentation | Swagger UI - 推荐首次使用 |
 | `http://localhost:3000` | User Portal | 需手动启动前端（见下方） |
-| `http://localhost:8000/health` | Health Check | 系统状态检查 |
+| `http://localhost:18000/health` | Health Check | 系统状态检查 |
 
 **重要提示**: Docker 部署仅包含后端服务（M1-M8）。要使用完整的 Web UI，请按照下方 **"启动前端门户"** 操作。
 
@@ -75,7 +75,7 @@ Then visit `http://localhost:3001`
 **Quick Start (Recommended for New Users)**:
 
 If you just want to test the system, use the **API Documentation** instead:
-- Visit `http://localhost:8000/docs`
+- Visit `http://localhost:18000/docs`
 - No frontend installation needed
 - Interactive API testing interface
 - Same functionality as Web UI

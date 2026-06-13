@@ -21,7 +21,7 @@ services:
       target: m8
     container_name: marine-m8
     ports:
-      - "8000:8000"
+      - "18000:8000"
     environment:
       - DEPLOYMENT_MODE=personal
       - FEATURE_WEB_SEARCH=true
@@ -62,7 +62,7 @@ services:
     image: getmeili/meilisearch:v1.10
     container_name: marine-meilisearch
     ports:
-      - "7700:7700"
+      - "17700:7700"
     environment:
       - MEILI_NO_ANALYTICS=true
     volumes:
@@ -99,7 +99,7 @@ services:
     container_name: marine-m1
     profiles: ["parsing"]
     ports:
-      - "8007:8007"
+      - "18007:8007"
     environment:
       - M1_OUTPUT_DIR=/data/output
       - M1_DEPLOY_YAML=/app/deploy.yaml
@@ -123,7 +123,7 @@ services:
     container_name: marine-ollama
     profiles: ["llm"]
     ports:
-      - "11434:11434"
+      - "21434:11434"
     environment:
       - OLLAMA_KEEP_ALIVE=24h
       - OLLAMA_HOST=0.0.0.0
@@ -144,7 +144,7 @@ services:
     container_name: marine-searxng
     profiles: ["search"]
     ports:
-      - "8888:8080"
+      - "18888:8080"
     environment:
       - SEARXNG_BASE_URL=http://localhost:8888/
     volumes:

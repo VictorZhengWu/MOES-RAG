@@ -49,7 +49,7 @@ if %errorlevel% neq 0 (
 echo [3/3] Waiting for services to be ready...
 echo   This may take 30-60 seconds on first run...
 :wait_loop
-curl -s http://localhost:8000/health >nul 2>&1
+curl -s http://localhost:18000/health >nul 2>&1
 if %errorlevel% equ 0 goto ready
 timeout /t 5 >nul
 goto wait_loop
@@ -61,7 +61,7 @@ echo   System is ready!
 echo.
 echo   User Portal:  http://localhost:3000
 echo   Help:         http://localhost:3000/help
-echo   API Docs:     http://localhost:8000/docs
+echo   API Docs:     http://localhost:18000/docs
 echo.
 echo   To stop:      Close this window, then run stop.bat
 echo ============================================
