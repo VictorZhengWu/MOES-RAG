@@ -2,7 +2,7 @@
 
 > **Purpose**: Fast-lookup index for all module memory files. Read this first when starting a new session to understand the overall project state, then dive into the specific module file you need.
 
-> **Last Updated**: 2026-06-09 (end of session)
+> **Last Updated**: 2026-06-13 (Phase 4 complete)
 
 ---
 
@@ -14,10 +14,10 @@
 | M2 | Storage Abstraction Layer | ✅ 6 Backends | 3 | 2026-06-09 | PostgreSQL + ES + MinIO/S3 complete |
 | M3 | Retrieval Engine | ✅ Enhanced | 2 | 2026-06-07 | Propositions + hierarchical nav |
 | M4 | Knowledge Graph Engine | ✅ Complete | 4 | 2026-06-03 | — |
-| M5 | RAG QA Engine | ✅ Complete | 8 | 2026-06-11 | Deep Research + Projects done |
-| M6 | User Web Portal | ✅ Complete | ~10 | 2026-06-11 | 21/21 placeholders resolved |
-| M7 | Admin Web Portal | ✅ Complete | 5 | 2026-06-11 | PG/ES/MinIO config + monitoring done |
-| M8 | API Gateway | ✅ Enhanced | 4 | 2026-06-11 | Redis + Projects + Research routes |
+| M5 | RAG QA Engine | ✅ Complete | 9 | 2026-06-13 | DR + Projects + Collaboration done |
+| M6 | User Web Portal | ✅ Complete | ~10 | 2026-06-13 | 21/21 placeholders resolved |
+| M7 | Admin Web Portal | ✅ Complete | 5 | 2026-06-13 | PG/ES/MinIO config + monitoring done |
+| M8 | API Gateway | ✅ Enhanced | 5 | 2026-06-13 | Redis + Projects + Research + Permissions |
 | — | contracts/ | ✅ | 1 | 2026-05-12 | 00010 |
 | — | deploy/ | ✅ | 1 | 2026-06-09 | 3 profiles + Redis + PG/ES/MinIO config |
 

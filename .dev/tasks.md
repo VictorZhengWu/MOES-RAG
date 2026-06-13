@@ -1683,7 +1683,7 @@ def test_openai_python_sdk_chat():
 > **延后至 4-C**: 文件夹树 UI (对话平铺→树形) / 看板拖放 / 项目归档案例库
 
 > **PRD**: `.dev/specs/phase-4b-projects-design-2026-06-09.md`
-> **状态**: 🔲 占位 — Phase 4-A 完成后展开详细内容
+> **状态**: ✅ 全部完成 — Phase 4-B core + 4-C integrations
 
 #### ✅ 00105-01 — 项目 CRUD + SQLite 建表 + M8 路由 (manager.py)
 
@@ -1938,7 +1938,7 @@ def test_openai_python_sdk_chat():
 > **PRD**: `.dev/specs/phase-4d-collaboration-design-2026-06-12.md`
 > **依赖**: 00104 (DR), 00105 (Projects), 00106-00109 (4-C)
 
-### 🔲 00110 — Phase 4-D (9 Task)
+### ✅ 00110 — Phase 4-D 协作平台与知识沉淀
 
 #### ✅ 00110-01 — Schema 扩展 (4 新表 + projects 扩展)
 
