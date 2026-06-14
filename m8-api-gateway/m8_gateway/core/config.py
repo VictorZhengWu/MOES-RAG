@@ -76,8 +76,9 @@ class GatewayConfig:
         """
         # Read M5 database path from environment variable
         import os
-        if m5_db := os.environ.get("M5_DB_PATH"):
-            self.m5_db_path = m5_db_path
+        m5_db_env = os.environ.get("M5_DB_PATH")
+        if m5_db_env:
+            self.m5_db_path = m5_db_env
 
         # Rate limit presets
         if not self.rate_limits:
