@@ -26,7 +26,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies common to both targets
-RUN pip install --upgrade pip setuptools wheel
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install python-multipart fastapi uvicorn aiosqlite
 
 # ── M8 target: Gateway + QA Engine + Retrieval + KG ───────────────────
 FROM base AS m8
