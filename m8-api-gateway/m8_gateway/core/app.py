@@ -119,7 +119,7 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
 
         # Initialize Project Manager (Phase 4-B) — always available
         from m5_qa.project.manager import ProjectManager
-        app.state.project_manager = ProjectManager(config.db_path)
+        app.state.project_manager = ProjectManager(config.m5_db_path)
         await app.state.project_manager.initialize()
 
         # Set restrictive DB file permissions (owner-only, prevents data leaks)

@@ -61,6 +61,7 @@ class GatewayConfig:
     host: str = "0.0.0.0"
     port: int = 8000
     db_path: str = "./data/m8_gateway.db"
+    m5_db_path: str = "./data/m5_qa.db"
     deployment_mode: str = "personal"  # "personal" | "enterprise" | "saas"
     rate_limits: dict[str, int] = field(default_factory=dict)
     rate_limit_backend: str = "auto"  # "auto" | "memory" | "redis"
@@ -73,6 +74,11 @@ class GatewayConfig:
              and infrastructure requirements. Auto-selection reduces
              configuration burden while allowing explicit overrides.
         """
+        # Read M5 database path from environment variable
+        import os
+        if m5_db := os.environ.get("M5_DB_PATH"):
+            self.m5_db_path = m5_db_path
+
         # Rate limit presets
         if not self.rate_limits:
             if self.deployment_mode == "personal":
