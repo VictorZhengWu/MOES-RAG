@@ -57,6 +57,32 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
     )
 
     # ------------------------------------------------------------------
+    # CORS — allow the M6/M7 browser frontends to call the API.
+    # WHAT: Adds Access-Control-Allow-Origin for the configured frontend
+    #       origins so browsers can fetch across ports (3000/3001 -> 18000).
+    # WHY:  Without CORS, every cross-origin API call from the Next.js
+    #       portals is blocked by the browser's same-origin policy.
+    # ------------------------------------------------------------------
+    import os as _cors_os
+    from fastapi.middleware.cors import CORSMiddleware
+    _default_cors = (
+        "http://localhost:3000,http://localhost:3001,"
+        "http://127.0.0.1:3000,http://127.0.0.1:3001"
+    )
+    _cors_origins = [
+        o.strip() for o in
+        _cors_os.environ.get("M8_CORS_ORIGINS", _default_cors).split(",")
+        if o.strip()
+    ]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # ------------------------------------------------------------------
     # Security headers middleware
     # ------------------------------------------------------------------
 
@@ -105,6 +131,18 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
         # Tables are created lazily on first generate_key/validate_key call
         # via KeyManager._ensure_table().
         app.state.key_manager = KeyManager(cfg.db_path)
+
+        # ── First-run admin bootstrap ──────────────────────────────────
+        # Creates a default admin user + key if the users table is empty.
+        # Idempotent; failure is non-fatal (operator can create admin
+        # manually). See m8_gateway.core.bootstrap for details.
+        try:
+            from m8_gateway.core.bootstrap import bootstrap_admin_if_needed
+            await bootstrap_admin_if_needed(cfg.db_path)
+        except Exception as _bs_err:
+            logging.getLogger("m8_gateway").error(
+                "bootstrap failed (non-fatal): %s", _bs_err, exc_info=True
+            )
 
         # Initialize the rate limiter via factory.
         # Auto-selects InMemoryRateLimiter or RedisRateLimiter based on
