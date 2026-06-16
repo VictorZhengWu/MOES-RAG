@@ -30,6 +30,7 @@ services:
       - FEATURE_MULTI_TENANT=false
       - WEB_SEARCH_ENGINE=duckduckgo
       - M5_DB_PATH=/data/m5_qa.db
+      - M8_DB_PATH=/data/m8_gateway.db
       - M3_CHROMADB_DIR=/data/chromadb
       - M4_KUZU_DIR=/data/graph
       - M1_PARSE_URL=http://m1:8007/parse
