@@ -74,8 +74,13 @@ class GatewayConfig:
              and infrastructure requirements. Auto-selection reduces
              configuration burden while allowing explicit overrides.
         """
-        # Read M5 database path from environment variable
+        # Read database paths from environment variables (aligns
+        # GatewayConfig.db_path with auth.py's M8_DB_PATH so KeyManager,
+        # bootstrap, and admin-login all use the same SQLite file).
         import os
+        m8_db_env = os.environ.get("M8_DB_PATH")
+        if m8_db_env:
+            self.db_path = m8_db_env
         m5_db_env = os.environ.get("M5_DB_PATH")
         if m5_db_env:
             self.m5_db_path = m5_db_env
