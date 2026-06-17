@@ -3,6 +3,7 @@ REM ============================================
 REM  MOES Dev Launcher
 REM  Starts: Backend Docker + M6 User Portal + M7 Admin Portal
 REM  Usage: Double-click (requires Docker Desktop running)
+REM  NOTE: Frontend uses 4000/4001 (3000/3001 are in Windows reserved range)
 REM ============================================
 title MOES Dev Launcher
 
@@ -33,19 +34,19 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [3/4] Starting M6 User Portal (port 3000)...
-start "MOES-M6-3000" cmd /k "cd /d E:\myCode\RAG\m6-user-portal && npm run dev"
+echo [3/4] Starting M6 User Portal (port 4000)...
+start "MOES-M6-4000" cmd /k "cd /d E:\myCode\RAG\m6-user-portal && npm run dev -- -p 4000"
 
-echo [4/4] Starting M7 Admin Portal (port 3001)...
-start "MOES-M7-3001" cmd /k "cd /d E:\myCode\RAG\m7-admin-portal && npm run dev"
+echo [4/4] Starting M7 Admin Portal (port 4001)...
+start "MOES-M7-4001" cmd /k "cd /d E:\myCode\RAG\m7-admin-portal && npm run dev -- -p 4001"
 
 echo.
 echo ============================================
 echo   All start commands issued.
 echo.
 echo   URLs:
-echo     User Portal : http://localhost:3000
-echo     Admin Portal: http://localhost:3001
+echo     User Portal : http://localhost:4000
+echo     Admin Portal: http://localhost:4001
 echo     API Docs    : http://localhost:18000/docs
 echo.
 echo   Get Admin Key (for M7 login):
@@ -59,5 +60,5 @@ echo ============================================
 echo.
 echo Opening Admin Portal in 35s...
 timeout /t 35 >nul
-start http://localhost:3001
+start http://localhost:4001
 pause

@@ -67,7 +67,9 @@ def create_app(config: GatewayConfig | None = None) -> FastAPI:
     from fastapi.middleware.cors import CORSMiddleware
     _default_cors = (
         "http://localhost:3000,http://localhost:3001,"
-        "http://127.0.0.1:3000,http://127.0.0.1:3001"
+        "http://localhost:4000,http://localhost:4001,"
+        "http://127.0.0.1:3000,http://127.0.0.1:3001,"
+        "http://127.0.0.1:4000,http://127.0.0.1:4001"
     )
     _cors_origins = [
         o.strip() for o in
